@@ -11,11 +11,9 @@ type Model<T> = <T as Handler>::Model;
 pub trait Handle {
     type Handler: Handler;
 
-    fn __set_local(
-        &mut self,
-        state: &Rc<Model<Self::Handler>>,
-        callback: &Callback<Reduction<Model<Self::Handler>>>,
-    );
+    fn set_local_state(&mut self, state: Rc<Model<Self::Handler>>);
+    fn set_local_callback(&mut self, callback: Callback<Reduction<Model<Self::Handler>>>);
+    fn set_local(&mut self, other: &Self);
 }
 
 /// Allows any `Properties` to have shared state.
@@ -112,9 +110,16 @@ where
 {
     type Handler = H;
 
-    fn __set_local(&mut self, state: &Rc<T>, callback: &Callback<Reduction<T>>) {
-        self.state = state.clone();
-        self.callback = callback.clone();
+    fn set_local_state(&mut self, state: Rc<Model<Self::Handler>>) {
+        self.state = state;
+    }
+
+    fn set_local_callback(&mut self, callback: Callback<Reduction<Model<Self::Handler>>>) {
+        self.callback = callback;
+    }
+
+    fn set_local(&mut self, other: &Self) {
+        *self = other.clone();
     }
 }
 

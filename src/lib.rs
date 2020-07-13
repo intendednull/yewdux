@@ -95,6 +95,8 @@ mod component;
 mod handle;
 mod handler;
 
+pub use yew::services::storage::Area;
+
 pub use component::SharedStateComponent;
 pub use handle::{GlobalHandle, SharedState, StorageHandle};
 pub use handler::Storable;

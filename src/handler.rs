@@ -22,7 +22,7 @@ pub trait Handler {
 }
 
 /// Handler for basic shared state.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct GlobalHandler<T> {
     state: Rc<T>,
 }
@@ -101,5 +101,18 @@ where
 
     fn state(&self) -> Rc<Self::Model> {
         Rc::clone(&self.state)
+    }
+}
+
+impl<T> Clone for StorageHandler<T>
+where
+    T: Default + Clone + Storable,
+{
+    fn clone(&self) -> Self {
+        let mut new = Self::new();
+        // State should already be correct because it's loaded from storage,
+        // but it won't be if storage is disabled.
+        new.state = self.state.clone();
+        new
     }
 }

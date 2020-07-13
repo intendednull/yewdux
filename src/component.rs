@@ -5,14 +5,11 @@ use std::rc::Rc;
 use yew::{
     html,
     worker::{Agent, AgentLink, Bridge, Bridged, Context, HandlerId},
-    Callback, Component, ComponentLink, Html, ShouldRender,
+    Component, ComponentLink, Html, ShouldRender,
 };
 
 use super::handle::{Handle, SharedState};
 use super::handler::{Handler, Reduction};
-
-type StateHandler<T> = <<T as SharedState>::Handle as Handle>::Handler;
-type Model<T> = <StateHandler<T> as Handler>::Model;
 
 enum Request<T> {
     /// Apply a state change.
@@ -32,25 +29,25 @@ enum Response<T> {
 /// subscribers of new state.
 struct SharedStateService<T>
 where
-    T: SharedState + Clone + 'static,
+    T: Handler + Clone + 'static,
 {
-    handler: StateHandler<T>,
+    handler: T,
     subscriptions: HashSet<HandlerId>,
     link: AgentLink<SharedStateService<T>>,
 }
 
 impl<T> Agent for SharedStateService<T>
 where
-    T: SharedState + Clone + 'static,
+    T: Handler + Clone + 'static,
 {
     type Message = ();
     type Reach = Context<Self>;
-    type Input = Request<Model<T>>;
-    type Output = Response<Model<T>>;
+    type Input = Request<<T as Handler>::Model>;
+    type Output = Response<<T as Handler>::Model>;
 
     fn create(link: AgentLink<Self>) -> Self {
         Self {
-            handler: StateHandler::<T>::new(),
+            handler: <T as Handler>::new(),
             subscriptions: Default::default(),
             link,
         }
@@ -79,16 +76,18 @@ where
     }
 }
 
+type StateHandler<T> = <<T as SharedState>::Handle as Handle>::Handler;
+type Model<T> = <StateHandler<T> as Handler>::Model;
+
 /// Wrapper for a component with shared state.
 pub struct SharedStateComponent<C>
 where
     C: Component,
     C::Properties: SharedState + Clone,
+    StateHandler<C::Properties>: Clone,
 {
     props: C::Properties,
-    bridge: Box<dyn Bridge<SharedStateService<C::Properties>>>,
-    state: Rc<Model<C::Properties>>,
-    callback: Callback<Reduction<Model<C::Properties>>>,
+    bridge: Box<dyn Bridge<SharedStateService<StateHandler<C::Properties>>>>,
 }
 
 /// Internal use only.
@@ -106,11 +105,12 @@ where
     C: Component,
     C::Properties: SharedState + Clone,
     Model<C::Properties>: Default,
+    StateHandler<C::Properties>: Clone,
 {
     type Message = SharedStateComponentMsg<Model<C::Properties>>;
     type Properties = C::Properties;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(mut props: Self::Properties, link: ComponentLink<Self>) -> Self {
         use SharedStateComponentMsg::*;
         // Bridge to receive new state.
         let mut bridge = SharedStateService::bridge(link.callback(|msg| match msg {
@@ -119,12 +119,9 @@ where
         // Make sure we receive updates to state.
         bridge.send(Request::Subscribe);
 
-        SharedStateComponent {
-            props,
-            bridge,
-            state: Default::default(),
-            callback: link.callback(Apply),
-        }
+        props.handle().set_local_callback(link.callback(Apply));
+
+        SharedStateComponent { props, bridge }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -135,21 +132,20 @@ where
                 false
             }
             SetLocal(state) => {
-                self.state = state;
+                self.props.handle().set_local_state(state);
                 true
             }
         }
     }
 
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+    fn change(&mut self, mut props: Self::Properties) -> ShouldRender {
+        props.handle().set_local(self.props.handle());
         self.props = props;
         true
     }
 
     fn view(&self) -> Html {
-        let mut props = self.props.clone();
-        props.handle().__set_local(&self.state, &self.callback);
-
+        let props = self.props.clone();
         html! {
             <C with props />
         }
@@ -160,6 +156,7 @@ impl<C> std::ops::Drop for SharedStateComponent<C>
 where
     C: Component,
     C::Properties: SharedState + Clone,
+    StateHandler<C::Properties>: Clone,
 {
     fn drop(&mut self) {
         self.bridge.send(Request::UnSubscribe);
