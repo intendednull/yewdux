@@ -6,8 +6,8 @@ edition = "2018"
 license = "MIT"
 repository = "https://github.com/intendednull/yew-state"
 readme = "README.md"
-description = "Shared state management for Yew"
-keywords = ["yew", "state", "session", "storage", "shared", "global"]
+description = "Ergonomic shared state for Yew"
+keywords = ["yew", "state", "session", "storage", "shared"]
 categories = ["wasm", "web-programming", "api-bindings", "rust-patterns"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
