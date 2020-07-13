@@ -111,7 +111,7 @@ First the display:
 // display.rs
 use yew::prelude::*;
 use yewtil::NeqAssign;
-use yew_state::{Handle, GlobalHandle, SharedStateComponent};
+use yew_state::{GlobalHandle, SharedStateComponent};
 
 pub struct Model {
     handle: GlobalHandle<usize>,
@@ -148,7 +148,7 @@ Now for the button:
 // input.rs
 use yew::prelude::*;
 use yewtil::NeqAssign;
-use yew_state::{GlobalHandle, Handle, SharedStateComponent};
+use yew_state::{GlobalHandle, SharedStateComponent};
 
 pub struct Model {
     handle: GlobalHandle<usize>,

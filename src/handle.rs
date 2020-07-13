@@ -7,58 +7,21 @@ use super::handler::{GlobalHandler, Handler, Reduction, StorageHandler};
 
 type Model<T> = <T as Handler>::Model;
 
-/// Allows any `Properties` to have shared state.
-pub trait SharedState {
-    type Handle: Handle;
-    fn handle(&mut self) -> &mut Self::Handle;
-}
-
-/// Primary shared state interface
+/// Provides mutable access for wrapper component to update
 pub trait Handle {
     type Handler: Handler;
 
-    /// Current state.
-    fn state(&self) -> &Model<Self::Handler>;
-    /// Callback to use for updating state.
-    fn callback(&self) -> &Callback<Reduction<Model<Self::Handler>>>;
-    #[doc(hidden)]
     fn __set_local(
         &mut self,
         state: &Rc<Model<Self::Handler>>,
         callback: &Callback<Reduction<Model<Self::Handler>>>,
     );
+}
 
-    /// Apply a function that may mutate shared state.
-    /// Changes are not immediate, and must be handled in `Component::change`.
-    fn reduce(&self, f: impl FnOnce(&mut Model<Self::Handler>) + 'static) {
-        self.callback().emit(Box::new(f))
-    }
-
-    /// Convenience method for modifying shared state directly from a callback.
-    /// The callback event is ignored here, see `reduce_callback_with` for the alternative.
-    fn reduce_callback<T: 'static>(
-        &self,
-        f: impl FnOnce(&mut Model<Self::Handler>) + Copy + 'static,
-    ) -> Callback<T>
-    where
-        Model<Self::Handler>: 'static,
-    {
-        self.callback()
-            .reform(move |_| Box::new(move |state| f(state)))
-    }
-
-    /// Convenience method for modifying shared state directly from a callback.
-    /// Similar to `reduce_callback` but it also accepts the fired event.
-    fn reduce_callback_with<T: 'static>(
-        &self,
-        f: impl FnOnce(T, &mut Model<Self::Handler>) + Copy + 'static,
-    ) -> Callback<T>
-    where
-        Model<Self::Handler>: 'static,
-    {
-        self.callback()
-            .reform(move |e| Box::new(move |state| f(e, state)))
-    }
+/// Allows any `Properties` to have shared state.
+pub trait SharedState {
+    type Handle: Handle;
+    fn handle(&mut self) -> &mut Self::Handle;
 }
 
 /// A handle for io with state handlers
@@ -74,6 +37,48 @@ where
     callback: Callback<Reduction<T>>,
     #[prop_or_default]
     _mark: std::marker::PhantomData<H>,
+}
+
+impl<T, H> StateHandle<T, H>
+where
+    T: Default + Clone + 'static,
+    H: Handler<Model = T>,
+{
+    pub fn state(&self) -> &T {
+        &self.state
+    }
+
+    /// Apply a function that may mutate shared state.
+    /// Changes are not immediate, and must be handled in `Component::change`.
+    pub fn reduce(&self, f: impl FnOnce(&mut T) + 'static) {
+        self.callback.emit(Box::new(f))
+    }
+
+    /// Convenience method for modifying shared state directly from a callback.
+    /// The callback event is ignored here, see `reduce_callback_with` for the alternative.
+    pub fn reduce_callback<E: 'static>(
+        &self,
+        f: impl FnOnce(&mut T) + Copy + 'static,
+    ) -> Callback<E>
+    where
+        T: 'static,
+    {
+        self.callback
+            .reform(move |_| Box::new(move |state| f(state)))
+    }
+
+    /// Convenience method for modifying shared state directly from a callback.
+    /// Similar to `reduce_callback` but it also accepts the fired event.
+    pub fn reduce_callback_with<E: 'static>(
+        &self,
+        f: impl FnOnce(E, &mut T) + Copy + 'static,
+    ) -> Callback<E>
+    where
+        T: 'static,
+    {
+        self.callback
+            .reform(move |e| Box::new(move |state| f(e, state)))
+    }
 }
 
 impl<T, H> Clone for StateHandle<T, H>
@@ -106,14 +111,6 @@ where
     H: Handler<Model = T>,
 {
     type Handler = H;
-
-    fn callback(&self) -> &Callback<Reduction<T>> {
-        &self.callback
-    }
-
-    fn state(&self) -> &T {
-        &self.state
-    }
 
     fn __set_local(&mut self, state: &Rc<T>, callback: &Callback<Reduction<T>>) {
         self.state = state.clone();
