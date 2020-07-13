@@ -1,0 +1,17 @@
+[package]
+name = "yew-state"
+version = "0.1.0"
+authors = ["Noah <noah@coronasoftware.net>"]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/intendednull/yew-state"
+readme = "README.md"
+description = "Shared state management for Yew"
+keywords = ["yew", "state", "session", "storage", "shared", "global"]
+categories = ["wasm", "web-programming", "api-bindings", "rust-patterns"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0.114", features = ["rc"] }
+yew = "^0.17"
