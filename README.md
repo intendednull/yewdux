@@ -1,13 +1,11 @@
 # Yew State
 
-This crate provides ergonomic access to shared state and optional persistent storage (session or local).
+Ergonomic access to shared state with optionally persistent session/local storage.
 
 Initially this was a [PR](https://github.com/yewstack/yew/pull/1372), but became big
 enough to warrant a standalone crate.
 
-This is just one approach to shared state! It uses a component wrapper to manage message passing, and `Rc`
-to minimize cloning. If you have suggestions please open an issue, or join in on the
-[discussion](https://github.com/yewstack/yew/issues/576).
+If you have suggestions please open an issue, or join in on the [discussion](https://github.com/yewstack/yew/issues/576).
 
 ## Usage
 
@@ -34,7 +32,7 @@ let state: &T = self.handle.state();
 Modify shared state from anywhere using `reduce`
 ```rust
 // GlobalHandle<MyAppState>
-self.handle.reduce(|state| state.user = new_user);
+self.handle.reduce(move |state| state.user = new_user);
 ```
 
 or from a callback with `reduce_callback`.
@@ -46,7 +44,7 @@ html! {
 }
 ```
 
-`reduce_callback_with` provides the fired event.
+To include the fired event use `reduce_callback_with`
 ```rust
 let oninput = self
     .handle
@@ -59,7 +57,7 @@ html! {
 
 ### Properties with Shared State
 
-Get shared state in custom props with `SharedState`.
+Implement `SharedState` to get shared state in any properties.
 ```rust
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -78,7 +76,7 @@ impl SharedState for Props {
 
 ### State Persistence
 
-Persistent storage requires that `T` also implement `Serialize`,
+To make state persistent use `StorageHandle` instead of `GlobalHandle`. This requires that `T` also implement `Serialize`,
 `Deserialize`, and `Storable`.
 ```rust
 use serde::{Serialize, Deserialize};
@@ -99,9 +97,6 @@ impl Storable for T {
     }
 }
 ```
-
-Then use `StorageHandle` instead of `GlobalHandle`.
-
 ## Example
 
 Lets make a counting app using shared state!
@@ -211,7 +206,7 @@ impl Component for App {
             <>
                 <Display />
                 <div>
-                    <p>{"Start counting!"}</p>
+
                     <Input />
                 </div>
             </>
