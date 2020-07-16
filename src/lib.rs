@@ -40,7 +40,7 @@
 //! ```rust
 //! let oninput = self
 //!     .handle
-//!     .reduce_callback_with(|i: InputData, state| state.user.name = i.value);
+//!     .reduce_callback_with(|state, i: InputData| state.user.name = i.value);
 //!
 //! html! {
 //!     <input type="text" placeholder = "Enter your name" oninput = oninput />

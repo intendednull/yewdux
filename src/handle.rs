@@ -69,13 +69,13 @@ where
     /// Similar to `reduce_callback` but it also accepts the fired event.
     pub fn reduce_callback_with<E: 'static>(
         &self,
-        f: impl FnOnce(E, &mut T) + Copy + 'static,
+        f: impl FnOnce(&mut T, E) + Copy + 'static,
     ) -> Callback<E>
     where
         T: 'static,
     {
         self.callback
-            .reform(move |e| Box::new(move |state| f(e, state)))
+            .reform(move |e| Box::new(move |state| f(state, e)))
     }
 }
 
