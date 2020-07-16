@@ -98,5 +98,5 @@ mod handler;
 pub use yew::services::storage::Area;
 
 pub use component::SharedStateComponent;
-pub use handle::{GlobalHandle, SharedState, StorageHandle};
+pub use handle::{GlobalHandle, Handle, SharedState, StorageHandle};
 pub use handler::Storable;
