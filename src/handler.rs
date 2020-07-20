@@ -54,7 +54,9 @@ pub trait Storable: Serialize + for<'a> Deserialize<'a> {
         type_name::<Self>()
     }
     /// The area to store state.
-    fn area() -> Area;
+    fn area() -> Area {
+        Area::Local
+    }
 }
 
 /// Handler for shared state with persistent storage.
