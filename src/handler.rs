@@ -1,4 +1,5 @@
 //! State handlers determine how state should be created, modified, and shared.
+use std::any::type_name;
 use std::rc::Rc;
 
 use serde::{Deserialize, Serialize};
@@ -49,7 +50,9 @@ where
 /// Allows state to be stored persistently in local or session storage.
 pub trait Storable: Serialize + for<'a> Deserialize<'a> {
     /// The key used to save and load state from storage.
-    fn key() -> &'static str;
+    fn key() -> &'static str {
+        type_name::<Self>()
+    }
     /// The area to store state.
     fn area() -> Area;
 }
