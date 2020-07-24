@@ -1,7 +1,4 @@
 # Yew State
-
-Ergonomic access to shared state with optionally persistent session/local storage.
-
 Initially this was a [PR](https://github.com/yewstack/yew/pull/1372), but became big
 enough to warrant a standalone crate.
 
