@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use yew::{Callback, Properties};
 
-use super::handler::{GlobalHandler, Handler, Reduction, StorageHandler};
+use super::handler::{GlobalHandler, Handler, Reduction, ReductionOnce, StorageHandler};
 
 type Model<T> = <T as Handler>::Model;
 
@@ -12,7 +12,11 @@ pub trait Handle {
     type Handler: Handler;
 
     fn set_local_state(&mut self, state: Rc<Model<Self::Handler>>);
-    fn set_local_callback(&mut self, callback: Callback<Reduction<Model<Self::Handler>>>);
+    fn set_local_callback(
+        &mut self,
+        callback: Callback<Reduction<Model<Self::Handler>>>,
+        callback_once: Callback<ReductionOnce<Model<Self::Handler>>>,
+    );
     fn set_local(&mut self, other: &Self);
 }
 
@@ -34,6 +38,8 @@ where
     #[prop_or_default]
     callback: Callback<Reduction<T>>,
     #[prop_or_default]
+    callback_once: Callback<ReductionOnce<T>>,
+    #[prop_or_default]
     _mark: std::marker::PhantomData<H>,
 }
 
@@ -49,33 +55,55 @@ where
     /// Apply a function that may mutate shared state.
     /// Changes are not immediate, and must be handled in `Component::change`.
     pub fn reduce(&self, f: impl FnOnce(&mut T) + 'static) {
-        self.callback.emit(Box::new(f))
+        self.callback_once.emit(Box::new(f))
     }
 
-    /// Convenience method for modifying shared state directly from a callback.
+    /// Convenience method for modifying shared state directly from a `Callback`.
     /// The callback event is ignored here, see `reduce_callback_with` for the alternative.
-    pub fn reduce_callback<E: 'static>(
-        &self,
-        f: impl FnOnce(&mut T) + Copy + 'static,
-    ) -> Callback<E>
+    pub fn reduce_callback<E: 'static>(&self, f: impl Fn(&mut T) + 'static) -> Callback<E>
     where
         T: 'static,
     {
-        self.callback
-            .reform(move |_| Box::new(move |state| f(state)))
+        let f = Rc::new(f);
+        self.callback.reform(move |_| f.clone())
     }
 
-    /// Convenience method for modifying shared state directly from a callback.
+    /// Convenience method for modifying shared state directly from a `CallbackOnce`.
+    /// The callback event is ignored here, see `reduce_callback_once_with` for the alternative.
+    pub fn reduce_callback_once<E: 'static>(&self, f: impl FnOnce(&mut T) + 'static) -> Callback<E>
+    where
+        T: 'static,
+    {
+        let f = Box::new(f);
+        let cb = self.callback_once.clone();
+        Callback::once(move |_| cb.emit(f))
+    }
+
+    /// Convenience method for modifying shared state directly from a `Callback`.
     /// Similar to `reduce_callback` but it also accepts the fired event.
-    pub fn reduce_callback_with<E: 'static>(
+    pub fn reduce_callback_with<E: 'static>(&self, f: impl Fn(&mut T, E) + 'static) -> Callback<E>
+    where
+        T: 'static,
+        E: Clone,
+    {
+        let f = Rc::new(f);
+        self.callback.reform(move |e: E| {
+            let f = f.clone();
+            Rc::new(move |state| f.clone()(state, e.clone()))
+        })
+    }
+
+    /// Convenience method for modifying shared state directly from a `CallbackOnce`.
+    /// Similar to `reduce_callback` but it also accepts the fired event.
+    pub fn reduce_callback_once_with<E: 'static>(
         &self,
-        f: impl FnOnce(&mut T, E) + Copy + 'static,
+        f: impl FnOnce(&mut T, E) + 'static,
     ) -> Callback<E>
     where
         T: 'static,
     {
-        self.callback
-            .reform(move |e| Box::new(move |state| f(state, e)))
+        let cb = self.callback_once.clone();
+        Callback::once(move |e| cb.emit(Box::new(move |state| f(state, e))))
     }
 }
 
@@ -88,6 +116,7 @@ where
         Self {
             state: self.state.clone(),
             callback: self.callback.clone(),
+            callback_once: self.callback_once.clone(),
             _mark: Default::default(),
         }
     }
@@ -114,8 +143,13 @@ where
         self.state = state;
     }
 
-    fn set_local_callback(&mut self, callback: Callback<Reduction<Model<Self::Handler>>>) {
+    fn set_local_callback(
+        &mut self,
+        callback: Callback<Reduction<Model<Self::Handler>>>,
+        callback_once: Callback<ReductionOnce<Model<Self::Handler>>>,
+    ) {
         self.callback = callback;
+        self.callback_once = callback_once;
     }
 
     fn set_local(&mut self, other: &Self) {

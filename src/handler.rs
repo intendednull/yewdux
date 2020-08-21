@@ -8,7 +8,8 @@ use yew::{
     services::{storage::Area, StorageService},
 };
 
-pub(crate) type Reduction<T> = Box<dyn FnOnce(&mut T)>;
+pub(crate) type Reduction<T> = Rc<dyn Fn(&mut T)>;
+pub(crate) type ReductionOnce<T> = Box<dyn FnOnce(&mut T)>;
 
 /// Determines how state should be created, modified, and shared.
 pub trait Handler {
@@ -18,6 +19,8 @@ pub trait Handler {
     fn new() -> Self;
     /// Apply changes to state.
     fn apply(&mut self, f: Reduction<Self::Model>);
+    /// Apply changes to state once.
+    fn apply_once(&mut self, f: ReductionOnce<Self::Model>);
     /// Return a reference to current state.
     fn state(&self) -> Rc<Self::Model>;
 }
@@ -39,6 +42,10 @@ where
     }
 
     fn apply(&mut self, f: Reduction<Self::Model>) {
+        f(Rc::make_mut(&mut self.state));
+    }
+
+    fn apply_once(&mut self, f: ReductionOnce<Self::Model>) {
         f(Rc::make_mut(&mut self.state));
     }
 
@@ -100,6 +107,11 @@ where
     }
 
     fn apply(&mut self, f: Reduction<Self::Model>) {
+        f(Rc::make_mut(&mut self.state));
+        self.save_state();
+    }
+
+    fn apply_once(&mut self, f: ReductionOnce<Self::Model>) {
         f(Rc::make_mut(&mut self.state));
         self.save_state();
     }

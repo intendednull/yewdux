@@ -9,11 +9,13 @@ use yew::{
 };
 
 use super::handle::{Handle, SharedState};
-use super::handler::{Handler, Reduction};
+use super::handler::{Handler, Reduction, ReductionOnce};
 
 enum Request<T> {
     /// Apply a state change.
     Apply(Reduction<T>),
+    /// Apply a state change once.
+    ApplyOnce(ReductionOnce<T>),
     /// Subscribe to be notified when state changes.
     Subscribe,
     /// Remove subscription.
@@ -59,10 +61,11 @@ where
         match msg {
             Request::Apply(reduce) => {
                 self.handler.apply(reduce);
-                for who in self.subscriptions.iter().cloned() {
-                    self.link
-                        .respond(who, Response::State(self.handler.state()));
-                }
+                self.notify_subscibers();
+            }
+            Request::ApplyOnce(reduce) => {
+                self.handler.apply_once(reduce);
+                self.notify_subscibers();
             }
             Request::Subscribe => {
                 self.subscriptions.insert(who);
@@ -72,6 +75,18 @@ where
             Request::UnSubscribe => {
                 self.subscriptions.remove(&who);
             }
+        }
+    }
+}
+
+impl<T> SharedStateService<T>
+where
+    T: Handler + Clone + 'static,
+{
+    fn notify_subscibers(&self) {
+        for who in self.subscriptions.iter().cloned() {
+            self.link
+                .respond(who, Response::State(self.handler.state()));
         }
     }
 }
@@ -98,6 +113,7 @@ pub enum SharedStateComponentMsg<T> {
     SetLocal(Rc<T>),
     /// Update shared state.
     Apply(Reduction<T>),
+    ApplyOnce(ReductionOnce<T>),
 }
 
 impl<C> Component for SharedStateComponent<C>
@@ -119,7 +135,9 @@ where
         // Make sure we receive updates to state.
         bridge.send(Request::Subscribe);
 
-        props.handle().set_local_callback(link.callback(Apply));
+        props
+            .handle()
+            .set_local_callback(link.callback(Apply), link.callback(ApplyOnce));
 
         SharedStateComponent { props, bridge }
     }
@@ -129,6 +147,10 @@ where
         match msg {
             Apply(reduce) => {
                 self.bridge.send(Request::Apply(reduce));
+                false
+            }
+            ApplyOnce(reduce) => {
+                self.bridge.send(Request::ApplyOnce(reduce));
                 false
             }
             SetLocal(state) => {
