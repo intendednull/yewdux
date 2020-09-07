@@ -94,6 +94,14 @@ impl Storable for T {
     }
 }
 ```
+### Scoping
+Sometimes it's useful to only share state within a specific scope. This may be done by providing a
+custom scope to your component wrapper:
+
+```rust
+pub struct MyScope;
+pub struct MyComponent = SharedStateComponent<Model, MyScope>;
+```
 ## Example
 
 Lets make a counting app using shared state!

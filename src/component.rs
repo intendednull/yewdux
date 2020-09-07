@@ -29,18 +29,20 @@ enum Response<T> {
 
 /// Context agent for managing shared state. In charge of applying changes to state then notifying
 /// subscribers of new state.
-struct SharedStateService<T>
+struct SharedStateService<T, SCOPE>
 where
     T: Handler + Clone + 'static,
+    SCOPE: 'static,
 {
     handler: T,
     subscriptions: HashSet<HandlerId>,
-    link: AgentLink<SharedStateService<T>>,
+    link: AgentLink<SharedStateService<T, SCOPE>>,
 }
 
-impl<T> Agent for SharedStateService<T>
+impl<T, SCOPE> Agent for SharedStateService<T, SCOPE>
 where
     T: Handler + Clone + 'static,
+    SCOPE: 'static,
 {
     type Message = ();
     type Reach = Context<Self>;
@@ -79,7 +81,7 @@ where
     }
 }
 
-impl<T> SharedStateService<T>
+impl<T, SCOPE> SharedStateService<T, SCOPE>
 where
     T: Handler + Clone + 'static,
 {
@@ -95,14 +97,15 @@ type StateHandler<T> = <<T as SharedState>::Handle as Handle>::Handler;
 type Model<T> = <StateHandler<T> as Handler>::Model;
 
 /// Wrapper for a component with shared state.
-pub struct SharedStateComponent<C>
+pub struct SharedStateComponent<C, SCOPE = StateHandler<<C as Component>::Properties>>
 where
     C: Component,
     C::Properties: SharedState + Clone,
     StateHandler<C::Properties>: Clone,
+    SCOPE: 'static,
 {
     props: C::Properties,
-    bridge: Box<dyn Bridge<SharedStateService<StateHandler<C::Properties>>>>,
+    bridge: Box<dyn Bridge<SharedStateService<StateHandler<C::Properties>, SCOPE>>>,
 }
 
 /// Internal use only.
@@ -116,7 +119,7 @@ pub enum SharedStateComponentMsg<T> {
     ApplyOnce(ReductionOnce<T>),
 }
 
-impl<C> Component for SharedStateComponent<C>
+impl<C, SCOPE> Component for SharedStateComponent<C, SCOPE>
 where
     C: Component,
     C::Properties: SharedState + Clone,
@@ -174,11 +177,12 @@ where
     }
 }
 
-impl<C> std::ops::Drop for SharedStateComponent<C>
+impl<C, SCOPE> std::ops::Drop for SharedStateComponent<C, SCOPE>
 where
     C: Component,
     C::Properties: SharedState + Clone,
     StateHandler<C::Properties>: Clone,
+    SCOPE: 'static,
 {
     fn drop(&mut self) {
         self.bridge.send(Request::UnSubscribe);
