@@ -102,6 +102,47 @@ custom scope to your component wrapper:
 pub struct MyScope;
 pub struct MyComponent = SharedStateComponent<Model, MyScope>;
 ```
+
+### StateView
+`StateView` allows interacting with shared state without having to define your own component:
+
+```rust
+use yew_state::{GlobalHandle, component::{StateView, view_state}};
+
+#[derive(Clone, Default)]
+struct LayoutState {
+    pub sidebar_toggled: bool,
+}
+
+impl LayoutState {
+    pub fn toggle_sidebar(&mut self) {
+        self.sidebar_toggled = !self.sidebar_toggled;
+    }
+}
+
+fn view_layout(body: Html) -> Html {
+    type LayoutHandle = GlobalHandle<LayoutState>;
+
+    let view = view_state(move |handle: &LayoutHandle| {
+        let onclick = handle.reduce_callback(LayoutState::toggle_sidebar);
+        let class = if handle.state().sidebar_toggled {
+            "is-toggled"
+        } else {
+            ""
+        };
+
+        html! {
+            <div class=("sidebar", class)>
+                <button onclick=onclick>{"Toggle"}</button>
+                { body.clone() }
+            </div>
+        }
+    });
+
+    html! { <StateView<LayoutHandle> view=view /> }
+}
+
+```
 ## Example
 
 Lets make a counting app using shared state!

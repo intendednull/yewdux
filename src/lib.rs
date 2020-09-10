@@ -91,7 +91,7 @@
 //! ```
 //!
 //! Then use `StorageHandle` instead of `GlobalHandle`.
-mod component;
+pub mod component;
 mod handle;
 mod handler;
 
