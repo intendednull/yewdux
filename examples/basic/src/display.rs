@@ -1,16 +1,16 @@
 use yew::{html, Component, ComponentLink, Html, ShouldRender};
-use yew_state::{GlobalHandle, SharedStateComponent};
+use yew_state::{SharedHandle, SharedStateComponent};
 use yewtil::NeqAssign;
 
 use crate::app::AppState;
 
 pub struct Model {
-    handle: GlobalHandle<AppState>,
+    handle: SharedHandle<AppState>,
 }
 
 impl Component for Model {
     type Message = ();
-    type Properties = GlobalHandle<AppState>;
+    type Properties = SharedHandle<AppState>;
 
     fn create(handle: Self::Properties, _link: ComponentLink<Self>) -> Self {
         Model { handle }

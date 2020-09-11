@@ -1,5 +1,5 @@
 use yew::{html, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
-use yew_state::{GlobalHandle, SharedState, SharedStateComponent};
+use yew_state::{SharedHandle, SharedState, SharedStateComponent};
 use yewtil::NeqAssign;
 
 use crate::app::AppState;
@@ -7,11 +7,11 @@ use crate::app::AppState;
 #[derive(Clone, Properties, PartialEq)]
 pub struct Props {
     #[prop_or_default]
-    pub handle: GlobalHandle<AppState>,
+    pub handle: SharedHandle<AppState>,
 }
 
 impl SharedState for Props {
-    type Handle = GlobalHandle<AppState>;
+    type Handle = SharedHandle<AppState>;
 
     fn handle(&mut self) -> &mut Self::Handle {
         &mut self.handle

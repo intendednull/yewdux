@@ -3,9 +3,8 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 use yew::{
-    html,
-    worker::{Agent, AgentLink, Bridge, Bridged, Context, HandlerId},
-    Component, ComponentLink, Html, ShouldRender,
+    agent::{Agent, AgentLink, Bridge, Bridged, Context, HandlerId},
+    prelude::*,
 };
 
 use crate::handle::{Handle, SharedState};
@@ -16,10 +15,6 @@ enum Request<T> {
     Apply(Reduction<T>),
     /// Apply a state change once.
     ApplyOnce(ReductionOnce<T>),
-    /// Subscribe to be notified when state changes.
-    Subscribe,
-    /// Remove subscription.
-    UnSubscribe,
 }
 
 enum Response<T> {
@@ -59,44 +54,54 @@ where
 
     fn update(&mut self, _msg: Self::Message) {}
 
-    fn handle_input(&mut self, msg: Self::Input, who: HandlerId) {
+    fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) {
         match msg {
             Request::Apply(reduce) => {
                 self.handler.apply(reduce);
-                self.notify_subscibers();
             }
             Request::ApplyOnce(reduce) => {
                 self.handler.apply_once(reduce);
-                self.notify_subscibers();
-            }
-            Request::Subscribe => {
-                self.subscriptions.insert(who);
-                self.link
-                    .respond(who, Response::State(self.handler.state()));
-            }
-            Request::UnSubscribe => {
-                self.subscriptions.remove(&who);
             }
         }
-    }
-}
 
-impl<T, SCOPE> SharedStateService<T, SCOPE>
-where
-    T: Handler + Clone + 'static,
-{
-    fn notify_subscibers(&self) {
+        // Notify subscribers of change
         for who in self.subscriptions.iter().cloned() {
             self.link
                 .respond(who, Response::State(self.handler.state()));
         }
+    }
+
+    fn connected(&mut self, who: HandlerId) {
+        self.subscriptions.insert(who);
+        self.link
+            .respond(who, Response::State(self.handler.state()));
+    }
+
+    fn disconnected(&mut self, who: HandlerId) {
+        self.subscriptions.remove(&who);
     }
 }
 
 type StateHandler<T> = <<T as SharedState>::Handle as Handle>::Handler;
 type Model<T> = <StateHandler<T> as Handler>::Model;
 
-/// Wrapper for a component with shared state.
+/// Component wrapper for managing messages and state handles.
+///
+/// Wraps any component with properties that implement `SharedState`:
+/// ```
+/// pub type MyComponent = SharedStateComponent<MyComponentModel>;
+/// ```
+///
+/// A scope may be provided to specify where the state is shared:
+/// ```
+/// // This will only share state with other components using `FooScope`.
+/// pub struct FooScope;
+/// pub type MyComponent = SharedStateComponent<MyComponentModel, FooScope>;
+/// ```
+///
+/// # Important
+/// By default `StorageHandle` and `GlobalHandle` have different scopes. Though not enforced,
+/// components with different handles should not use the same scope.
 pub struct SharedStateComponent<C, SCOPE = StateHandler<<C as Component>::Properties>>
 where
     C: Component,
@@ -108,7 +113,6 @@ where
     bridge: Box<dyn Bridge<SharedStateService<StateHandler<C::Properties>, SCOPE>>>,
 }
 
-/// Internal use only.
 #[doc(hidden)]
 pub enum SharedStateComponentMsg<T> {
     /// Recieve new local state.
@@ -132,11 +136,10 @@ where
     fn create(mut props: Self::Properties, link: ComponentLink<Self>) -> Self {
         use SharedStateComponentMsg::*;
         // Bridge to receive new state.
-        let mut bridge = SharedStateService::bridge(link.callback(|msg| match msg {
+        let callback = link.callback(|msg| match msg {
             Response::State(state) => SetLocal(state),
-        }));
-        // Make sure we receive updates to state.
-        bridge.send(Request::Subscribe);
+        });
+        let bridge = SharedStateService::bridge(callback);
 
         props
             .handle()
@@ -174,17 +177,5 @@ where
         html! {
             <C with props />
         }
-    }
-}
-
-impl<C, SCOPE> std::ops::Drop for SharedStateComponent<C, SCOPE>
-where
-    C: Component,
-    C::Properties: SharedState + Clone,
-    StateHandler<C::Properties>: Clone,
-    SCOPE: 'static,
-{
-    fn drop(&mut self) {
-        self.bridge.send(Request::UnSubscribe);
     }
 }

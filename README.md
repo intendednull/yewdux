@@ -1,205 +1,39 @@
-# Yew State
+This crate provides ergonomic access to shared state via component wrapper, with optional
+local/session persistence and custom scoping. 
+
 Initially this was a [PR](https://github.com/yewstack/yew/pull/1372), but became big
 enough to warrant a standalone crate.
 
 If you have suggestions please open an issue, or join in on the [discussion](https://github.com/yewstack/yew/issues/576).
 
-## Usage
+# Quickstart
+To get started use the `SharedStateComponent` wrapper or `StateView` component.
 
-Give your component `GlobalHandle` properties and wrap it with `SharedStateComponent`.
-This may be done for any `T` that implements `Clone` + `Default`.
+## SharedStateComponent
+Give your component any properties that implement `SharedState` then wrap it with 
+`SharedStateComponent`.
+
+IMPORTANT: Changes **must** be handled in the component's `change` method.
 ```rust
-struct Model {
-    handle: GlobalHandle<T>,
-}
-
-impl Component for Model {
-    type Properties = GlobalHandle<T>;
-    ...
-}
-
-type MyComponent = SharedStateComponent<Model>;
-```
-
-Access current state with `state`.
-```rust
-let state: &T = self.handle.state();
-```
-
-Modify shared state from anywhere using `reduce`
-```rust
-// GlobalHandle<MyAppState>
-self.handle.reduce(move |state| state.user = new_user);
-```
-
-or from a callback with `reduce_callback`.
-```rust
-// GlobalHandle<usize>
-let onclick = self.handle.reduce_callback(|state| *state += 1);
-html! {
-    <button onclick = onclick>{"+1"}</button>
-}
-```
-
-To include the fired event use `reduce_callback_with`
-```rust
-let oninput = self
-    .handle
-    .reduce_callback_with(|state, i: InputData| state.user.name = i.value);
-
-html! {
-    <input type="text" placeholder = "Enter your name" oninput = oninput />
-}
-```
-
-### Properties with Shared State
-
-Implement `SharedState` to get shared state in any properties.
-```rust
-#[derive(Clone, Properties)]
-pub struct Props {
-    #[prop_or_default]
-    pub handle: GlobalHandle<AppState>,
-}
-
-impl SharedState for Props {
-    type Handle = GlobalHandle<AppState>;
-
-    fn handle(&mut self) -> &mut Self::Handle {
-        &mut self.handle
-    }
-}
-```
-
-### State Persistence
-
-To make state persistent use `StorageHandle` instead of `GlobalHandle`. This requires that `T` also implement `Serialize`,
-`Deserialize`, and `Storable`.
-```rust
-use serde::{Serialize, Deserialize};
-use yew_state::Storable;
-use yew::services::storage::Area;
-
-#[derive(Serialize, Deserialize)]
-struct T;
-
-impl Storable for T {
-    fn key() -> &'static str {
-        "myapp.storage.t"
-    }
-
-    fn area() -> Area {
-        // or Area::Session
-        Area::Local
-    }
-}
-```
-### Scoping
-Sometimes it's useful to only share state within a specific scope. This may be done by providing a
-custom scope to your component wrapper:
-
-```rust
-pub struct MyScope;
-pub struct MyComponent = SharedStateComponent<Model, MyScope>;
-```
-
-### StateView
-`StateView` allows interacting with shared state without having to define your own component:
-
-```rust
-use yew_state::{GlobalHandle, component::{StateView, view_state}};
+use yew::prelude::*;
+use yew_state::{SharedHandle, SharedStateComponent};
+use yewtil::NeqAssign;
 
 #[derive(Clone, Default)]
-struct LayoutState {
-    pub sidebar_toggled: bool,
+pub type AppState {
+    pub count: usize,
 }
-
-impl LayoutState {
-    pub fn toggle_sidebar(&mut self) {
-        self.sidebar_toggled = !self.sidebar_toggled;
-    }
-}
-
-fn view_layout(body: Html) -> Html {
-    type LayoutHandle = GlobalHandle<LayoutState>;
-
-    let view = view_state(move |handle: &LayoutHandle| {
-        let onclick = handle.reduce_callback(LayoutState::toggle_sidebar);
-        let class = if handle.state().sidebar_toggled {
-            "is-toggled"
-        } else {
-            ""
-        };
-
-        html! {
-            <div class=("sidebar", class)>
-                <button onclick=onclick>{"Toggle"}</button>
-                { body.clone() }
-            </div>
-        }
-    });
-
-    html! { <StateView<LayoutHandle> view=view /> }
-}
-
-```
-## Example
-
-Lets make a counting app using shared state!
-
-First the display:
-```rust
-// display.rs
-use yew::prelude::*;
-use yewtil::NeqAssign;
-use yew_state::{GlobalHandle, SharedStateComponent};
 
 pub struct Model {
-    handle: GlobalHandle<usize>,
+    handle: SharedHandle<AppState>,
 }
 
 impl Component for Model {
     type Message = ();
-    type Properties = GlobalHandle<usize>;
+    type Properties = SharedHandle<AppState>;
 
     fn create(handle: Self::Properties, _link: ComponentLink<Self>) -> Self {
-        Self { handle }
-    }
-
-    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
-        true
-    }
-
-    fn change(&mut self, handle: Self::Properties) -> ShouldRender {
-        self.handle.neq_assign(handle)
-    }
-
-    fn view(&self) -> Html {
-        html! {
-            <p>{ format!("Count: {}", self.handle.state()) }</p>
-        }
-    }
-}
-
-pub type Display = SharedStateComponent<Model>;
-```
-
-Now for the button:
-```rust
-// input.rs
-use yew::prelude::*;
-use yewtil::NeqAssign;
-use yew_state::{GlobalHandle, SharedStateComponent};
-
-pub struct Model {
-    handle: GlobalHandle<usize>,
-}
-
-impl Component for Model {
-    type Message = ();
-    type Properties = GlobalHandle<usize>;
-
-    fn create(handle: Self::Properties, _link: ComponentLink<Self>) -> Self {
+        handle.reduce(|state| state.count = 1);  // Magically set count to one for example
         Model { handle }
     }
 
@@ -212,23 +46,180 @@ impl Component for Model {
     }
 
     fn view(&self) -> Html {
-        let onclick = self.handle.reduce_callback(|state| *state += 1);
+        let onclick = self.handle.reduce_callback(|state| state.count += 1);
+        let count = self.handle.state().count;
         html! {
-            <button onclick = onclick>{"+1"}</button>
+            <p>{count}</p>
+            <button onclick=onclick>{"+1"}</button>
         }
     }
 }
 
-pub type Input = SharedStateComponent<Model>;
+pub type App = SharedStateComponent<Model>;
 ```
 
-Finally the app:
+## StateView
+For something simpler, `StateView` can *handle* shared state with less boilerplate.
+
+Keep in mind you can't selectively re-render changes this way.
+
 ```rust
-// app.rs
 use yew::prelude::*;
+use yew_state::{view_state, StateView, SharedHandle};
 
-use crate::{display::Display, input::Input};
+type CountHandle = SharedHandle<usize>;
 
+fn view_counter() -> Html {
+    html! {
+        <>
+            { view_display() }
+            { view_input() }
+        </>
+    }
+}
+
+fn view_display() -> Html {
+    let view = view_state(|handle: &CountHandle| {
+        html! {
+            <p>{handle.state()}</p>
+        }
+    });
+    html! {
+        <StateView<CountHandle> view=view />
+    }
+}
+
+fn view_input() -> Html {
+    let view = view_state(|handle: &CountHandle| {
+        let onclick = handle.reduce_callback(|count| *count += 1);
+        html! {
+            <button onclick=onclick>{"+1"}</button>
+        }
+    });
+    html! {
+        <StateView<CountHandle> view=view />
+    }
+}
+```
+
+# Handling State
+State handles provide an interface to shared state. `SharedHandle` for basic access, while 
+`StorageHandle` also does persistent local/session storage.
+
+IMPORTANT: Changes to state do not take effect immediately! New state must be handled in the
+component's `change` method.
+
+`state` provides current state.
+```rust
+let state: &T = self.handle.state();
+```
+
+`reduce` can be used from anywhere to modify shared state.
+```rust
+// SharedHandle<MyAppState>
+self.handle.reduce(move |state| state.user = new_user);
+```
+
+`reduce_callback` allows modifying shared state from a callback.
+```rust
+// SharedHandle<usize>
+let onclick = self.handle.reduce_callback(|state| *state += 1);
+html! {
+    <button onclick=onclick>{"+1"}</button>
+}
+```
+
+`reduce_callback_with` provides the fired event as well.
+```rust
+let oninput = self
+    .handle
+    .reduce_callback_with(|state, i: InputData| state.user.name = i.value);
+
+html! {
+    <input type="text" placeholder="Enter your name" oninput=oninput />
+}
+```
+
+## Custom Properties
+`SharedState` can be implemented for any properties.
+
+TODO: This could be a macro.
+```rust
+#[derive(Clone, Properties)]
+pub struct Props {
+    #[prop_or_default]
+    handle: SharedHandle<AppState>,
+}
+
+impl SharedState for Props {
+    type Handle = SharedHandle<AppState>;
+
+    fn handle(&mut self) -> &mut Self::Handle {
+        &mut self.handle
+    }
+}
+```
+
+## Persistence
+To make state persistent use `StorageHandle` instead of `SharedHandle`. This requires state to also implement `Serialize`,
+`Deserialize`, and `Storable`.
+
+TODO: This could be a macro.
+```rust
+use serde::{Serialize, Deserialize};
+use yew_state::{Storable, Area};
+
+#[derive(Clone, Default, Serialize, Deserialize)]
+struct T;
+
+impl Storable for T {
+    fn area() -> Area {
+        
+        Area::Session // Defaults to Area::Local
+    }
+}
+```
+## Scoping
+Sometimes it's useful to only share state within a specific scope. This may be done by providing a
+custom scope to `SharedStateComponent` or `StateView`:
+
+```rust
+pub struct MyScope;
+pub struct MyComponent = SharedStateComponent<MyModel, MyScope>;
+```
+### Example
+This example demonstrates how two counters with different scopes can increment shared state 
+independently.
+```rust
+use yew::prelude::*;
+use yew_state::{view_state, StateView, SharedHandle};
+
+struct FooScope;
+struct BarScope;
+
+type CountHandle = SharedHandle<usize>;
+
+fn view_input<SCOPE: 'static>() -> Html {
+    let view = view_state(|handle: &CountHandle| {
+        let onclick = handle.reduce_callback(|count| *count += 1);
+        html! {
+            <button onclick=onclick>{"+1"}</button>
+        }
+    });
+    html! {
+        <StateView<CountHandle, SCOPE> view=view />
+    }
+}
+fn view_display<SCOPE: 'static>() -> Html {
+    let view = view_state(|handle: &CountHandle| {
+        html! {
+            <p>{handle.state()}</p>
+        }
+    });
+    html! {
+        <StateView<CountHandle, SCOPE> view=view />
+    }
+}
 
 pub struct App;
 impl Component for App {
@@ -239,22 +230,23 @@ impl Component for App {
         Self
     }
 
-    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, msg: Self::Message) -> ShouldRender {
         true
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
         true
     }
 
     fn view(&self) -> Html {
         html! {
             <>
-                <Display />
-                <div>
-
-                    <Input />
-                </div>
+                <h1>{"FooScope"}</h1>
+                { view_display::<FooScope>() }
+                { view_input::<FooScope>() }
+                <h1>{"BarScope"}</h1>
+                { view_display::<BarScope>() }
+                { view_input::<BarScope>() }
             </>
         }
     }

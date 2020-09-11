@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use yew::{Callback, Properties};
 
-use super::handler::{GlobalHandler, Handler, Reduction, ReductionOnce, StorageHandler};
+use super::handler::{Handler, Reduction, ReductionOnce, SharedHandler, StorageHandler};
 
 type Model<T> = <T as Handler>::Model;
 
@@ -20,13 +20,13 @@ pub trait Handle {
     fn set_local(&mut self, other: &Self);
 }
 
-/// Allows any `Properties` to have shared state.
+/// Trait that provides access to state handle
 pub trait SharedState {
     type Handle: Handle;
     fn handle(&mut self) -> &mut Self::Handle;
 }
 
-/// A handle for io with state handlers
+/// Interface to shared state
 #[derive(Default, Properties)]
 pub struct StateHandle<T, H>
 where
@@ -170,6 +170,6 @@ where
 }
 
 /// Handle for basic shared state.
-pub type GlobalHandle<T> = StateHandle<T, GlobalHandler<T>>;
+pub type SharedHandle<T> = StateHandle<T, SharedHandler<T>>;
 /// Handle for shared state with persistent storage.
 pub type StorageHandle<T> = StateHandle<T, StorageHandler<T>>;

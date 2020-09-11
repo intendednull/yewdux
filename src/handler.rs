@@ -27,11 +27,11 @@ pub trait Handler {
 
 /// Handler for basic shared state.
 #[derive(Default, Clone)]
-pub struct GlobalHandler<T> {
+pub struct SharedHandler<T> {
     state: Rc<T>,
 }
 
-impl<T> Handler for GlobalHandler<T>
+impl<T> Handler for SharedHandler<T>
 where
     T: Clone + Default,
 {
@@ -68,7 +68,7 @@ pub trait Storable: Serialize + for<'a> Deserialize<'a> {
 
 /// Handler for shared state with persistent storage.
 ///
-/// If persistent storage is disabled it just behaves like a `GlobalHandler`.
+/// If persistent storage is disabled it just behaves like a `SharedHandler`.
 #[derive(Default)]
 pub struct StorageHandler<T> {
     state: Rc<T>,
