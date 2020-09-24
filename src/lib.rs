@@ -518,6 +518,6 @@ mod handler;
 
 pub use yew::services::storage::Area;
 
-pub use component::{view_state, SharedStateComponent, StateView};
+pub use component::{rendered, view, SharedStateComponent, StateView};
 pub use handle::{SharedHandle, SharedState, StorageHandle};
 pub use handler::Storable;
