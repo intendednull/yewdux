@@ -71,7 +71,7 @@ where
     }
 }
 
-pub type StateView<H, SCOPE = H> = SharedStateComponent<Model<H>, SCOPE>;
+pub type StateView<H, SCOPE = <H as Handle>::Handler> = SharedStateComponent<Model<H>, SCOPE>;
 
 /// Wraps `f` in `Rc`. Helps with resolving type needed for view property.
 pub fn view<F, H>(f: F) -> Render<H>
