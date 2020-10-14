@@ -7,6 +7,7 @@ use crate::{SharedState, SharedStateComponent};
 
 pub type Render<H> = Rc<dyn Fn(&H) -> Html>;
 pub type Rendered<H> = Rc<dyn Fn(&H, bool)>;
+pub type Change<H> = Rc<dyn Fn(&H, &H) -> bool>;
 
 #[derive(Properties, Clone)]
 pub struct Props<H>
@@ -18,6 +19,8 @@ where
     pub view: Render<H>,
     #[prop_or_default]
     pub rendered: Option<Rendered<H>>,
+    #[prop_or_default]
+    pub change: Option<Change<H>>,
 }
 
 impl<H> SharedState for Props<H>
@@ -66,9 +69,33 @@ where
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.props = props;
-        true
+        // Check if other property functions have changed
+        let is_eq = Rc::ptr_eq(&self.props.view, &props.view)
+            && ptr_eq(&self.props.rendered, &props.rendered)
+            && ptr_eq(&self.props.change, &props.change);
+        // Check latest change function provided by user.
+        let should_render = {
+            if let Some(ref f) = props.change {
+                f(&self.props.handle, &props.handle)
+            } else {
+                // Should render by default.
+                true
+            }
+        };
+        if !is_eq || should_render {
+            self.props = props;
+            true
+        } else {
+            false
+        }
     }
+}
+
+fn ptr_eq<T: ?Sized>(a: &Option<Rc<T>>, b: &Option<Rc<T>>) -> bool {
+    a.as_ref()
+        .zip(b.as_ref())
+        .map(|(a, b)| Rc::ptr_eq(a, b))
+        .unwrap_or_default()
 }
 
 pub type StateView<H, SCOPE = <H as Handle>::Handler> = SharedStateComponent<Model<H>, SCOPE>;
@@ -85,6 +112,14 @@ where
 pub fn rendered<F, H>(f: F) -> Rendered<H>
 where
     F: Fn(&H, bool) + 'static,
+{
+    Rc::new(f)
+}
+
+/// Wraps `f` in `Rc`. Helps with resolving type needed for rendered property.
+pub fn change<F, H>(f: F) -> Change<H>
+where
+    F: Fn(&H, &H) -> bool + 'static,
 {
     Rc::new(f)
 }
