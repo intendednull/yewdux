@@ -73,21 +73,27 @@ where
         let is_eq = Rc::ptr_eq(&self.props.view, &props.view)
             && ptr_eq(&self.props.rendered, &props.rendered)
             && ptr_eq(&self.props.change, &props.change);
-        // Check latest change function provided by user.
-        let should_render = {
-            if let Some(ref f) = props.change {
+        // Update functions if they changed.
+        if !is_eq {
+            self.props.view = props.view;
+            self.props.rendered = props.rendered;
+            self.props.change = props.change;
+        }
+        // Check if state should be updated.
+        let should_change = {
+            if let Some(ref f) = self.props.change {
                 f(&self.props.handle, &props.handle)
             } else {
-                // Should render by default.
+                // Should change by default.
                 true
             }
         };
-        if !is_eq || should_render {
-            self.props = props;
-            true
-        } else {
-            false
+        // Update state if desired.
+        if should_change {
+            self.props.handle = props.handle;
         }
+
+        !is_eq || should_change
     }
 }
 
