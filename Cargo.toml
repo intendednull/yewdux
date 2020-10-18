@@ -1,14 +1,14 @@
 [package]
 name = "yew-state"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Noah <noah@coronasoftware.net>"]
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/intendednull/yew-state"
 readme = "README.md"
-description = "Ergonomic shared state for Yew"
+description = "Ergonomic shared state for Yew (comparable to context hooks in React)"
 keywords = ["yew", "state", "session", "storage", "shared"]
-categories = ["wasm", "web-programming", "api-bindings", "rust-patterns"]
+categories = ["wasm", "web-programming", "rust-patterns"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
