@@ -1,126 +1,167 @@
-This crate provides ergonomic access to shared state via component wrapper, with optional
-local/session persistence and custom scoping. 
+State management in Yew can become complex, especially when many components need mutable access to
+shared state. This crate simplifies that access (comparable to context hooks in React) so you can
+spend less time writing boilerplate!
 
-Initially this was a [PR](https://github.com/yewstack/yew/pull/1372), but became big
-enough to warrant a standalone crate.
+# Install
 
-If you have suggestions please open an issue, or join in on the [discussion](https://github.com/yewstack/yew/issues/576).
+Install this package from your terminal:
+
+```
+$ cargo install cargo-edit
+$ cargo add yew-state
+```
+
+Or add it to your project's `Cargo.toml`:
+
+```toml
+[dependencies]
+yew-state = "^0.4"
+```
 
 # Quickstart
-To get started use the `SharedStateComponent` wrapper or `StateView` component.
 
 ## SharedStateComponent
-Give your component any properties that implement `SharedState` then wrap it with 
+
+Give your components shared state by adding `SharedHandle` properties and wrapping them in
 `SharedStateComponent`.
 
-IMPORTANT: Changes **must** be handled in the component's `change` method.
 ```rust
 use yew::prelude::*;
 use yew_state::{SharedHandle, SharedStateComponent};
 use yewtil::NeqAssign;
 
-#[derive(Clone, Default)]
-pub type AppState {
-    pub count: usize,
+type Handle = SharedHandle<u64>;
+
+enum Msg {
+    Reset,
 }
 
-pub struct Model {
-    handle: SharedHandle<AppState>,
+struct Model {
+    handle: Handle,
+    link: ComponentLink<Self>,
 }
 
 impl Component for Model {
-    type Message = ();
-    type Properties = SharedHandle<AppState>;
+    type Properties = Handle;
+    type Message = Msg;
 
-    fn create(handle: Self::Properties, _link: ComponentLink<Self>) -> Self {
-        handle.reduce(|state| state.count = 1);  // Magically set count to one for example
-        Model { handle }
+    fn create(handle: Self::Properties, link: ComponentLink<Self>) -> Self {
+        Self { handle, link }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        true
+        match msg {
+            Msg::Reset => {
+                // Reset count to 0.
+                self.handle.reduce(|count| *count = 0);
+                // Don't render yet, receive changes in `change`.
+                false
+            }
+        }
     }
 
     fn change(&mut self, handle: Self::Properties) -> ShouldRender {
+        // Receive new state here.
         self.handle.neq_assign(handle)
     }
 
     fn view(&self) -> Html {
-        let onclick = self.handle.reduce_callback(|state| state.count += 1);
-        let count = self.handle.state().count;
+        // Increment count by 1.
+        let incr = self.handle.reduce_callback(|count| *count += 1);
+        // Emit message to reset count.
+        let reset = self.link.callback(|_| Msg::Reset);
+
         html! {
-            <p>{count}</p>
-            <button onclick=onclick>{"+1"}</button>
+            <>
+            <button onclick=incr>{ self.handle.state() }</button>
+            <button onclick=reset>{"Reset"}</button>
+            </>
         }
     }
 }
 
-pub type App = SharedStateComponent<Model>;
+type App = SharedStateComponent<Model>;
 ```
 
 ## StateView
-For something simpler, `StateView` can *handle* shared state with less boilerplate.
 
-Keep in mind you can't selectively re-render changes this way.
+`StateView` components are a convenient way to write quick and simple access to shared state. At the
+cost of a little control, they require almost no boilerplate:
 
 ```rust
 use yew::prelude::*;
-use yew_state::{view_state, StateView, SharedHandle};
-
-type CountHandle = SharedHandle<usize>;
+use yew_state::{component, SharedHandle, StateView};
 
 fn view_counter() -> Html {
-    html! {
-        <>
-            { view_display() }
-            { view_input() }
-        </>
-    }
-}
+    type Handle = SharedHandle<u64>;
 
-fn view_display() -> Html {
-    let view = view_state(|handle: &CountHandle| {
+    let view = component::view(|handle: &Handle| {
+        // Increment count by 1.
+        let incr = handle.reduce_callback(|count| *count += 1);
+        // Reset count to 0.
+        let reset = handle.reduce_callback(|count| *count = 0);
+
         html! {
-            <p>{handle.state()}</p>
+            <>
+            <button onclick=incr>{ handle.state() }</button>
+            <button onclick=reset>{"Reset"}</button>
+            </>
         }
     });
-    html! {
-        <StateView<CountHandle> view=view />
-    }
-}
 
-fn view_input() -> Html {
-    let view = view_state(|handle: &CountHandle| {
-        let onclick = handle.reduce_callback(|count| *count += 1);
-        html! {
-            <button onclick=onclick>{"+1"}</button>
-        }
-    });
     html! {
-        <StateView<CountHandle> view=view />
+        <StateView<Handle> view=view />
     }
 }
 ```
 
-# Handling State
-State handles provide an interface to shared state. `SharedHandle` for basic access, while 
-`StorageHandle` also does persistent local/session storage.
+# Usage
 
-IMPORTANT: Changes to state do not take effect immediately! New state must be handled in the
-component's `change` method.
+Shared state is accessed through state handles (`SharedHandle` or `StorageHandle`), which are
+managed by the component wrapper `SharedStateComponent`. This wrapper takes care of all the boring
+message passing for sending and receiving updates to state. Updated state is then passed to your
+component like any other properties, handled in `Component::change`.
 
-`state` provides current state.
+Add the following to your component to give it shared state (other details omitted):
+
 ```rust
-let state: &T = self.handle.state();
+use yew::prelude::*;
+use yew_state::{SharedHandle, SharedStateComponent};
+
+#[derive(Default, Clone)]
+struct MyState {
+    // ..
+}
+
+struct Model {
+    handle: SharedHandle<MyState>,
+}
+
+impl Component for Model {
+    type Properties = SharedHandle<MyState>;
+    // ..
+}
+
+type MyComponent = SharedStateComponent<Model>;
 ```
 
-`reduce` can be used from anywhere to modify shared state.
+## State Handles
+
+`state` provides a reference to current state:
+
 ```rust
-// SharedHandle<MyAppState>
-self.handle.reduce(move |state| state.user = new_user);
+let state: &MyState = self.handle.state();
 ```
 
-`reduce_callback` allows modifying shared state from a callback.
+`reduce` lets you mutate shared state directly:
+
+```rust
+// SharedHandle<UserState>
+self.handle.reduce(move |user| *user = new_user);
+```
+
+`reduce_callback` allows modifying shared state from a callback:
+
 ```rust
 // SharedHandle<usize>
 let onclick = self.handle.reduce_callback(|state| *state += 1);
@@ -129,21 +170,67 @@ html! {
 }
 ```
 
-`reduce_callback_with` provides the fired event as well.
+`reduce_callback_with` provides the fired event as well:
+
 ```rust
+// SharedHandle<UserState>
 let oninput = self
     .handle
-    .reduce_callback_with(|state, i: InputData| state.user.name = i.value);
+    .reduce_callback_with(|user, i: InputData| user.name = i.value);
 
 html! {
     <input type="text" placeholder="Enter your name" oninput=oninput />
 }
 ```
 
-## Custom Properties
-`SharedState` can be implemented for any properties.
+`reduce_callback_once` and `reduce_callback_once_with` are also provided for `Callback::Once`
+variants.
 
-TODO: This could be a macro.
+## More on StateView
+
+`StateView` supports a couple other hooks in addition to `view` which allow a little more control
+over component behavior: `rendered` and `change`.
+
+```rust
+use yew::prelude::*;
+use yew_state::{component, SharedHandle, StateView};
+
+fn view_counter() -> Html {
+    type Handle = SharedHandle<usize>;
+
+    // Display counter button.
+    let view = component::view(|handle: &Handle| {
+        let onclick = handle.reduce_callback(|count| *count += 1);
+        html! {
+            <button onclick=onclick>{ handle.state() }</button>
+        }
+    });
+    // Magically set count to 1 for example.
+    let rendered = component::rendered(|handle: &Handle, first_render| {
+        if first_render {
+            handle.reduce(|count| *count = 1);
+        }
+    });
+    // Reset count to 0 if greater than 10.
+    let change = component::change(|old: &Handle, new: &Handle| -> ShouldRender {
+        if *new.state() > 10 {
+            new.reduce(|count| *count = 0);
+        }
+
+        old != new
+    });
+
+    html! {
+        <StateView<Handle, SCOPE> view=view rendered=rendered change=change />
+    }
+}
+```
+
+## SharedState Properties
+
+State handles derive `Properties` for convenience, but they can also be used from your own
+properties. Just implement `SharedState`:
+
 ```rust
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -160,11 +247,13 @@ impl SharedState for Props {
 }
 ```
 
-## Persistence
-To make state persistent use `StorageHandle` instead of `SharedHandle`. This requires state to also implement `Serialize`,
-`Deserialize`, and `Storable`.
+TODO: Add derive macro for `SharedState`
 
-TODO: This could be a macro.
+## Persistence
+
+To make state persistent use a `StorageHandle`. This requires your state to also implement
+`Serialize`, `Deserialize`, and `Storable`.
+
 ```rust
 use serde::{Serialize, Deserialize};
 use yew_state::{Storable, Area};
@@ -174,54 +263,56 @@ struct T;
 
 impl Storable for T {
     fn area() -> Area {
-        
-        Area::Session // Defaults to Area::Local
+        Area::Session // Default is Area::Local
     }
 }
 ```
+
+Now your state won't be lost on refresh or if the user navigates away.
+
+TODO: Add derive macro for `Storable`
+
 ## Scoping
-Sometimes it's useful to only share state within a specific scope. This may be done by providing a
-custom scope to `SharedStateComponent` or `StateView`:
+
+By default all components use the same scope. Components only share state with other components that
+have the same scope; changes to shared state in one scope do not affect components in a different
+one.
+
+To change a component's scope simply give it a different scope type:
 
 ```rust
-pub struct MyScope;
-pub struct MyComponent = SharedStateComponent<MyModel, MyScope>;
+struct MyScope;
+type MyComponent = SharedStateComponent<MyModel, MyScope>;
 ```
+
 ### Example
-This example demonstrates how two counters with different scopes can increment shared state 
+
+This example demonstrates how two counters with different scopes can be incremented 
 independently.
+
 ```rust
 use yew::prelude::*;
-use yew_state::{view_state, StateView, SharedHandle};
+use yew_state::{component, SharedHandle, StateView};
 
 struct FooScope;
 struct BarScope;
 
-type CountHandle = SharedHandle<usize>;
+fn view_counter<SCOPE: 'static>() -> Html {
+    type Handle = SharedHandle<usize>;
 
-fn view_input<SCOPE: 'static>() -> Html {
-    let view = view_state(|handle: &CountHandle| {
+    let view = component::view(|handle: &Handle| {
         let onclick = handle.reduce_callback(|count| *count += 1);
         html! {
-            <button onclick=onclick>{"+1"}</button>
+            <button onclick=onclick>{ handle.state() }</button>
         }
     });
+
     html! {
-        <StateView<CountHandle, SCOPE> view=view />
-    }
-}
-fn view_display<SCOPE: 'static>() -> Html {
-    let view = view_state(|handle: &CountHandle| {
-        html! {
-            <p>{handle.state()}</p>
-        }
-    });
-    html! {
-        <StateView<CountHandle, SCOPE> view=view />
+        <StateView<Handle, SCOPE> view=view />
     }
 }
 
-pub struct App;
+struct App;
 impl Component for App {
     type Message = ();
     type Properties = ();
@@ -230,25 +321,92 @@ impl Component for App {
         Self
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        true
+    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
+        false
     }
 
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        true
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+        false
     }
 
     fn view(&self) -> Html {
         html! {
             <>
                 <h1>{"FooScope"}</h1>
-                { view_display::<FooScope>() }
-                { view_input::<FooScope>() }
+                { view_counter::<FooScope>() }
                 <h1>{"BarScope"}</h1>
-                { view_display::<BarScope>() }
-                { view_input::<BarScope>() }
+                { view_counter::<BarScope>() }
             </>
         }
     }
 }
 ```
+
+# Tips and Tricks
+
+## Performance
+
+### CoW says moo
+
+We use a clone on write pattern to make changes to shared state. This lets components decide when to
+receive changes in `Component::change`. If you need to share state that is expensive to clone, be
+sure to wrap it in an `Rc`!
+
+### Break it up
+
+It helps to break up your app state so components only share what they need. This way components aren't
+notified of changes that they don't care about. For example layout components might share a
+`LayoutState` that can be updated without affecting your other components every time the layout
+changes.
+
+## No spaghetti please
+
+For sanity's sake try to only modify shared state from a few components. As your app grows in
+complexity it can become increasingly difficult to keep track of which components are mutating
+state.
+
+## Beware infinite render loops
+
+Consider our quickstart example with a slight modification:
+
+```rust
+fn view_counter() -> Html {
+    type Handle = SharedHandle<u64>;
+
+    let view = component::view(|handle: &Handle| {
+        // Increment count by 1 right away.
+        // THIS WILL NEVER STOP COUNTING!
+        handle.reduce(|count| *count += 1);
+        // Increment count by 1.
+        let incr = handle.reduce_callback(|count| *count += 1);
+        // Reset count to 0.
+        let reset = handle.reduce_callback(|count| *count = 0);
+
+        html! {
+            <>
+            <button onclick=incr>{ handle.state() }</button>
+            <button onclick=reset>{"Reset"}</button>
+            </>
+        }
+    });
+
+    html! {
+        <StateView<Handle> view=view />
+    }
+}
+```
+
+This will compile, but as soon as `view_counter` is rendered your app will freeze as the counter
+infinitely increments itself. 
+
+The above example can be fixed like so:
+
+```rust
+if *handle.state() == 0 {
+    handle.reduce(|count| *count += 1);
+}
+```
+
+This is a simple example but it can happen many different ways. If your
+app is freezing, chances are you've got a component caught in a render loop.
+
