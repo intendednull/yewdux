@@ -128,7 +128,9 @@ where
     H: Handler,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.state == other.state && self.callback == other.callback
+        self.state == other.state
+            && self.callback == other.callback
+            && self.callback_once == other.callback_once
     }
 }
 
