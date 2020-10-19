@@ -13,7 +13,7 @@ pub(crate) type ReductionOnce<T> = Box<dyn FnOnce(&mut T)>;
 pub type Changed = bool;
 
 /// Determines how state should be created, modified, and shared.
-pub trait Handler {
+pub trait StateHandler {
     type Model: Clone;
     type Message;
 
@@ -41,7 +41,7 @@ pub struct SharedHandler<T> {
     state: Rc<T>,
 }
 
-impl<T> Handler for SharedHandler<T>
+impl<T> StateHandler for SharedHandler<T>
 where
     T: Clone + Default,
 {
@@ -100,7 +100,7 @@ where
     }
 }
 
-impl<T> Handler for StorageHandler<T>
+impl<T> StateHandler for StorageHandler<T>
 where
     T: Default + Clone + Storable,
 {

@@ -8,7 +8,7 @@ use yew::{
 };
 
 use crate::handle::{Handle, SharedState};
-use crate::handler::{Handler, Reduction, ReductionOnce};
+use crate::handler::{Reduction, ReductionOnce, StateHandler};
 
 enum Request<T> {
     /// Apply a state change.
@@ -26,7 +26,7 @@ enum Response<T> {
 /// subscribers of new state.
 struct SharedStateService<HANDLER, SCOPE>
 where
-    HANDLER: Handler + Clone + 'static,
+    HANDLER: StateHandler + Clone + 'static,
     SCOPE: 'static,
 {
     handler: HANDLER,
@@ -36,7 +36,7 @@ where
 
 impl<HANDLER, SCOPE> Agent for SharedStateService<HANDLER, SCOPE>
 where
-    HANDLER: Handler + Clone + 'static,
+    HANDLER: StateHandler + Clone + 'static,
     SCOPE: 'static,
 {
     type Message = HANDLER::Message;
@@ -46,7 +46,7 @@ where
 
     fn create(link: AgentLink<Self>) -> Self {
         Self {
-            handler: <HANDLER as Handler>::new(),
+            handler: <HANDLER as StateHandler>::new(),
             subscriptions: Default::default(),
             link,
         }
@@ -90,7 +90,7 @@ where
 
 impl<HANDLER, SCOPE> SharedStateService<HANDLER, SCOPE>
 where
-    HANDLER: Handler + Clone + 'static,
+    HANDLER: StateHandler + Clone + 'static,
     SCOPE: 'static,
 {
     fn notify_subscribers(&self) {
@@ -101,8 +101,8 @@ where
     }
 }
 
-type StateHandler<T> = <<T as SharedState>::Handle as Handle>::Handler;
-type Model<T> = <StateHandler<T> as Handler>::Model;
+type PropHandler<T> = <<T as SharedState>::Handle as Handle>::Handler;
+type Model<T> = <PropHandler<T> as StateHandler>::Model;
 
 /// Component wrapper for managing messages and state handles.
 ///
@@ -121,15 +121,15 @@ type Model<T> = <StateHandler<T> as Handler>::Model;
 /// # Important
 /// By default `StorageHandle` and `GlobalHandle` have different scopes. Though not enforced,
 /// components with different handles should not use the same scope.
-pub struct SharedStateComponent<C, SCOPE = StateHandler<<C as Component>::Properties>>
+pub struct SharedStateComponent<C, SCOPE = PropHandler<<C as Component>::Properties>>
 where
     C: Component,
     C::Properties: SharedState + Clone,
-    StateHandler<C::Properties>: Clone,
+    PropHandler<C::Properties>: Clone,
     SCOPE: 'static,
 {
     props: C::Properties,
-    bridge: Box<dyn Bridge<SharedStateService<StateHandler<C::Properties>, SCOPE>>>,
+    bridge: Box<dyn Bridge<SharedStateService<PropHandler<C::Properties>, SCOPE>>>,
 }
 
 #[doc(hidden)]
@@ -147,7 +147,7 @@ where
     C: Component,
     C::Properties: SharedState + Clone,
     Model<C::Properties>: Default,
-    StateHandler<C::Properties>: Clone,
+    PropHandler<C::Properties>: Clone,
 {
     type Message = SharedStateComponentMsg<Model<C::Properties>>;
     type Properties = C::Properties;

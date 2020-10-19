@@ -3,13 +3,13 @@ use std::rc::Rc;
 
 use yew::{Callback, Properties};
 
-use super::handler::{Handler, Reduction, ReductionOnce, SharedHandler, StorageHandler};
+use super::handler::{Reduction, ReductionOnce, SharedHandler, StateHandler, StorageHandler};
 
-type Model<T> = <T as Handler>::Model;
+type Model<T> = <T as StateHandler>::Model;
 
 /// Provides mutable access for wrapper component to update
 pub trait Handle {
-    type Handler: Handler;
+    type Handler: StateHandler;
 
     fn set_local_state(&mut self, state: Rc<Model<Self::Handler>>);
     fn set_local_callback(
@@ -31,7 +31,7 @@ pub trait SharedState {
 pub struct StateHandle<T, H>
 where
     T: Default + Clone + 'static,
-    H: Handler,
+    H: StateHandler,
 {
     #[prop_or_default]
     state: Rc<T>,
@@ -46,7 +46,7 @@ where
 impl<T, H> StateHandle<T, H>
 where
     T: Default + Clone + 'static,
-    H: Handler<Model = T>,
+    H: StateHandler<Model = T>,
 {
     pub fn state(&self) -> &T {
         &self.state
@@ -110,7 +110,7 @@ where
 impl<T, H> Clone for StateHandle<T, H>
 where
     T: Default + Clone + 'static,
-    H: Handler,
+    H: StateHandler,
 {
     fn clone(&self) -> Self {
         Self {
@@ -125,7 +125,7 @@ where
 impl<T, H> PartialEq for StateHandle<T, H>
 where
     T: Default + PartialEq + Clone + 'static,
-    H: Handler,
+    H: StateHandler,
 {
     fn eq(&self, other: &Self) -> bool {
         self.state == other.state
@@ -137,7 +137,7 @@ where
 impl<T, H> Handle for StateHandle<T, H>
 where
     T: Default + Clone,
-    H: Handler<Model = T>,
+    H: StateHandler<Model = T>,
 {
     type Handler = H;
 
@@ -162,7 +162,7 @@ where
 impl<T, H> SharedState for StateHandle<T, H>
 where
     T: Default + Clone + 'static,
-    H: Handler<Model = T>,
+    H: StateHandler<Model = T>,
 {
     type Handle = Self;
 
