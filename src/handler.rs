@@ -26,16 +26,6 @@ pub trait Handler {
     /// Return a mutable reference to current state.
     fn state_mut(&mut self) -> &mut Rc<Self::Model>;
 
-    /// Apply changes to state.
-    fn apply(&mut self, f: Reduction<Self::Model>) {
-        f(Rc::make_mut(self.state_mut()));
-    }
-
-    /// Apply changes to state once.
-    fn apply_once(&mut self, f: ReductionOnce<Self::Model>) {
-        f(Rc::make_mut(self.state_mut()));
-    }
-
     /// Called after state is changed.
     fn changed(&mut self) {}
 

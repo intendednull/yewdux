@@ -63,11 +63,11 @@ where
     fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) {
         match msg {
             Request::Apply(reduce) => {
-                self.handler.apply(reduce);
+                reduce(Rc::make_mut(self.handler.state_mut()));
                 self.handler.changed();
             }
             Request::ApplyOnce(reduce) => {
-                self.handler.apply_once(reduce);
+                reduce(Rc::make_mut(self.handler.state_mut()));
                 self.handler.changed();
             }
         }
