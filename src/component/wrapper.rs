@@ -7,24 +7,28 @@ use yew::{
     prelude::*,
 };
 
-use crate::handle::{Handle, SharedState};
+use crate::handle::{SharedState, StateHandle, WrapperHandle};
 use crate::handler::{Reduction, ReductionOnce, StateHandler};
 
-enum Request<T> {
+pub enum Request<T> {
     /// Apply a state change.
     Apply(Reduction<T>),
     /// Apply a state change once.
     ApplyOnce(ReductionOnce<T>),
 }
 
-enum Response<T> {
+pub enum Response<T, S>
+where
+    S: Agent,
+{
     /// Update subscribers with current state.
     State(Rc<T>),
+    Link(AgentLink<S>),
 }
 
 /// Context agent for managing shared state. In charge of applying changes to state then notifying
 /// subscribers of new state.
-struct SharedStateService<HANDLER, SCOPE>
+pub struct SharedStateService<HANDLER, SCOPE>
 where
     HANDLER: StateHandler + 'static,
     SCOPE: 'static,
@@ -42,7 +46,7 @@ where
     type Message = HANDLER::Message;
     type Reach = Context<Self>;
     type Input = Request<HANDLER::Model>;
-    type Output = Response<HANDLER::Model>;
+    type Output = Response<HANDLER::Model, Self>;
 
     fn create(link: AgentLink<Self>) -> Self {
         Self {
@@ -56,7 +60,6 @@ where
         let changed = self.handler.update(msg);
         if changed {
             self.handler.changed();
-
             self.notify_subscribers();
         }
     }
@@ -82,6 +85,7 @@ where
         // Send it current state.
         let state = Rc::clone(self.handler.state());
         self.link.respond(who, Response::State(state));
+        self.link.respond(who, Response::Link(self.link.clone()));
     }
 
     fn disconnected(&mut self, who: HandlerId) {
@@ -102,8 +106,33 @@ where
     }
 }
 
-type PropHandler<T> = <<T as SharedState>::Handle as Handle>::Handler;
+type PropHandle<SHARED> = <SHARED as SharedState>::Handle;
+type PropHandler<SHARED> = <PropHandle<SHARED> as StateHandle>::Handler;
 type Model<T> = <PropHandler<T> as StateHandler>::Model;
+
+#[doc(hidden)]
+pub enum SharedStateComponentMsg<SHARED>
+where
+    SHARED: SharedState,
+    <SHARED as SharedState>::Handle: WrapperHandle,
+    <<SHARED as SharedState>::Handle as StateHandle>::Scope: 'static,
+    PropHandler<SHARED>: 'static,
+{
+    /// Recieve new local state.
+    /// IMPORTANT: Changes will **not** be reflected in shared state.
+    SetLocal(Rc<Model<SHARED>>),
+    SetLink(
+        AgentLink<
+            SharedStateService<
+                PropHandler<SHARED>,
+                <<SHARED as SharedState>::Handle as StateHandle>::Scope,
+            >,
+        >,
+    ),
+    /// Update shared state.
+    Apply(Reduction<Model<SHARED>>),
+    ApplyOnce(ReductionOnce<Model<SHARED>>),
+}
 
 /// Component wrapper for managing messages and state handles.
 ///
@@ -122,34 +151,33 @@ type Model<T> = <PropHandler<T> as StateHandler>::Model;
 /// # Important
 /// By default `StorageHandle` and `GlobalHandle` have different scopes. Though not enforced,
 /// components with different handles should not use the same scope.
-pub struct SharedStateComponent<C, SCOPE = PropHandler<<C as Component>::Properties>>
+pub struct SharedStateComponent<C>
 where
     C: Component,
     C::Properties: SharedState + Clone,
-    PropHandler<C::Properties>: Clone,
-    SCOPE: 'static,
+    PropHandle<C::Properties>: WrapperHandle,
+    <PropHandle<C::Properties> as StateHandle>::Scope: 'static,
 {
     props: C::Properties,
-    bridge: Box<dyn Bridge<SharedStateService<PropHandler<C::Properties>, SCOPE>>>,
+    bridge: Box<
+        dyn Bridge<
+            SharedStateService<
+                PropHandler<C::Properties>,
+                <PropHandle<C::Properties> as StateHandle>::Scope,
+            >,
+        >,
+    >,
+    link_set: bool,
+    state_set: bool,
 }
 
-#[doc(hidden)]
-pub enum SharedStateComponentMsg<T> {
-    /// Recieve new local state.
-    /// IMPORTANT: Changes will **not** be reflected in shared state.
-    SetLocal(Rc<T>),
-    /// Update shared state.
-    Apply(Reduction<T>),
-    ApplyOnce(ReductionOnce<T>),
-}
-
-impl<C, SCOPE> Component for SharedStateComponent<C, SCOPE>
+impl<C> Component for SharedStateComponent<C>
 where
     C: Component,
     C::Properties: SharedState + Clone,
-    PropHandler<C::Properties>: Clone,
+    <C::Properties as SharedState>::Handle: Clone + WrapperHandle,
 {
-    type Message = SharedStateComponentMsg<Model<C::Properties>>;
+    type Message = SharedStateComponentMsg<C::Properties>;
     type Properties = C::Properties;
 
     fn create(mut props: Self::Properties, link: ComponentLink<Self>) -> Self {
@@ -157,14 +185,20 @@ where
         // Bridge to receive new state.
         let callback = link.callback(|msg| match msg {
             Response::State(state) => SetLocal(state),
+            Response::Link(link) => SetLink(link),
         });
         let bridge = SharedStateService::bridge(callback);
 
         props
             .handle()
-            .set_local_callback(link.callback(Apply), link.callback(ApplyOnce));
+            .set_callbacks(link.callback(Apply), link.callback(ApplyOnce));
 
-        SharedStateComponent { props, bridge }
+        SharedStateComponent {
+            props,
+            bridge,
+            state_set: Default::default(),
+            link_set: Default::default(),
+        }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -179,22 +213,32 @@ where
                 false
             }
             SetLocal(state) => {
-                self.props.handle().set_local_state(state);
+                self.props.handle().set_state(state);
+                self.state_set = true;
+                true
+            }
+            SetLink(link) => {
+                self.props.handle().set_link(link);
+                self.link_set = true;
                 true
             }
         }
     }
 
     fn change(&mut self, mut props: Self::Properties) -> ShouldRender {
-        props.handle().set_local(self.props.handle());
+        *props.handle() = props.handle().clone();
         self.props = props;
         true
     }
 
     fn view(&self) -> Html {
-        let props = self.props.clone();
-        html! {
-            <C with props />
+        if self.link_set && self.link_set {
+            let props = self.props.clone();
+            html! {
+                <C with props />
+            }
+        } else {
+            html! {}
         }
     }
 }

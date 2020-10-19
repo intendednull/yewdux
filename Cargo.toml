@@ -1,6 +1,6 @@
 [package]
 name = "yew-state"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Noah <noah@coronasoftware.net>"]
 edition = "2018"
 license = "MIT"
