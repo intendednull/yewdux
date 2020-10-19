@@ -26,7 +26,7 @@ enum Response<T> {
 /// subscribers of new state.
 struct SharedStateService<HANDLER, SCOPE>
 where
-    HANDLER: StateHandler + Clone + 'static,
+    HANDLER: StateHandler + 'static,
     SCOPE: 'static,
 {
     handler: HANDLER,
@@ -36,7 +36,7 @@ where
 
 impl<HANDLER, SCOPE> Agent for SharedStateService<HANDLER, SCOPE>
 where
-    HANDLER: StateHandler + Clone + 'static,
+    HANDLER: StateHandler + 'static,
     SCOPE: 'static,
 {
     type Message = HANDLER::Message;
@@ -91,7 +91,7 @@ where
 
 impl<HANDLER, SCOPE> SharedStateService<HANDLER, SCOPE>
 where
-    HANDLER: StateHandler + Clone + 'static,
+    HANDLER: StateHandler + 'static,
     SCOPE: 'static,
 {
     fn notify_subscribers(&mut self) {
@@ -147,7 +147,6 @@ impl<C, SCOPE> Component for SharedStateComponent<C, SCOPE>
 where
     C: Component,
     C::Properties: SharedState + Clone,
-    Model<C::Properties>: Default,
     PropHandler<C::Properties>: Clone,
 {
     type Message = SharedStateComponentMsg<Model<C::Properties>>;
