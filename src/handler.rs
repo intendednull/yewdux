@@ -10,19 +10,39 @@ use yew::{
 
 pub(crate) type Reduction<T> = Rc<dyn Fn(&mut T)>;
 pub(crate) type ReductionOnce<T> = Box<dyn FnOnce(&mut T)>;
+pub type Changed = bool;
 
 /// Determines how state should be created, modified, and shared.
 pub trait Handler {
-    type Model;
+    type Model: Clone;
+    type Message;
 
     /// Create new state.
     fn new() -> Self;
-    /// Apply changes to state.
-    fn apply(&mut self, f: Reduction<Self::Model>);
-    /// Apply changes to state once.
-    fn apply_once(&mut self, f: ReductionOnce<Self::Model>);
+
     /// Return a reference to current state.
-    fn state(&self) -> Rc<Self::Model>;
+    fn state(&self) -> &Rc<Self::Model>;
+
+    /// Return a mutable reference to current state.
+    fn state_mut(&mut self) -> &mut Rc<Self::Model>;
+
+    /// Apply changes to state.
+    fn apply(&mut self, f: Reduction<Self::Model>) {
+        f(Rc::make_mut(self.state_mut()));
+    }
+
+    /// Apply changes to state once.
+    fn apply_once(&mut self, f: ReductionOnce<Self::Model>) {
+        f(Rc::make_mut(self.state_mut()));
+    }
+
+    /// Called after state is changed.
+    fn changed(&mut self) {}
+
+    /// Receive messages from components.
+    fn update(&mut self, _msg: Self::Message) -> Changed {
+        false
+    }
 }
 
 /// Handler for basic shared state.
@@ -36,21 +56,18 @@ where
     T: Clone + Default,
 {
     type Model = T;
+    type Message = ();
 
     fn new() -> Self {
         Default::default()
     }
 
-    fn apply(&mut self, f: Reduction<Self::Model>) {
-        f(Rc::make_mut(&mut self.state));
+    fn state(&self) -> &Rc<Self::Model> {
+        &self.state
     }
 
-    fn apply_once(&mut self, f: ReductionOnce<Self::Model>) {
-        f(Rc::make_mut(&mut self.state));
-    }
-
-    fn state(&self) -> Rc<Self::Model> {
-        Rc::clone(&self.state)
+    fn state_mut(&mut self) -> &mut Rc<Self::Model> {
+        &mut self.state
     }
 }
 
@@ -98,6 +115,7 @@ where
     T: Default + Clone + Storable,
 {
     type Model = T;
+    type Message = ();
 
     fn new() -> Self {
         let mut this: Self = Default::default();
@@ -106,18 +124,16 @@ where
         this
     }
 
-    fn apply(&mut self, f: Reduction<Self::Model>) {
-        f(Rc::make_mut(&mut self.state));
-        self.save_state();
+    fn state(&self) -> &Rc<Self::Model> {
+        &self.state
     }
 
-    fn apply_once(&mut self, f: ReductionOnce<Self::Model>) {
-        f(Rc::make_mut(&mut self.state));
-        self.save_state();
+    fn state_mut(&mut self) -> &mut Rc<Self::Model> {
+        &mut self.state
     }
 
-    fn state(&self) -> Rc<Self::Model> {
-        Rc::clone(&self.state)
+    fn changed(&mut self) {
+        self.save_state();
     }
 }
 

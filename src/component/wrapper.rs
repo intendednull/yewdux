@@ -24,61 +24,80 @@ enum Response<T> {
 
 /// Context agent for managing shared state. In charge of applying changes to state then notifying
 /// subscribers of new state.
-struct SharedStateService<T, SCOPE>
+struct SharedStateService<HANDLER, SCOPE>
 where
-    T: Handler + Clone + 'static,
+    HANDLER: Handler + Clone + 'static,
     SCOPE: 'static,
 {
-    handler: T,
+    handler: HANDLER,
     subscriptions: HashSet<HandlerId>,
-    link: AgentLink<SharedStateService<T, SCOPE>>,
+    link: AgentLink<SharedStateService<HANDLER, SCOPE>>,
 }
 
-impl<T, SCOPE> Agent for SharedStateService<T, SCOPE>
+impl<HANDLER, SCOPE> Agent for SharedStateService<HANDLER, SCOPE>
 where
-    T: Handler + Clone + 'static,
+    HANDLER: Handler + Clone + 'static,
     SCOPE: 'static,
 {
-    type Message = ();
+    type Message = HANDLER::Message;
     type Reach = Context<Self>;
-    type Input = Request<<T as Handler>::Model>;
-    type Output = Response<<T as Handler>::Model>;
+    type Input = Request<HANDLER::Model>;
+    type Output = Response<HANDLER::Model>;
 
     fn create(link: AgentLink<Self>) -> Self {
         Self {
-            handler: <T as Handler>::new(),
+            handler: <HANDLER as Handler>::new(),
             subscriptions: Default::default(),
             link,
         }
     }
 
-    fn update(&mut self, _msg: Self::Message) {}
+    fn update(&mut self, msg: Self::Message) {
+        let changed = self.handler.update(msg);
+        if changed {
+            self.handler.changed();
+            self.notify_subscribers();
+        }
+    }
 
     fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) {
         match msg {
             Request::Apply(reduce) => {
                 self.handler.apply(reduce);
+                self.handler.changed();
             }
             Request::ApplyOnce(reduce) => {
                 self.handler.apply_once(reduce);
+                self.handler.changed();
             }
         }
 
-        // Notify subscribers of change
-        for who in self.subscriptions.iter().cloned() {
-            self.link
-                .respond(who, Response::State(self.handler.state()));
-        }
+        self.notify_subscribers();
     }
 
     fn connected(&mut self, who: HandlerId) {
+        // Add component to subscriptions.
         self.subscriptions.insert(who);
-        self.link
-            .respond(who, Response::State(self.handler.state()));
+        // Send it current state.
+        let state = Rc::clone(self.handler.state());
+        self.link.respond(who, Response::State(state));
     }
 
     fn disconnected(&mut self, who: HandlerId) {
         self.subscriptions.remove(&who);
+    }
+}
+
+impl<HANDLER, SCOPE> SharedStateService<HANDLER, SCOPE>
+where
+    HANDLER: Handler + Clone + 'static,
+    SCOPE: 'static,
+{
+    fn notify_subscribers(&self) {
+        let state = self.handler.state();
+        for who in self.subscriptions.iter().cloned() {
+            self.link.respond(who, Response::State(Rc::clone(state)));
+        }
     }
 }
 
