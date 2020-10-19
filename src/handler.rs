@@ -21,10 +21,7 @@ pub trait StateHandler {
     fn new() -> Self;
 
     /// Return a reference to current state.
-    fn state(&self) -> &Rc<Self::Model>;
-
-    /// Return a mutable reference to current state.
-    fn state_mut(&mut self) -> &mut Rc<Self::Model>;
+    fn state(&mut self) -> &mut Rc<Self::Model>;
 
     /// Called after state is changed.
     fn changed(&mut self) {}
@@ -52,11 +49,7 @@ where
         Default::default()
     }
 
-    fn state(&self) -> &Rc<Self::Model> {
-        &self.state
-    }
-
-    fn state_mut(&mut self) -> &mut Rc<Self::Model> {
+    fn state(&mut self) -> &mut Rc<Self::Model> {
         &mut self.state
     }
 }
@@ -114,11 +107,7 @@ where
         this
     }
 
-    fn state(&self) -> &Rc<Self::Model> {
-        &self.state
-    }
-
-    fn state_mut(&mut self) -> &mut Rc<Self::Model> {
+    fn state(&mut self) -> &mut Rc<Self::Model> {
         &mut self.state
     }
 

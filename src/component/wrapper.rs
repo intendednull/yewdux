@@ -56,6 +56,7 @@ where
         let changed = self.handler.update(msg);
         if changed {
             self.handler.changed();
+
             self.notify_subscribers();
         }
     }
@@ -63,11 +64,11 @@ where
     fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) {
         match msg {
             Request::Apply(reduce) => {
-                reduce(Rc::make_mut(self.handler.state_mut()));
+                reduce(Rc::make_mut(self.handler.state()));
                 self.handler.changed();
             }
             Request::ApplyOnce(reduce) => {
-                reduce(Rc::make_mut(self.handler.state_mut()));
+                reduce(Rc::make_mut(self.handler.state()));
                 self.handler.changed();
             }
         }
@@ -93,7 +94,7 @@ where
     HANDLER: StateHandler + Clone + 'static,
     SCOPE: 'static,
 {
-    fn notify_subscribers(&self) {
+    fn notify_subscribers(&mut self) {
         let state = self.handler.state();
         for who in self.subscriptions.iter().cloned() {
             self.link.respond(who, Response::State(Rc::clone(state)));
