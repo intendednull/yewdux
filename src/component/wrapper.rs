@@ -8,7 +8,7 @@ use yew::{
 };
 
 use crate::handle::{SharedState, StateHandle, WrapperHandle};
-use crate::handler::{Reduction, ReductionOnce, StateHandler};
+use crate::handler::{HandlerLink, Reduction, ReductionOnce, StateHandler};
 
 pub enum Request<T> {
     /// Apply a state change.
@@ -23,7 +23,7 @@ where
 {
     /// Update subscribers with current state.
     State(Rc<T>),
-    Link(AgentLink<S>),
+    Link(HandlerLink<S::Message>),
 }
 
 /// Context agent for managing shared state. In charge of applying changes to state then notifying
@@ -50,7 +50,7 @@ where
 
     fn create(link: AgentLink<Self>) -> Self {
         Self {
-            handler: <HANDLER as StateHandler>::new(),
+            handler: <HANDLER as StateHandler>::new(link.clone().into()),
             subscriptions: Default::default(),
             link,
         }
@@ -85,7 +85,8 @@ where
         // Send it current state.
         let state = Rc::clone(self.handler.state());
         self.link.respond(who, Response::State(state));
-        self.link.respond(who, Response::Link(self.link.clone()));
+        self.link
+            .respond(who, Response::Link(self.link.clone().into()));
     }
 
     fn disconnected(&mut self, who: HandlerId) {
@@ -115,20 +116,12 @@ pub enum SharedStateComponentMsg<SHARED>
 where
     SHARED: SharedState,
     <SHARED as SharedState>::Handle: WrapperHandle,
-    <<SHARED as SharedState>::Handle as StateHandle>::Scope: 'static,
     PropHandler<SHARED>: 'static,
 {
     /// Recieve new local state.
     /// IMPORTANT: Changes will **not** be reflected in shared state.
     SetLocal(Rc<Model<SHARED>>),
-    SetLink(
-        AgentLink<
-            SharedStateService<
-                PropHandler<SHARED>,
-                <<SHARED as SharedState>::Handle as StateHandle>::Scope,
-            >,
-        >,
-    ),
+    SetLink(HandlerLink<<PropHandler<SHARED> as StateHandler>::Message>),
     /// Update shared state.
     Apply(Reduction<Model<SHARED>>),
     ApplyOnce(ReductionOnce<Model<SHARED>>),
@@ -151,27 +144,20 @@ where
 /// # Important
 /// By default `StorageHandle` and `GlobalHandle` have different scopes. Though not enforced,
 /// components with different handles should not use the same scope.
-pub struct SharedStateComponent<C>
+pub struct SharedStateComponent<C, SCOPE = PropHandler<<C as Component>::Properties>>
 where
     C: Component,
     C::Properties: SharedState + Clone,
     PropHandle<C::Properties>: WrapperHandle,
-    <PropHandle<C::Properties> as StateHandle>::Scope: 'static,
+    SCOPE: 'static,
 {
     props: C::Properties,
-    bridge: Box<
-        dyn Bridge<
-            SharedStateService<
-                PropHandler<C::Properties>,
-                <PropHandle<C::Properties> as StateHandle>::Scope,
-            >,
-        >,
-    >,
+    bridge: Box<dyn Bridge<SharedStateService<PropHandler<C::Properties>, SCOPE>>>,
     link_set: bool,
     state_set: bool,
 }
 
-impl<C> Component for SharedStateComponent<C>
+impl<C, SCOPE> Component for SharedStateComponent<C, SCOPE>
 where
     C: Component,
     C::Properties: SharedState + Clone,

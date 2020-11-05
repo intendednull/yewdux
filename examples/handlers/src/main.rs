@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use yew::prelude::*;
 use yew_state::{
-    handler::{Changed, StateHandler},
+    handler::{Changed, HandlerLink, StateHandler},
     LinkHandle, SharedStateComponent, StateHandle,
 };
 use yewtil::NeqAssign;
@@ -16,6 +16,7 @@ enum CountMsg {
 }
 
 struct CountHandler {
+    link: HandlerLink<CountMsg>,
     state: Rc<State>,
 }
 
@@ -23,8 +24,9 @@ impl StateHandler for CountHandler {
     type Model = State;
     type Message = CountMsg;
 
-    fn new() -> Self {
+    fn new(link: HandlerLink<Self::Message>) -> Self {
         Self {
+            link,
             state: Rc::new(State { count: 0 }),
         }
     }

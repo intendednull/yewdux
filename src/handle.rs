@@ -1,10 +1,11 @@
 //! Ergonomic interface with shared state.
 use std::rc::Rc;
 
-use yew::{agent::AgentLink, Callback, Properties};
+use yew::{Callback, Properties};
 
-use super::handler::{Reduction, ReductionOnce, SharedHandler, StateHandler, StorageHandler};
-use crate::component::wrapper::SharedStateService;
+use crate::handler::{
+    HandlerLink, Reduction, ReductionOnce, SharedHandler, StateHandler, StorageHandler,
+};
 
 type Model<T> = <T as StateHandler>::Model;
 
@@ -15,13 +16,12 @@ pub trait WrapperHandle: StateHandle {
         callback: Callback<Reduction<Model<Self::Handler>>>,
         callback_once: Callback<ReductionOnce<Model<Self::Handler>>>,
     );
-    fn set_link(&mut self, _link: AgentLink<SharedStateService<Self::Handler, Self::Scope>>) {}
+    fn set_link(&mut self, _link: HandlerLink<<Self::Handler as StateHandler>::Message>) {}
 }
 
 /// Provides mutable access for wrapper component to update
 pub trait StateHandle {
     type Handler: StateHandler;
-    type Scope;
 
     /// Current state.
     fn state(&self) -> &Rc<Model<Self::Handler>>;
@@ -101,7 +101,7 @@ pub trait SharedState {
 
 /// Interface to shared state
 #[derive(Default, Properties)]
-pub struct StateHandleFoo<HANDLER, SCOPE>
+pub struct StateHandleFoo<HANDLER>
 where
     HANDLER: StateHandler,
     Model<HANDLER>: Default + Clone + 'static,
@@ -114,17 +114,14 @@ where
     callback_once: Callback<ReductionOnce<Model<HANDLER>>>,
     #[prop_or_default]
     _mark_handler: std::marker::PhantomData<HANDLER>,
-    #[prop_or_default]
-    _mark_scope: std::marker::PhantomData<SCOPE>,
 }
 
-impl<HANDLER, SCOPE> StateHandle for StateHandleFoo<HANDLER, SCOPE>
+impl<HANDLER> StateHandle for StateHandleFoo<HANDLER>
 where
     HANDLER: StateHandler,
     Model<HANDLER>: Default + Clone,
 {
     type Handler = HANDLER;
-    type Scope = SCOPE;
 
     fn state(&self) -> &Rc<Model<Self::Handler>> {
         &self.state
@@ -138,7 +135,7 @@ where
     }
 }
 
-impl<HANDLER, SCOPE> WrapperHandle for StateHandleFoo<HANDLER, SCOPE>
+impl<HANDLER> WrapperHandle for StateHandleFoo<HANDLER>
 where
     HANDLER: StateHandler,
     Model<HANDLER>: Default + Clone,
@@ -157,7 +154,7 @@ where
     }
 }
 
-impl<HANDLER, SCOPE> SharedState for StateHandleFoo<HANDLER, SCOPE>
+impl<HANDLER> SharedState for StateHandleFoo<HANDLER>
 where
     HANDLER: StateHandler,
     Model<HANDLER>: Default + Clone,
@@ -169,7 +166,7 @@ where
     }
 }
 
-impl<HANDLER, SCOPE> Clone for StateHandleFoo<HANDLER, SCOPE>
+impl<HANDLER> Clone for StateHandleFoo<HANDLER>
 where
     HANDLER: StateHandler,
     Model<HANDLER>: Default + Clone,
@@ -180,12 +177,11 @@ where
             callback: self.callback.clone(),
             callback_once: self.callback_once.clone(),
             _mark_handler: Default::default(),
-            _mark_scope: Default::default(),
         }
     }
 }
 
-impl<HANDLER, SCOPE> PartialEq for StateHandleFoo<HANDLER, SCOPE>
+impl<HANDLER> PartialEq for StateHandleFoo<HANDLER>
 where
     HANDLER: StateHandler,
     Model<HANDLER>: PartialEq + Default + Clone,
@@ -198,17 +194,17 @@ where
 }
 
 /// Handle for basic shared state.
-pub type SharedHandle<T, SCOPE = SharedHandler<T>> = StateHandleFoo<SharedHandler<T>, SCOPE>;
+pub type SharedHandle<T> = StateHandleFoo<SharedHandler<T>>;
 /// Handle for shared state with persistent storage.
-pub type StorageHandle<T, SCOPE = StorageHandler<T>> = StateHandleFoo<StorageHandler<T>, SCOPE>;
+pub type StorageHandle<T> = StateHandleFoo<StorageHandler<T>>;
 
 /// Interface to shared state
 #[derive(Properties)]
-pub struct AgentHandle<HANDLER, SCOPE>
+pub struct LinkHandle<HANDLER>
 where
     HANDLER: StateHandler + 'static,
+    <HANDLER as StateHandler>::Message: Clone,
     Model<HANDLER>: Clone + 'static,
-    SCOPE: 'static,
 {
     #[prop_or_default]
     state: Option<Rc<Model<HANDLER>>>,
@@ -216,28 +212,30 @@ where
     callback: Callback<Reduction<Model<HANDLER>>>,
     #[prop_or_default]
     callback_once: Callback<ReductionOnce<Model<HANDLER>>>,
-    link: Option<AgentLink<SharedStateService<HANDLER, SCOPE>>>,
+    #[prop_or_default]
+    link: Option<HandlerLink<<HANDLER as StateHandler>::Message>>,
 }
 
-impl<HANDLER, SCOPE> AgentHandle<HANDLER, SCOPE>
+impl<HANDLER> LinkHandle<HANDLER>
 where
     HANDLER: StateHandler,
+    <HANDLER as StateHandler>::Message: Clone,
     Model<HANDLER>: Clone + 'static,
 {
-    pub fn link(&self) -> &AgentLink<SharedStateService<HANDLER, SCOPE>> {
+    pub fn link(&self) -> &HandlerLink<<HANDLER as StateHandler>::Message> {
         self.link.as_ref().expect(
             "Link accessed prematurely. Is your component wrapped in a SharedStateComponent?",
         )
     }
 }
 
-impl<HANDLER, SCOPE> StateHandle for AgentHandle<HANDLER, SCOPE>
+impl<HANDLER> StateHandle for LinkHandle<HANDLER>
 where
     HANDLER: StateHandler,
+    <HANDLER as StateHandler>::Message: Clone,
     Model<HANDLER>: Clone,
 {
     type Handler = HANDLER;
-    type Scope = SCOPE;
 
     fn state(&self) -> &Rc<Model<HANDLER>> {
         self.state.as_ref().expect(
@@ -254,9 +252,10 @@ where
     }
 }
 
-impl<HANDLER, SCOPE> WrapperHandle for AgentHandle<HANDLER, SCOPE>
+impl<HANDLER> WrapperHandle for LinkHandle<HANDLER>
 where
     HANDLER: StateHandler,
+    <HANDLER as StateHandler>::Message: Clone,
     Model<HANDLER>: Clone,
 {
     fn set_state(&mut self, state: Rc<Model<Self::Handler>>) {
@@ -272,14 +271,15 @@ where
         self.callback_once = callback_once;
     }
 
-    fn set_link(&mut self, link: AgentLink<SharedStateService<Self::Handler, Self::Scope>>) {
+    fn set_link(&mut self, link: HandlerLink<<HANDLER as StateHandler>::Message>) {
         self.link = Some(link);
     }
 }
 
-impl<HANDLER, SCOPE> SharedState for AgentHandle<HANDLER, SCOPE>
+impl<HANDLER> SharedState for LinkHandle<HANDLER>
 where
     HANDLER: StateHandler,
+    <HANDLER as StateHandler>::Message: Clone,
     Model<HANDLER>: Clone,
 {
     type Handle = Self;
@@ -289,9 +289,10 @@ where
     }
 }
 
-impl<HANDLER, SCOPE> Default for AgentHandle<HANDLER, SCOPE>
+impl<HANDLER> Default for LinkHandle<HANDLER>
 where
     HANDLER: StateHandler,
+    <HANDLER as StateHandler>::Message: Clone,
     Model<HANDLER>: Clone,
 {
     fn default() -> Self {
@@ -304,9 +305,10 @@ where
     }
 }
 
-impl<HANDLER, SCOPE> Clone for AgentHandle<HANDLER, SCOPE>
+impl<HANDLER> Clone for LinkHandle<HANDLER>
 where
     HANDLER: StateHandler,
+    <HANDLER as StateHandler>::Message: Clone,
     Model<HANDLER>: Clone,
 {
     fn clone(&self) -> Self {
@@ -319,9 +321,10 @@ where
     }
 }
 
-impl<HANDLER, SCOPE> PartialEq for AgentHandle<HANDLER, SCOPE>
+impl<HANDLER> PartialEq for LinkHandle<HANDLER>
 where
     HANDLER: StateHandler,
+    <HANDLER as StateHandler>::Message: Clone,
     Model<HANDLER>: PartialEq + Clone,
 {
     fn eq(&self, other: &Self) -> bool {
@@ -330,5 +333,3 @@ where
             && self.callback_once == other.callback_once
     }
 }
-
-pub type LinkHandle<HANDLER, SCOPE = HANDLER> = AgentHandle<HANDLER, SCOPE>;
