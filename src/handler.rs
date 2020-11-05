@@ -1,5 +1,7 @@
 //! State handlers determine how state should be created, modified, and shared.
 use std::any::type_name;
+#[cfg(feature = "future")]
+use std::pin::Pin;
 use std::rc::Rc;
 
 use serde::{Deserialize, Serialize};

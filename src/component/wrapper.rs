@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 use yew::{
-    agent::{Agent, AgentLink, Bridge, Bridged, Context, HandlerId},
+    agent::{Agent, AgentLink, Bridge, Bridged, Context, Dispatcher, HandlerId},
     prelude::*,
 };
 
@@ -36,6 +36,7 @@ where
     handler: HANDLER,
     subscriptions: HashSet<HandlerId>,
     link: AgentLink<SharedStateService<HANDLER, SCOPE>>,
+    self_dispatcher: Dispatcher<Self>,
 }
 
 impl<HANDLER, SCOPE> Agent for SharedStateService<HANDLER, SCOPE>
@@ -52,6 +53,7 @@ where
         Self {
             handler: <HANDLER as StateHandler>::new(link.clone().into()),
             subscriptions: Default::default(),
+            self_dispatcher: Self::dispatcher(),
             link,
         }
     }
@@ -212,13 +214,13 @@ where
     }
 
     fn change(&mut self, mut props: Self::Properties) -> ShouldRender {
-        *props.handle() = props.handle().clone();
+        *props.handle() = self.props.handle().clone();
         self.props = props;
         true
     }
 
     fn view(&self) -> Html {
-        if self.link_set && self.link_set {
+        if self.link_set && self.state_set {
             let props = self.props.clone();
             html! {
                 <C with props />
