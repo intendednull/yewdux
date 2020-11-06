@@ -9,6 +9,7 @@ use crate::handler::{
 
 type Model<T> = <T as StateHandler>::Model;
 
+/// Provides mutable access for wrapper component to update
 pub trait WrapperHandle: StateHandle {
     fn set_state(&mut self, state: Rc<Model<Self::Handler>>);
     fn set_callbacks(
@@ -19,12 +20,11 @@ pub trait WrapperHandle: StateHandle {
     fn set_link(&mut self, _link: HandlerLink<<Self::Handler as StateHandler>::Message>) {}
 }
 
-/// Provides mutable access for wrapper component to update
 pub trait StateHandle {
     type Handler: StateHandler;
 
     /// Current state.
-    fn state(&self) -> &Rc<Model<Self::Handler>>;
+    fn state(&self) -> &Model<Self::Handler>;
 
     fn callback(&self) -> &Callback<Reduction<Model<Self::Handler>>>;
     fn callback_once(&self) -> &Callback<ReductionOnce<Model<Self::Handler>>>;
@@ -123,7 +123,7 @@ where
 {
     type Handler = HANDLER;
 
-    fn state(&self) -> &Rc<Model<Self::Handler>> {
+    fn state(&self) -> &Model<Self::Handler> {
         &self.state
     }
     fn callback(&self) -> &Callback<Reduction<Model<Self::Handler>>> {
@@ -237,7 +237,7 @@ where
 {
     type Handler = HANDLER;
 
-    fn state(&self) -> &Rc<Model<HANDLER>> {
+    fn state(&self) -> &Model<HANDLER> {
         self.state.as_ref().expect(
             "State accessed prematurely. Is your component wrapped in a SharedStateComponent?",
         )
