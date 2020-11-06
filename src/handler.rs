@@ -165,16 +165,6 @@ pub trait Storable: Serialize + for<'a> Deserialize<'a> {
     }
 }
 
-impl<T: Storable> Storable for Option<T> {
-    fn key() -> &'static str {
-        T::key()
-    }
-
-    fn area() -> Area {
-        T::area()
-    }
-}
-
 /// Handler for shared state with persistent storage.
 ///
 /// If persistent storage is disabled it just behaves like a `SharedHandler`.
@@ -237,5 +227,25 @@ where
         let mut new = Self::new();
         new.state = self.state.clone();
         new
+    }
+}
+
+impl<T: Storable> Storable for Option<T> {
+    fn key() -> &'static str {
+        T::key()
+    }
+
+    fn area() -> Area {
+        T::area()
+    }
+}
+
+impl<T: Storable> Storable for Rc<T> {
+    fn key() -> &'static str {
+        T::key()
+    }
+
+    fn area() -> Area {
+        T::area()
     }
 }
