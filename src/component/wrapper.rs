@@ -36,6 +36,7 @@ where
     handler: HANDLER,
     subscriptions: HashSet<HandlerId>,
     link: AgentLink<SharedStateService<HANDLER, SCOPE>>,
+    #[allow(dead_code)]
     self_dispatcher: Dispatcher<Self>,
 }
 
