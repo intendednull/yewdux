@@ -4,8 +4,6 @@ use std::any::type_name;
 use std::pin::Pin;
 use std::rc::Rc;
 
-use either::*;
-
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "future")]
 use std::future::Future;
@@ -18,7 +16,7 @@ use yew::{
 #[cfg(feature = "future")]
 use yewtil::future::LinkFuture;
 
-use crate::component::wrapper::SharedStateService;
+use crate::service::{ServiceInput, ServiceOutput, StateService};
 
 pub(crate) type Reduction<T> = Rc<dyn Fn(&mut T)>;
 pub(crate) type ReductionOnce<T> = Box<dyn FnOnce(&mut T)>;
@@ -36,24 +34,24 @@ pub(crate) trait AgentLinkWrapper {
     fn send_future(&self, future: Pin<Box<dyn Future<Output = Self::Message>>>);
 }
 
-impl<H, SCOPE> AgentLinkWrapper for AgentLink<SharedStateService<H, SCOPE>>
+impl<H, SCOPE> AgentLinkWrapper for AgentLink<StateService<H, SCOPE>>
 where
-    H: StateHandler + Clone,
+    H: StateHandler,
 {
     type Message = H::Message;
     type Input = H::Input;
     type Output = H::Output;
 
     fn send_message(&self, msg: Self::Message) {
-        AgentLink::<SharedStateService<H, SCOPE>>::send_message(self, msg)
+        AgentLink::<StateService<H, SCOPE>>::send_message(self, msg)
     }
 
     fn send_input(&self, input: Self::Input) {
-        AgentLink::<SharedStateService<H, SCOPE>>::send_input(self, Right(input))
+        AgentLink::<StateService<H, SCOPE>>::send_input(self, ServiceInput::Handler(input))
     }
 
     fn respond(&self, who: HandlerId, output: Self::Output) {
-        AgentLink::<SharedStateService<H, SCOPE>>::respond(self, who, Right(output))
+        AgentLink::<StateService<H, SCOPE>>::respond(self, who, ServiceOutput::Handler(output))
     }
 
     #[cfg(feature = "future")]
@@ -74,7 +72,7 @@ type HandlerMsg<H> = <H as StateHandler>::Message;
 type HandlerInput<H> = <H as StateHandler>::Input;
 type HandlerOutput<H> = <H as StateHandler>::Output;
 
-impl<H: StateHandler + Clone> HandlerLink<H> {
+impl<H: StateHandler> HandlerLink<H> {
     pub(crate) fn new(
         link: impl AgentLinkWrapper<
                 Message = HandlerMsg<H>,
@@ -92,6 +90,20 @@ impl<H: StateHandler + Clone> HandlerLink<H> {
         T: Into<HandlerMsg<H>>,
     {
         self.link.send_message(msg.into())
+    }
+
+    pub fn send_input<T>(&self, msg: T)
+    where
+        T: Into<HandlerInput<H>>,
+    {
+        self.link.send_input(msg.into())
+    }
+
+    pub fn respond<T>(&self, who: HandlerId, output: T)
+    where
+        T: Into<HandlerOutput<H>>,
+    {
+        self.link.respond(who, output.into())
     }
 
     pub fn callback<F, IN, M>(&self, function: F) -> Callback<IN>
@@ -162,7 +174,9 @@ pub trait StateHandler: Sized {
     }
 
     #[allow(unused_variables)]
-    fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) {}
+    fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) -> Changed {
+        false
+    }
 }
 
 /// Handler for basic shared state.

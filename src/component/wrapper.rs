@@ -1,120 +1,14 @@
 //! Wrapper for components with shared state.
-use std::collections::HashSet;
 use std::rc::Rc;
 
-use either::*;
-
 use yew::{
-    agent::{Agent, AgentLink, Bridge, Bridged, Context, Dispatcher, HandlerId},
+    agent::{Bridge, Bridged},
     prelude::*,
 };
 
 use crate::handle::{SharedState, StateHandle, WrapperHandle};
 use crate::handler::{HandlerLink, Reduction, ReductionOnce, StateHandler};
-
-pub enum Request<H: StateHandler> {
-    /// Apply a state change.
-    Apply(Reduction<H::Model>),
-    /// Apply a state change once.
-    ApplyOnce(ReductionOnce<H::Model>),
-}
-
-pub enum Response<H>
-where
-    H: StateHandler,
-{
-    /// Update subscribers with current state.
-    State(Rc<H::Model>),
-    Link(HandlerLink<H>),
-}
-
-/// Context agent for managing shared state. In charge of applying changes to state then notifying
-/// subscribers of new state.
-pub struct SharedStateService<HANDLER, SCOPE>
-where
-    HANDLER: StateHandler + Clone + 'static,
-    SCOPE: 'static,
-{
-    handler: HANDLER,
-    subscriptions: HashSet<HandlerId>,
-    link: AgentLink<SharedStateService<HANDLER, SCOPE>>,
-    #[allow(dead_code)]
-    self_dispatcher: Dispatcher<Self>,
-}
-
-impl<HANDLER, SCOPE> Agent for SharedStateService<HANDLER, SCOPE>
-where
-    HANDLER: StateHandler + Clone + 'static,
-    SCOPE: 'static,
-{
-    type Message = HANDLER::Message;
-    type Reach = Context<Self>;
-    type Input = Either<Request<HANDLER>, HANDLER::Input>;
-    type Output = Either<Response<HANDLER>, HANDLER::Output>;
-
-    fn create(link: AgentLink<Self>) -> Self {
-        Self {
-            handler: <HANDLER as StateHandler>::new(HandlerLink::new(link.clone())),
-            subscriptions: Default::default(),
-            self_dispatcher: Self::dispatcher(),
-            link,
-        }
-    }
-
-    fn update(&mut self, msg: Self::Message) {
-        let changed = self.handler.update(msg);
-        if changed {
-            self.handler.changed();
-            self.notify_subscribers();
-        }
-    }
-
-    fn handle_input(&mut self, msg: Self::Input, who: HandlerId) {
-        match msg {
-            Left(Request::Apply(reduce)) => {
-                reduce(Rc::make_mut(self.handler.state()));
-                self.handler.changed();
-            }
-            Left(Request::ApplyOnce(reduce)) => {
-                reduce(Rc::make_mut(self.handler.state()));
-                self.handler.changed();
-            }
-            Right(msg) => self.handler.handle_input(msg, who),
-        }
-
-        self.notify_subscribers();
-    }
-
-    fn connected(&mut self, who: HandlerId) {
-        // Add component to subscriptions.
-        self.subscriptions.insert(who);
-        // Send it current state.
-        let state = Rc::clone(self.handler.state());
-        self.link.respond(who, Left(Response::State(state)));
-        self.link.respond(
-            who,
-            Left(Response::Link(HandlerLink::new(self.link.clone()))),
-        );
-    }
-
-    fn disconnected(&mut self, who: HandlerId) {
-        self.subscriptions.remove(&who);
-    }
-}
-
-impl<HANDLER, SCOPE> SharedStateService<HANDLER, SCOPE>
-where
-    HANDLER: StateHandler + Clone + 'static,
-    SCOPE: 'static,
-{
-    fn notify_subscribers(&mut self) {
-        let state = self.handler.state();
-        for who in self.subscriptions.iter().cloned() {
-            self.link
-                .respond(who, Left(Response::State(Rc::clone(state))));
-        }
-    }
-}
+use crate::service::*;
 
 type PropHandle<SHARED> = <SHARED as SharedState>::Handle;
 type PropHandler<SHARED> = <PropHandle<SHARED> as StateHandle>::Handler;
@@ -164,7 +58,7 @@ where
     SCOPE: 'static,
 {
     props: C::Properties,
-    bridge: Box<dyn Bridge<SharedStateService<PropHandler<C::Properties>, SCOPE>>>,
+    bridge: Box<dyn Bridge<StateService<PropHandler<C::Properties>, SCOPE>>>,
     link_set: bool,
     state_set: bool,
 }
@@ -183,11 +77,11 @@ where
         use SharedStateComponentMsg::*;
         // Bridge to receive new state.
         let callback = link.callback(|msg| match msg {
-            Left(Response::State(state)) => SetLocal(state),
-            Left(Response::Link(link)) => SetLink(link),
-            Right(_) => Ignore,
+            ServiceOutput::Service(ServiceResponse::State(state)) => SetLocal(state),
+            ServiceOutput::Service(ServiceResponse::Link(link)) => SetLink(link),
+            ServiceOutput::Handler(_) => Ignore,
         });
-        let bridge = SharedStateService::bridge(callback);
+        let bridge = StateService::bridge(callback);
 
         props
             .handle()
@@ -205,11 +99,13 @@ where
         use SharedStateComponentMsg::*;
         match msg {
             Apply(reduce) => {
-                self.bridge.send(Left(Request::Apply(reduce)));
+                self.bridge
+                    .send(ServiceInput::Service(ServiceRequest::Apply(reduce)));
                 false
             }
             ApplyOnce(reduce) => {
-                self.bridge.send(Left(Request::ApplyOnce(reduce)));
+                self.bridge
+                    .send(ServiceInput::Service(ServiceRequest::ApplyOnce(reduce)));
                 false
             }
             SetLocal(state) => {

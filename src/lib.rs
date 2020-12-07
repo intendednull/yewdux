@@ -1,6 +1,7 @@
 pub mod component;
 pub mod handle;
 pub mod handler;
+pub mod service;
 
 pub use yew::services::storage::Area;
 
