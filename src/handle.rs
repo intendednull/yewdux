@@ -200,7 +200,7 @@ pub type StorageHandle<T> = StateHandleFoo<StorageHandler<T>>;
 
 /// Interface to shared state
 #[derive(Properties)]
-pub struct LinkHandle<HANDLER, SCOPE>
+pub struct LinkHandle<HANDLER>
 where
     HANDLER: StateHandler + Clone + 'static,
     <HANDLER as StateHandler>::Message: Clone,
@@ -216,11 +216,9 @@ where
     callback_once: Callback<ReductionOnce<Model<HANDLER>>>,
     #[prop_or_default]
     link: Option<HandlerLink<HANDLER>>,
-    #[prop_or_default]
-    _mark: std::marker::PhantomData<SCOPE>,
 }
 
-impl<HANDLER, SCOPE> LinkHandle<HANDLER, SCOPE>
+impl<HANDLER> LinkHandle<HANDLER>
 where
     HANDLER: StateHandler + Clone,
     <HANDLER as StateHandler>::Message: Clone,
@@ -235,7 +233,7 @@ where
     }
 }
 
-impl<HANDLER, SCOPE> StateHandle for LinkHandle<HANDLER, SCOPE>
+impl<HANDLER> StateHandle for LinkHandle<HANDLER>
 where
     HANDLER: Clone + StateHandler,
     <HANDLER as StateHandler>::Message: Clone,
@@ -260,7 +258,7 @@ where
     }
 }
 
-impl<HANDLER, SCOPE> WrapperHandle for LinkHandle<HANDLER, SCOPE>
+impl<HANDLER> WrapperHandle for LinkHandle<HANDLER>
 where
     HANDLER: StateHandler + Clone,
     <HANDLER as StateHandler>::Message: Clone,
@@ -286,7 +284,7 @@ where
     }
 }
 
-impl<HANDLER, SCOPE> SharedState for LinkHandle<HANDLER, SCOPE>
+impl<HANDLER> SharedState for LinkHandle<HANDLER>
 where
     HANDLER: StateHandler + Clone,
     <HANDLER as StateHandler>::Message: Clone,
@@ -301,7 +299,7 @@ where
     }
 }
 
-impl<HANDLER, SCOPE> Default for LinkHandle<HANDLER, SCOPE>
+impl<HANDLER> Default for LinkHandle<HANDLER>
 where
     HANDLER: StateHandler + Clone,
     <HANDLER as StateHandler>::Message: Clone,
@@ -315,12 +313,11 @@ where
             callback: Default::default(),
             callback_once: Default::default(),
             link: Default::default(),
-            _mark: Default::default(),
         }
     }
 }
 
-impl<HANDLER, SCOPE> Clone for LinkHandle<HANDLER, SCOPE>
+impl<HANDLER> Clone for LinkHandle<HANDLER>
 where
     HANDLER: StateHandler + Clone,
     HandlerLink<HANDLER>: Clone,
@@ -335,12 +332,11 @@ where
             callback: self.callback.clone(),
             callback_once: self.callback_once.clone(),
             link: self.link.clone(),
-            _mark: Default::default(),
         }
     }
 }
 
-impl<HANDLER, SCOPE> PartialEq for LinkHandle<HANDLER, SCOPE>
+impl<HANDLER> PartialEq for LinkHandle<HANDLER>
 where
     HANDLER: StateHandler + Clone,
     <HANDLER as StateHandler>::Message: Clone,

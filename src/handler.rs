@@ -63,12 +63,11 @@ where
 }
 
 #[derive(Clone)]
-pub struct HandlerLink<H, SCOPE = H>
+pub struct HandlerLink<H>
 where
     H: StateHandler,
 {
     link: Rc<dyn AgentLinkWrapper<Message = H::Message, Input = H::Input, Output = H::Output>>,
-    _mark: std::marker::PhantomData<SCOPE>,
 }
 
 type HandlerMsg<H> = <H as StateHandler>::Message;
@@ -85,7 +84,6 @@ impl<H: StateHandler + Clone> HandlerLink<H> {
     ) -> Self {
         Self {
             link: Rc::new(link),
-            _mark: Default::default(),
         }
     }
 
