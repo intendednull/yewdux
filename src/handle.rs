@@ -222,7 +222,7 @@ where
 
 impl<HANDLER, SCOPE> LinkHandle<HANDLER, SCOPE>
 where
-    HANDLER: StateHandler,
+    HANDLER: StateHandler + Clone,
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
     <HANDLER as StateHandler>::Input: Clone,
@@ -237,7 +237,7 @@ where
 
 impl<HANDLER, SCOPE> StateHandle for LinkHandle<HANDLER, SCOPE>
 where
-    HANDLER: StateHandler,
+    HANDLER: Clone + StateHandler,
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
     <HANDLER as StateHandler>::Input: Clone,
@@ -262,7 +262,7 @@ where
 
 impl<HANDLER, SCOPE> WrapperHandle for LinkHandle<HANDLER, SCOPE>
 where
-    HANDLER: StateHandler,
+    HANDLER: StateHandler + Clone,
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
     <HANDLER as StateHandler>::Input: Clone,
@@ -288,7 +288,7 @@ where
 
 impl<HANDLER, SCOPE> SharedState for LinkHandle<HANDLER, SCOPE>
 where
-    HANDLER: StateHandler,
+    HANDLER: StateHandler + Clone,
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
     <HANDLER as StateHandler>::Input: Clone,
@@ -303,7 +303,7 @@ where
 
 impl<HANDLER, SCOPE> Default for LinkHandle<HANDLER, SCOPE>
 where
-    HANDLER: StateHandler,
+    HANDLER: StateHandler + Clone,
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
     <HANDLER as StateHandler>::Input: Clone,
@@ -322,7 +322,7 @@ where
 
 impl<HANDLER, SCOPE> Clone for LinkHandle<HANDLER, SCOPE>
 where
-    HANDLER: StateHandler,
+    HANDLER: StateHandler + Clone,
     HandlerLink<HANDLER>: Clone,
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
@@ -342,7 +342,7 @@ where
 
 impl<HANDLER, SCOPE> PartialEq for LinkHandle<HANDLER, SCOPE>
 where
-    HANDLER: StateHandler,
+    HANDLER: StateHandler + Clone,
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
     <HANDLER as StateHandler>::Input: Clone,

@@ -38,7 +38,7 @@ pub(crate) trait AgentLinkWrapper {
 
 impl<H, SCOPE> AgentLinkWrapper for AgentLink<SharedStateService<H, SCOPE>>
 where
-    H: StateHandler,
+    H: StateHandler + Clone,
 {
     type Message = H::Message;
     type Input = H::Input;
@@ -143,7 +143,7 @@ impl<H: StateHandler + Clone> HandlerLink<H> {
 }
 
 /// Determines how state should be created, modified, and shared.
-pub trait StateHandler: Sized + Clone {
+pub trait StateHandler: Sized {
     type Model: Clone;
     type Message;
     type Input;
