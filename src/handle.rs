@@ -17,7 +17,7 @@ pub trait WrapperHandle: StateHandle {
         callback: Callback<Reduction<Model<Self::Handler>>>,
         callback_once: Callback<ReductionOnce<Model<Self::Handler>>>,
     );
-    fn set_link(&mut self, _link: HandlerLink<<Self::Handler as StateHandler>::Message>) {}
+    fn set_link(&mut self, _link: HandlerLink<Self::Handler>) {}
 }
 
 pub trait StateHandle {
@@ -200,10 +200,12 @@ pub type StorageHandle<T> = StateHandleFoo<StorageHandler<T>>;
 
 /// Interface to shared state
 #[derive(Properties)]
-pub struct LinkHandle<HANDLER>
+pub struct LinkHandle<HANDLER, SCOPE>
 where
-    HANDLER: StateHandler + 'static,
+    HANDLER: StateHandler + Clone + 'static,
     <HANDLER as StateHandler>::Message: Clone,
+    <HANDLER as StateHandler>::Output: Clone,
+    <HANDLER as StateHandler>::Input: Clone,
     Model<HANDLER>: Clone + 'static,
 {
     #[prop_or_default]
@@ -213,26 +215,32 @@ where
     #[prop_or_default]
     callback_once: Callback<ReductionOnce<Model<HANDLER>>>,
     #[prop_or_default]
-    link: Option<HandlerLink<<HANDLER as StateHandler>::Message>>,
+    link: Option<HandlerLink<HANDLER>>,
+    #[prop_or_default]
+    _mark: std::marker::PhantomData<SCOPE>,
 }
 
-impl<HANDLER> LinkHandle<HANDLER>
+impl<HANDLER, SCOPE> LinkHandle<HANDLER, SCOPE>
 where
     HANDLER: StateHandler,
     <HANDLER as StateHandler>::Message: Clone,
+    <HANDLER as StateHandler>::Output: Clone,
+    <HANDLER as StateHandler>::Input: Clone,
     Model<HANDLER>: Clone + 'static,
 {
-    pub fn link(&self) -> &HandlerLink<<HANDLER as StateHandler>::Message> {
+    pub fn link(&self) -> &HandlerLink<HANDLER> {
         self.link.as_ref().expect(
             "Link accessed prematurely. Is your component wrapped in a SharedStateComponent?",
         )
     }
 }
 
-impl<HANDLER> StateHandle for LinkHandle<HANDLER>
+impl<HANDLER, SCOPE> StateHandle for LinkHandle<HANDLER, SCOPE>
 where
     HANDLER: StateHandler,
     <HANDLER as StateHandler>::Message: Clone,
+    <HANDLER as StateHandler>::Output: Clone,
+    <HANDLER as StateHandler>::Input: Clone,
     Model<HANDLER>: Clone,
 {
     type Handler = HANDLER;
@@ -252,10 +260,12 @@ where
     }
 }
 
-impl<HANDLER> WrapperHandle for LinkHandle<HANDLER>
+impl<HANDLER, SCOPE> WrapperHandle for LinkHandle<HANDLER, SCOPE>
 where
     HANDLER: StateHandler,
     <HANDLER as StateHandler>::Message: Clone,
+    <HANDLER as StateHandler>::Output: Clone,
+    <HANDLER as StateHandler>::Input: Clone,
     Model<HANDLER>: Clone,
 {
     fn set_state(&mut self, state: Rc<Model<Self::Handler>>) {
@@ -271,15 +281,17 @@ where
         self.callback_once = callback_once;
     }
 
-    fn set_link(&mut self, link: HandlerLink<<HANDLER as StateHandler>::Message>) {
+    fn set_link(&mut self, link: HandlerLink<HANDLER>) {
         self.link = Some(link);
     }
 }
 
-impl<HANDLER> SharedState for LinkHandle<HANDLER>
+impl<HANDLER, SCOPE> SharedState for LinkHandle<HANDLER, SCOPE>
 where
     HANDLER: StateHandler,
     <HANDLER as StateHandler>::Message: Clone,
+    <HANDLER as StateHandler>::Output: Clone,
+    <HANDLER as StateHandler>::Input: Clone,
     Model<HANDLER>: Clone,
 {
     type Handle = Self;
@@ -289,10 +301,12 @@ where
     }
 }
 
-impl<HANDLER> Default for LinkHandle<HANDLER>
+impl<HANDLER, SCOPE> Default for LinkHandle<HANDLER, SCOPE>
 where
     HANDLER: StateHandler,
     <HANDLER as StateHandler>::Message: Clone,
+    <HANDLER as StateHandler>::Output: Clone,
+    <HANDLER as StateHandler>::Input: Clone,
     Model<HANDLER>: Clone,
 {
     fn default() -> Self {
@@ -301,14 +315,18 @@ where
             callback: Default::default(),
             callback_once: Default::default(),
             link: Default::default(),
+            _mark: Default::default(),
         }
     }
 }
 
-impl<HANDLER> Clone for LinkHandle<HANDLER>
+impl<HANDLER, SCOPE> Clone for LinkHandle<HANDLER, SCOPE>
 where
     HANDLER: StateHandler,
+    HandlerLink<HANDLER>: Clone,
     <HANDLER as StateHandler>::Message: Clone,
+    <HANDLER as StateHandler>::Output: Clone,
+    <HANDLER as StateHandler>::Input: Clone,
     Model<HANDLER>: Clone,
 {
     fn clone(&self) -> Self {
@@ -317,14 +335,17 @@ where
             callback: self.callback.clone(),
             callback_once: self.callback_once.clone(),
             link: self.link.clone(),
+            _mark: Default::default(),
         }
     }
 }
 
-impl<HANDLER> PartialEq for LinkHandle<HANDLER>
+impl<HANDLER, SCOPE> PartialEq for LinkHandle<HANDLER, SCOPE>
 where
     HANDLER: StateHandler,
     <HANDLER as StateHandler>::Message: Clone,
+    <HANDLER as StateHandler>::Output: Clone,
+    <HANDLER as StateHandler>::Input: Clone,
     Model<HANDLER>: PartialEq + Clone,
 {
     fn eq(&self, other: &Self) -> bool {

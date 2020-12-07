@@ -19,4 +19,5 @@ future = ["yewtil"]
 serde = { version = "1.0.114", features = ["rc"] }
 yew = "^0.17"
 yewtil = { version = "0.3.2", optional = true }
+either = "1.6.1"
 

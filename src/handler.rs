@@ -4,11 +4,13 @@ use std::any::type_name;
 use std::pin::Pin;
 use std::rc::Rc;
 
+use either::*;
+
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "future")]
 use std::future::Future;
 use yew::{
-    agent::{Agent, AgentLink},
+    agent::{AgentLink, HandlerId},
     format::Json,
     services::{storage::Area, StorageService},
     Callback,
@@ -16,24 +18,42 @@ use yew::{
 #[cfg(feature = "future")]
 use yewtil::future::LinkFuture;
 
+use crate::component::wrapper::SharedStateService;
+
 pub(crate) type Reduction<T> = Rc<dyn Fn(&mut T)>;
 pub(crate) type ReductionOnce<T> = Box<dyn FnOnce(&mut T)>;
 pub type Changed = bool;
 
 pub(crate) trait AgentLinkWrapper {
     type Message;
+    type Input;
+    type Output;
 
     fn send_message(&self, msg: Self::Message);
-
+    fn send_input(&self, input: Self::Input);
+    fn respond(&self, who: HandlerId, output: Self::Output);
     #[cfg(feature = "future")]
     fn send_future(&self, future: Pin<Box<dyn Future<Output = Self::Message>>>);
 }
 
-impl<AGN: Agent> AgentLinkWrapper for AgentLink<AGN> {
-    type Message = AGN::Message;
+impl<H, SCOPE> AgentLinkWrapper for AgentLink<SharedStateService<H, SCOPE>>
+where
+    H: StateHandler,
+{
+    type Message = H::Message;
+    type Input = H::Input;
+    type Output = H::Output;
 
     fn send_message(&self, msg: Self::Message) {
-        AgentLink::<AGN>::send_message(self, msg)
+        AgentLink::<SharedStateService<H, SCOPE>>::send_message(self, msg)
+    }
+
+    fn send_input(&self, input: Self::Input) {
+        AgentLink::<SharedStateService<H, SCOPE>>::send_input(self, Right(input))
+    }
+
+    fn respond(&self, who: HandlerId, output: Self::Output) {
+        AgentLink::<SharedStateService<H, SCOPE>>::respond(self, who, Right(output))
     }
 
     #[cfg(feature = "future")]
@@ -43,28 +63,45 @@ impl<AGN: Agent> AgentLinkWrapper for AgentLink<AGN> {
 }
 
 #[derive(Clone)]
-pub struct HandlerLink<MSG> {
-    link: Rc<dyn AgentLinkWrapper<Message = MSG>>,
+pub struct HandlerLink<H, SCOPE = H>
+where
+    H: StateHandler,
+{
+    link: Rc<dyn AgentLinkWrapper<Message = H::Message, Input = H::Input, Output = H::Output>>,
+    _mark: std::marker::PhantomData<SCOPE>,
 }
 
-impl<MSG> HandlerLink<MSG> {
-    pub(crate) fn new(link: impl AgentLinkWrapper<Message = MSG> + 'static) -> Self {
+type HandlerMsg<H> = <H as StateHandler>::Message;
+type HandlerInput<H> = <H as StateHandler>::Input;
+type HandlerOutput<H> = <H as StateHandler>::Output;
+
+impl<H: StateHandler + Clone> HandlerLink<H> {
+    pub(crate) fn new(
+        link: impl AgentLinkWrapper<
+                Message = HandlerMsg<H>,
+                Input = HandlerInput<H>,
+                Output = HandlerOutput<H>,
+            > + 'static,
+    ) -> Self {
         Self {
             link: Rc::new(link),
+            _mark: Default::default(),
         }
     }
 
     pub fn send_message<T>(&self, msg: T)
     where
-        T: Into<MSG>,
+        T: Into<HandlerMsg<H>>,
     {
         self.link.send_message(msg.into())
     }
 
     pub fn callback<F, IN, M>(&self, function: F) -> Callback<IN>
     where
-        MSG: 'static,
-        M: Into<MSG>,
+        HandlerInput<H>: 'static,
+        HandlerOutput<H>: 'static,
+        HandlerMsg<H>: 'static,
+        M: Into<HandlerMsg<H>>,
         F: Fn(IN) -> M + 'static,
     {
         let link = self.link.clone();
@@ -105,19 +142,15 @@ impl<MSG> HandlerLink<MSG> {
     }
 }
 
-impl<A: Agent> From<AgentLink<A>> for HandlerLink<<A as Agent>::Message> {
-    fn from(link: AgentLink<A>) -> Self {
-        Self::new(link)
-    }
-}
-
 /// Determines how state should be created, modified, and shared.
-pub trait StateHandler {
+pub trait StateHandler: Sized + Clone {
     type Model: Clone;
     type Message;
+    type Input;
+    type Output;
 
     /// Create new state.
-    fn new(_link: HandlerLink<Self::Message>) -> Self;
+    fn new(_link: HandlerLink<Self>) -> Self;
 
     /// Return a reference to current state.
     fn state(&mut self) -> &mut Rc<Self::Model>;
@@ -129,6 +162,9 @@ pub trait StateHandler {
     fn update(&mut self, _msg: Self::Message) -> Changed {
         false
     }
+
+    #[allow(unused_variables)]
+    fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) {}
 }
 
 /// Handler for basic shared state.
@@ -143,8 +179,10 @@ where
 {
     type Model = T;
     type Message = ();
+    type Input = ();
+    type Output = ();
 
-    fn new(_link: HandlerLink<Self::Message>) -> Self {
+    fn new(_link: HandlerLink<Self>) -> Self {
         Default::default()
     }
 
@@ -205,8 +243,10 @@ where
 {
     type Model = T;
     type Message = ();
+    type Input = ();
+    type Output = ();
 
-    fn new(_link: HandlerLink<Self::Message>) -> Self {
+    fn new(_link: HandlerLink<Self>) -> Self {
         Self::new()
     }
 
