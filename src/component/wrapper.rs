@@ -81,13 +81,15 @@ where
             ServiceOutput::Service(ServiceResponse::Link(link)) => SetLink(link),
             ServiceOutput::Handler(_) => Ignore,
         });
-        let bridge = StateService::bridge(callback);
-
+        let mut bridge = StateService::bridge(callback);
+        // Subscribe to state changes.
+        bridge.send(ServiceInput::Service(ServiceRequest::Subscribe));
+        // Connect our component callbacks.
         props
             .handle()
             .set_callbacks(link.callback(Apply), link.callback(ApplyOnce));
 
-        SharedStateComponent {
+        Self {
             props,
             bridge,
             state_set: Default::default(),

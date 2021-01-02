@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "future")]
 use std::future::Future;
 use yew::{
-    agent::{AgentLink, HandlerId},
+    agent::{AgentLink, Bridge, Bridged, HandlerId},
     format::Json,
     services::{storage::Area, StorageService},
     Callback,
@@ -75,10 +75,10 @@ type HandlerOutput<H> = <H as StateHandler>::Output;
 impl<H: StateHandler> HandlerLink<H> {
     pub(crate) fn new(
         link: impl AgentLinkWrapper<
-                Message = HandlerMsg<H>,
-                Input = HandlerInput<H>,
-                Output = HandlerOutput<H>,
-            > + 'static,
+            Message = HandlerMsg<H>,
+            Input = HandlerInput<H>,
+            Output = HandlerOutput<H>,
+        > + 'static,
     ) -> Self {
         Self {
             link: Rc::new(link),
@@ -126,7 +126,7 @@ impl<H: StateHandler> HandlerLink<H> {
     #[cfg(feature = "future")]
     pub fn send_future<F, M>(&self, future: F)
     where
-        M: Into<MSG>,
+        M: Into<HandlerMsg<H>>,
         F: Future<Output = M> + 'static,
     {
         let future = async { future.await.into() };
@@ -136,8 +136,10 @@ impl<H: StateHandler> HandlerLink<H> {
     #[cfg(feature = "future")]
     pub fn callback_future<FN, FU, IN, M>(&self, function: FN) -> yew::Callback<IN>
     where
-        MSG: 'static,
-        M: Into<MSG>,
+        HandlerInput<H>: 'static,
+        HandlerOutput<H>: 'static,
+        HandlerMsg<H>: 'static,
+        M: Into<HandlerMsg<H>>,
         FU: Future<Output = M> + 'static,
         FN: Fn(IN) -> FU + 'static,
     {
@@ -176,6 +178,39 @@ pub trait StateHandler: Sized {
     #[allow(unused_variables)]
     fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) -> Changed {
         false
+    }
+}
+
+/// A direct bridge to given state handler. Unlike a [ServiceBridge](crate::service::ServiceBridge)
+/// bridge, it can only send and receive [StateHandler](StateHandler) messages.
+pub struct HandlerBridge<H, SCOPE = H>
+where
+    H: StateHandler + 'static,
+    SCOPE: 'static,
+{
+    bridge: Box<dyn Bridge<StateService<H, SCOPE>>>,
+}
+
+impl<H, SCOPE> HandlerBridge<H, SCOPE>
+where
+    H: StateHandler + 'static,
+{
+    pub fn new(callback: Callback<H::Output>) -> Self {
+        let callback = move |msg: ServiceOutput<H>| match msg {
+            ServiceOutput::Handler(msg) => callback.emit(msg),
+            // Service should only send messages to those who subscribe. We don't subscribe, so we
+            // shouldn't receive any messages here.
+            ServiceOutput::Service(_) => unreachable!(),
+        };
+
+        Self {
+            bridge: StateService::<_, SCOPE>::bridge(callback.into()),
+        }
+    }
+
+    /// Send a message to the state handler.
+    pub fn send(&mut self, msg: H::Input) {
+        self.bridge.send(ServiceInput::Handler(msg));
     }
 }
 

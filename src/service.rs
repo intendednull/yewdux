@@ -9,6 +9,7 @@ use yew::{
 
 use crate::handler::{HandlerLink, Reduction, ReductionOnce, StateHandler};
 
+/// Message send to [StateService](StateService).
 pub enum ServiceRequest<H>
 where
     H: StateHandler,
@@ -17,17 +18,23 @@ where
     Apply(Reduction<H::Model>),
     /// Apply a state change once.
     ApplyOnce(ReductionOnce<H::Model>),
+    /// Registers the sender to be [notified](ServiceResponse) when state changes.
+    Subscribe,
 }
 
+/// Message sent to [StateService](StateService) subscribers.
 pub enum ServiceResponse<H>
 where
     H: StateHandler,
 {
-    /// Update subscribers with current state.
+    /// Current state, sent every time state changes.
     State(Rc<H::Model>),
+    /// Link to state handler. Sent once on [subscribe](ServiceRequest::Subscribe).
     Link(HandlerLink<H>),
 }
 
+/// Input message for either [StateService](StateService) or
+/// [StateHandler](crate::handler::StateHandler).
 pub enum ServiceInput<H>
 where
     H: StateHandler,
@@ -36,6 +43,8 @@ where
     Handler(H::Input),
 }
 
+/// Output message from either [StateService](StateService) or
+/// [StateHandler](crate::handler::StateHandler).
 pub enum ServiceOutput<H>
 where
     H: StateHandler,
@@ -96,6 +105,21 @@ where
                     reduce(Rc::make_mut(self.handler.state()));
                     self.handler.changed();
                 }
+                ServiceRequest::Subscribe => {
+                    // Add component to subscriptions.
+                    self.subscriptions.insert(who);
+                    // Send current state.
+                    let state = Rc::clone(self.handler.state());
+                    self.link
+                        .respond(who, ServiceOutput::Service(ServiceResponse::State(state)));
+                    // Send handler link.
+                    self.link.respond(
+                        who,
+                        ServiceOutput::Service(ServiceResponse::Link(HandlerLink::new(
+                            self.link.clone(),
+                        ))),
+                    );
+                }
             },
             ServiceInput::Handler(msg) => {
                 let changed = self.handler.handle_input(msg, who);
@@ -107,19 +131,6 @@ where
         }
 
         self.notify_subscribers();
-    }
-
-    fn connected(&mut self, who: HandlerId) {
-        // Add component to subscriptions.
-        self.subscriptions.insert(who);
-        // Send it current state.
-        let state = Rc::clone(self.handler.state());
-        self.link
-            .respond(who, ServiceOutput::Service(ServiceResponse::State(state)));
-        self.link.respond(
-            who,
-            ServiceOutput::Service(ServiceResponse::Link(HandlerLink::new(self.link.clone()))),
-        );
     }
 
     fn disconnected(&mut self, who: HandlerId) {
@@ -140,6 +151,42 @@ where
                 ServiceOutput::Service(ServiceResponse::State(Rc::clone(state))),
             );
         }
+    }
+}
+
+/// A bridge to a [StateService]. This allows message passing with state handlers, as well as their
+/// parent service. Useful when you want to access the [events](ServiceResponse) emitted by
+/// [StateService].
+///
+/// [StateService]: StateService
+pub struct ServiceBridge<H, SCOPE = H>
+where
+    H: StateHandler + 'static,
+    SCOPE: 'static,
+{
+    bridge: Box<dyn Bridge<StateService<H, SCOPE>>>,
+}
+
+impl<H, SCOPE> ServiceBridge<H, SCOPE>
+where
+    H: StateHandler + 'static,
+{
+    /// Create a new bridge, automatically [subscribing](ServiceRequest::Subscribe).
+    pub fn new(callback: Callback<ServiceOutput<H>>) -> Self {
+        let mut bridge = StateService::bridge(callback);
+        bridge.send(ServiceInput::Service(ServiceRequest::Subscribe));
+
+        Self { bridge }
+    }
+
+    /// Send message to service.
+    pub fn send_service(&mut self, msg: ServiceRequest<H>) {
+        self.bridge.send(ServiceInput::Service(msg));
+    }
+
+    /// Send message to handler.
+    pub fn send_handler(&mut self, msg: H::Input) {
+        self.bridge.send(ServiceInput::Handler(msg));
     }
 }
 
