@@ -285,6 +285,17 @@ struct MyScope;
 type MyComponent = SharedStateComponent<MyModel, MyScope>;
 ```
 
+## Custom state handlers
+
+To customize state management for your app, you can define your own `StateHandler`. This behaves
+similarly to an agent, and lets your components create their own bridge for message passing (without
+a component wrapper and handle).
+
+There are two examples demonstrating how state handlers are used. `examples/handler_bridge` shows a
+simple bridge that talks directly to your state handler. `examples/service_bridge` also talks to
+your state handler, as well as its parent StateService. This is useful when you want to receive
+updates to state (basically what the component wrapper does for you).
+
 ### Example
 
 This example demonstrates how two counters with different scopes can be incremented 

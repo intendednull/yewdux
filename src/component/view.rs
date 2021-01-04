@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use yew::{Component, ComponentLink, Html, Properties, ShouldRender};
 
-use crate::handle::Handle;
+use crate::handle::StateHandle;
 use crate::{SharedState, SharedStateComponent};
 
 pub type Render<H> = Rc<dyn Fn(&H) -> Html>;
@@ -12,7 +12,7 @@ pub type Change<H> = Rc<dyn Fn(&H, &H) -> bool>;
 #[derive(Properties, Clone)]
 pub struct Props<H>
 where
-    H: Handle + Clone + Default,
+    H: StateHandle + Clone + Default,
 {
     #[prop_or_default]
     handle: H,
@@ -25,7 +25,7 @@ where
 
 impl<H> SharedState for Props<H>
 where
-    H: Handle + Clone + Default,
+    H: StateHandle + Clone + Default,
 {
     type Handle = H;
 
@@ -38,14 +38,14 @@ pub enum Msg {}
 
 pub struct Model<H>
 where
-    H: Handle + Clone + Default,
+    H: StateHandle + Clone + Default,
 {
     props: Props<H>,
 }
 
 impl<H> Component for Model<H>
 where
-    H: Handle + Default + Clone + 'static,
+    H: StateHandle + Default + Clone + 'static,
 {
     type Message = Msg;
     type Properties = Props<H>;
@@ -104,7 +104,7 @@ fn ptr_eq<T: ?Sized>(a: &Option<Rc<T>>, b: &Option<Rc<T>>) -> bool {
         .unwrap_or_default()
 }
 
-pub type StateView<H, SCOPE = <H as Handle>::Handler> = SharedStateComponent<Model<H>, SCOPE>;
+pub type StateView<H> = SharedStateComponent<Model<H>>;
 
 /// Wraps `f` in `Rc`. Helps with resolving type needed for view property.
 pub fn view<F, H>(f: F) -> Render<H>

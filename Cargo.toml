@@ -1,6 +1,6 @@
 [package]
 name = "yew-state"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Noah <noah@coronasoftware.net>"]
 edition = "2018"
 license = "MIT"
@@ -10,8 +10,13 @@ description = "Ergonomic shared state for Yew (comparable to context hooks in Re
 keywords = ["yew", "state", "session", "storage", "shared"]
 categories = ["wasm", "web-programming", "rust-patterns"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+future = ["yewtil"]
 
 [dependencies]
 serde = { version = "1.0.114", features = ["rc"] }
 yew = "^0.17"
+yewtil = { version = "0.3.2", optional = true }
+

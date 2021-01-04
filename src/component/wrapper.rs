@@ -1,89 +1,36 @@
 //! Wrapper for components with shared state.
-use std::collections::HashSet;
 use std::rc::Rc;
 
 use yew::{
-    agent::{Agent, AgentLink, Bridge, Bridged, Context, HandlerId},
+    agent::{Bridge, Bridged},
     prelude::*,
 };
 
-use crate::handle::{Handle, SharedState};
-use crate::handler::{Handler, Reduction, ReductionOnce};
+use crate::handle::{SharedState, StateHandle, WrapperHandle};
+use crate::handler::{HandlerLink, Reduction, ReductionOnce, StateHandler};
+use crate::service::*;
 
-enum Request<T> {
-    /// Apply a state change.
-    Apply(Reduction<T>),
-    /// Apply a state change once.
-    ApplyOnce(ReductionOnce<T>),
-}
+type PropHandle<SHARED> = <SHARED as SharedState>::Handle;
+type PropHandler<SHARED> = <PropHandle<SHARED> as StateHandle>::Handler;
+type Model<T> = <PropHandler<T> as StateHandler>::Model;
 
-enum Response<T> {
-    /// Update subscribers with current state.
-    State(Rc<T>),
-}
-
-/// Context agent for managing shared state. In charge of applying changes to state then notifying
-/// subscribers of new state.
-struct SharedStateService<T, SCOPE>
+#[doc(hidden)]
+pub enum SharedStateComponentMsg<SHARED>
 where
-    T: Handler + Clone + 'static,
-    SCOPE: 'static,
+    SHARED: SharedState,
+    <SHARED as SharedState>::Handle: WrapperHandle,
+    PropHandler<SHARED>: 'static,
 {
-    handler: T,
-    subscriptions: HashSet<HandlerId>,
-    link: AgentLink<SharedStateService<T, SCOPE>>,
+    /// Recieve new local state.
+    /// IMPORTANT: Changes will **not** be reflected in shared state.
+    SetLocal(Rc<Model<SHARED>>),
+    SetLink(HandlerLink<PropHandler<SHARED>>),
+    /// Update shared state.
+    Apply(Reduction<Model<SHARED>>),
+    ApplyOnce(ReductionOnce<Model<SHARED>>),
+    /// Do nothing.
+    Ignore,
 }
-
-impl<T, SCOPE> Agent for SharedStateService<T, SCOPE>
-where
-    T: Handler + Clone + 'static,
-    SCOPE: 'static,
-{
-    type Message = ();
-    type Reach = Context<Self>;
-    type Input = Request<<T as Handler>::Model>;
-    type Output = Response<<T as Handler>::Model>;
-
-    fn create(link: AgentLink<Self>) -> Self {
-        Self {
-            handler: <T as Handler>::new(),
-            subscriptions: Default::default(),
-            link,
-        }
-    }
-
-    fn update(&mut self, _msg: Self::Message) {}
-
-    fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) {
-        match msg {
-            Request::Apply(reduce) => {
-                self.handler.apply(reduce);
-            }
-            Request::ApplyOnce(reduce) => {
-                self.handler.apply_once(reduce);
-            }
-        }
-
-        // Notify subscribers of change
-        for who in self.subscriptions.iter().cloned() {
-            self.link
-                .respond(who, Response::State(self.handler.state()));
-        }
-    }
-
-    fn connected(&mut self, who: HandlerId) {
-        self.subscriptions.insert(who);
-        self.link
-            .respond(who, Response::State(self.handler.state()));
-    }
-
-    fn disconnected(&mut self, who: HandlerId) {
-        self.subscriptions.remove(&who);
-    }
-}
-
-type StateHandler<T> = <<T as SharedState>::Handle as Handle>::Handler;
-type Model<T> = <StateHandler<T> as Handler>::Model;
 
 /// Component wrapper for managing messages and state handles.
 ///
@@ -102,80 +49,95 @@ type Model<T> = <StateHandler<T> as Handler>::Model;
 /// # Important
 /// By default `StorageHandle` and `GlobalHandle` have different scopes. Though not enforced,
 /// components with different handles should not use the same scope.
-pub struct SharedStateComponent<C, SCOPE = StateHandler<<C as Component>::Properties>>
+pub struct SharedStateComponent<C, SCOPE = PropHandler<<C as Component>::Properties>>
 where
     C: Component,
     C::Properties: SharedState + Clone,
-    StateHandler<C::Properties>: Clone,
+    PropHandler<C::Properties>: Clone,
+    PropHandle<C::Properties>: WrapperHandle,
     SCOPE: 'static,
 {
     props: C::Properties,
-    bridge: Box<dyn Bridge<SharedStateService<StateHandler<C::Properties>, SCOPE>>>,
-}
-
-#[doc(hidden)]
-pub enum SharedStateComponentMsg<T> {
-    /// Recieve new local state.
-    /// IMPORTANT: Changes will **not** be reflected in shared state.
-    SetLocal(Rc<T>),
-    /// Update shared state.
-    Apply(Reduction<T>),
-    ApplyOnce(ReductionOnce<T>),
+    bridge: Box<dyn Bridge<StateService<PropHandler<C::Properties>, SCOPE>>>,
+    link_set: bool,
+    state_set: bool,
 }
 
 impl<C, SCOPE> Component for SharedStateComponent<C, SCOPE>
 where
     C: Component,
+    PropHandler<C::Properties>: Clone,
     C::Properties: SharedState + Clone,
-    Model<C::Properties>: Default,
-    StateHandler<C::Properties>: Clone,
+    <C::Properties as SharedState>::Handle: Clone + WrapperHandle,
 {
-    type Message = SharedStateComponentMsg<Model<C::Properties>>;
+    type Message = SharedStateComponentMsg<C::Properties>;
     type Properties = C::Properties;
 
     fn create(mut props: Self::Properties, link: ComponentLink<Self>) -> Self {
         use SharedStateComponentMsg::*;
         // Bridge to receive new state.
         let callback = link.callback(|msg| match msg {
-            Response::State(state) => SetLocal(state),
+            ServiceOutput::Service(ServiceResponse::State(state)) => SetLocal(state),
+            ServiceOutput::Service(ServiceResponse::Link(link)) => SetLink(link),
+            ServiceOutput::Handler(_) => Ignore,
         });
-        let bridge = SharedStateService::bridge(callback);
-
+        let mut bridge = StateService::bridge(callback);
+        // Subscribe to state changes.
+        bridge.send(ServiceInput::Service(ServiceRequest::Subscribe));
+        // Connect our component callbacks.
         props
             .handle()
-            .set_local_callback(link.callback(Apply), link.callback(ApplyOnce));
+            .set_callbacks(link.callback(Apply), link.callback(ApplyOnce));
 
-        SharedStateComponent { props, bridge }
+        Self {
+            props,
+            bridge,
+            state_set: Default::default(),
+            link_set: Default::default(),
+        }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         use SharedStateComponentMsg::*;
         match msg {
             Apply(reduce) => {
-                self.bridge.send(Request::Apply(reduce));
+                self.bridge
+                    .send(ServiceInput::Service(ServiceRequest::Apply(reduce)));
                 false
             }
             ApplyOnce(reduce) => {
-                self.bridge.send(Request::ApplyOnce(reduce));
+                self.bridge
+                    .send(ServiceInput::Service(ServiceRequest::ApplyOnce(reduce)));
                 false
             }
             SetLocal(state) => {
-                self.props.handle().set_local_state(state);
+                self.props.handle().set_state(state);
+                self.state_set = true;
                 true
             }
+            SetLink(link) => {
+                self.props.handle().set_link(link);
+                self.link_set = true;
+                true
+            }
+            Ignore => false,
         }
     }
 
     fn change(&mut self, mut props: Self::Properties) -> ShouldRender {
-        props.handle().set_local(self.props.handle());
+        *props.handle() = self.props.handle().clone();
         self.props = props;
         true
     }
 
     fn view(&self) -> Html {
-        let props = self.props.clone();
-        html! {
-            <C with props />
+        if self.link_set && self.state_set {
+            let props = self.props.clone();
+            html! {
+                <C with props />
+            }
+        } else {
+            html! {}
         }
     }
 }
