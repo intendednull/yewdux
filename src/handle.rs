@@ -342,10 +342,14 @@ where
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
     <HANDLER as StateHandler>::Input: Clone,
-    Model<HANDLER>: PartialEq + Clone,
+    Model<HANDLER>: Clone,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.state == other.state
+        self.state
+            .as_ref()
+            .zip(other.state.as_ref())
+            .map(|(a, b)| Rc::ptr_eq(a, b))
+            .unwrap_or(false)
             && self.callback == other.callback
             && self.callback_once == other.callback_once
     }
