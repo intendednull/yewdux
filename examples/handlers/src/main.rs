@@ -11,22 +11,23 @@ struct State {
     count: u32,
 }
 
+#[derive(Clone, PartialEq)]
 enum CountMsg {
     Increment,
 }
 
 struct CountHandler {
-    link: HandlerLink<CountMsg>,
     state: Rc<State>,
 }
 
 impl StateHandler for CountHandler {
     type Model = State;
     type Message = CountMsg;
+    type Input = ();
+    type Output = ();
 
-    fn new(link: HandlerLink<Self::Message>) -> Self {
+    fn new(_link: HandlerLink<Self>) -> Self {
         Self {
-            link,
             state: Rc::new(State { count: 0 }),
         }
     }
