@@ -53,7 +53,6 @@ pub struct SharedStateComponent<C, SCOPE = PropHandler<<C as Component>::Propert
 where
     C: Component,
     C::Properties: SharedState + Clone,
-    PropHandler<C::Properties>: Clone,
     PropHandle<C::Properties>: WrapperHandle,
     SCOPE: 'static,
 {
@@ -66,7 +65,6 @@ where
 impl<C, SCOPE> Component for SharedStateComponent<C, SCOPE>
 where
     C: Component,
-    PropHandler<C::Properties>: Clone,
     C::Properties: SharedState + Clone,
     <C::Properties as SharedState>::Handle: Clone + WrapperHandle,
 {

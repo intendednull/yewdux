@@ -60,12 +60,22 @@ where
     }
 }
 
-#[derive(Clone)]
 pub struct HandlerLink<H>
 where
     H: StateHandler,
 {
     link: Rc<dyn AgentLinkWrapper<Message = H::Message, Input = H::Input, Output = H::Output>>,
+}
+
+impl<H> Clone for HandlerLink<H>
+where
+    H: StateHandler,
+{
+    fn clone(&self) -> Self {
+        Self {
+            link: self.link.clone(),
+        }
+    }
 }
 
 type HandlerMsg<H> = <H as StateHandler>::Message;

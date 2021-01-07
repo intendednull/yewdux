@@ -202,7 +202,7 @@ pub type StorageHandle<T> = StateHandleFoo<StorageHandler<T>>;
 #[derive(Properties)]
 pub struct LinkHandle<HANDLER>
 where
-    HANDLER: StateHandler + Clone + 'static,
+    HANDLER: StateHandler,
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
     <HANDLER as StateHandler>::Input: Clone,
@@ -220,7 +220,7 @@ where
 
 impl<HANDLER> LinkHandle<HANDLER>
 where
-    HANDLER: StateHandler + Clone,
+    HANDLER: StateHandler,
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
     <HANDLER as StateHandler>::Input: Clone,
@@ -235,7 +235,7 @@ where
 
 impl<HANDLER> StateHandle for LinkHandle<HANDLER>
 where
-    HANDLER: Clone + StateHandler,
+    HANDLER: StateHandler,
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
     <HANDLER as StateHandler>::Input: Clone,
@@ -260,7 +260,7 @@ where
 
 impl<HANDLER> WrapperHandle for LinkHandle<HANDLER>
 where
-    HANDLER: StateHandler + Clone,
+    HANDLER: StateHandler,
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
     <HANDLER as StateHandler>::Input: Clone,
@@ -286,7 +286,7 @@ where
 
 impl<HANDLER> SharedState for LinkHandle<HANDLER>
 where
-    HANDLER: StateHandler + Clone,
+    HANDLER: StateHandler,
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
     <HANDLER as StateHandler>::Input: Clone,
@@ -301,7 +301,7 @@ where
 
 impl<HANDLER> Default for LinkHandle<HANDLER>
 where
-    HANDLER: StateHandler + Clone,
+    HANDLER: StateHandler,
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
     <HANDLER as StateHandler>::Input: Clone,
@@ -319,7 +319,7 @@ where
 
 impl<HANDLER> Clone for LinkHandle<HANDLER>
 where
-    HANDLER: StateHandler + Clone,
+    HANDLER: StateHandler,
     HandlerLink<HANDLER>: Clone,
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
@@ -338,7 +338,7 @@ where
 
 impl<HANDLER> PartialEq for LinkHandle<HANDLER>
 where
-    HANDLER: StateHandler + Clone,
+    HANDLER: StateHandler,
     <HANDLER as StateHandler>::Message: Clone,
     <HANDLER as StateHandler>::Output: Clone,
     <HANDLER as StateHandler>::Input: Clone,
