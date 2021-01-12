@@ -133,6 +133,23 @@ impl<H: StateHandler> HandlerLink<H> {
         cb.into()
     }
 
+    pub fn callback_once<F, IN, M>(&self, function: F) -> Callback<IN>
+    where
+        HandlerInput<H>: 'static,
+        HandlerOutput<H>: 'static,
+        HandlerMsg<H>: 'static,
+        M: Into<HandlerMsg<H>>,
+        F: FnOnce(IN) -> M + 'static,
+    {
+        let link = self.link.clone();
+        let cb = move |x| {
+            let result = function(x);
+            link.send_message(result.into());
+        };
+
+        Callback::once(cb)
+    }
+
     #[cfg(feature = "future")]
     pub fn send_future<F, M>(&self, future: F)
     where
@@ -161,6 +178,26 @@ impl<H: StateHandler> HandlerLink<H> {
         };
 
         cb.into()
+    }
+
+    #[cfg(feature = "future")]
+    pub fn callback_once_future<FN, FU, IN, M>(&self, function: FN) -> yew::Callback<IN>
+    where
+        HandlerInput<H>: 'static,
+        HandlerOutput<H>: 'static,
+        HandlerMsg<H>: 'static,
+        M: Into<HandlerMsg<H>>,
+        FU: Future<Output = M> + 'static,
+        FN: FnOnce(IN) -> FU + 'static,
+    {
+        let link = self.link.clone();
+        let cb = move |x| {
+            let future = function(x);
+            let future = async { future.await.into() };
+            link.send_future(Box::pin(future));
+        };
+
+        Callback::once(cb)
     }
 }
 
