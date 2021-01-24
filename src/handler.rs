@@ -10,9 +10,9 @@ use std::future::Future;
 use yew::{
     agent::{AgentLink, Bridge, Bridged, HandlerId},
     format::Json,
-    services::{storage::Area, StorageService},
     Callback,
 };
+use yew_services::{storage::Area, StorageService};
 #[cfg(feature = "future")]
 use yewtil::future::LinkFuture;
 
