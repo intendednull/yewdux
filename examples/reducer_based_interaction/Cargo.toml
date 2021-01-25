@@ -1,12 +1,12 @@
 [package]
-name = "handler_bridge"
+name = "reducer_based_interaction"
 version = "0.1.0"
-authors = ["Noah <noah@coronasoftware.net>"]
+authors = ["ATM <naik.atmaram@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-yew = "^0.17"
+yew = { git = "https://github.com/yewstack/yew.git" }
 yew-state = { path = "../.." }
-yewtil = "^0.3"
+yewtil = { git = "https://github.com/yewstack/yew.git" }
