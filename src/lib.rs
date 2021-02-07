@@ -6,5 +6,5 @@ pub mod service;
 pub use yew_services::storage::Area;
 
 pub use component::{SharedStateComponent, StateView};
-pub use handle::{LinkHandle, SharedHandle, SharedState, StateHandle, StorageHandle};
+pub use handle::{Handle, SharedHandle, SharedState, StateHandle, StorageHandle};
 pub use handler::Storable;

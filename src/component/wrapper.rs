@@ -6,12 +6,12 @@ use yew::{
     prelude::*,
 };
 
-use crate::handle::{SharedState, StateHandle, WrapperHandle};
+use crate::handle::{Handle, SharedState, WrapperHandle};
 use crate::handler::{HandlerLink, Reduction, ReductionOnce, StateHandler};
 use crate::service::*;
 
 type PropHandle<SHARED> = <SHARED as SharedState>::Handle;
-type PropHandler<SHARED> = <PropHandle<SHARED> as StateHandle>::Handler;
+type PropHandler<SHARED> = <PropHandle<SHARED> as Handle>::Handler;
 type Model<T> = <PropHandler<T> as StateHandler>::Model;
 
 #[doc(hidden)]

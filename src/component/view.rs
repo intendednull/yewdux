@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use yew::{Component, ComponentLink, Html, Properties, ShouldRender};
 
-use crate::handle::StateHandle;
+use crate::handle::Handle;
 use crate::{SharedState, SharedStateComponent};
 
 pub type Render<H> = Rc<dyn Fn(&H) -> Html>;
@@ -12,7 +12,7 @@ pub type Change<H> = Rc<dyn Fn(&H, &H) -> bool>;
 #[derive(Properties, Clone)]
 pub struct Props<H>
 where
-    H: StateHandle + Clone + Default,
+    H: Handle + Clone + Default,
 {
     #[prop_or_default]
     handle: H,
@@ -25,7 +25,7 @@ where
 
 impl<H> SharedState for Props<H>
 where
-    H: StateHandle + Clone + Default,
+    H: Handle + Clone + Default,
 {
     type Handle = H;
 
@@ -38,14 +38,14 @@ pub enum Msg {}
 
 pub struct Model<H>
 where
-    H: StateHandle + Clone + Default,
+    H: Handle + Clone + Default,
 {
     props: Props<H>,
 }
 
 impl<H> Component for Model<H>
 where
-    H: StateHandle + Default + Clone + 'static,
+    H: Handle + Default + Clone + 'static,
 {
     type Message = Msg;
     type Properties = Props<H>;
