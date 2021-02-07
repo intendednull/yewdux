@@ -2,7 +2,7 @@ use std::rc::Rc;
 use yew::prelude::*;
 use yew_state::{
     handler::{Changed, HandlerLink, StateHandler},
-    LinkHandle, SharedStateComponent, StateHandle,
+    SharedStateComponent, StateHandle,
 };
 use yewtil::NeqAssign;
 
@@ -48,7 +48,7 @@ impl StateHandler for CountHandler {
     }
 }
 
-type Handle = LinkHandle<CountHandler>;
+type Handle = StateHandle<CountHandler>;
 
 struct Model {
     handle: Handle,

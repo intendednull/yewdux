@@ -1,5 +1,5 @@
 use yew::{html, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
-use yew_state::{SharedHandle, SharedState, SharedStateComponent, StateHandle};
+use yew_state::{SharedHandle, SharedState, SharedStateComponent};
 use yewtil::NeqAssign;
 
 use crate::app::AppState;
