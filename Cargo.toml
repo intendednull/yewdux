@@ -1,13 +1,13 @@
 [package]
-name = "yew-state"
+name = "yewdux"
 version = "0.5.0"
 authors = ["Noah <noah@coronasoftware.net>"]
 edition = "2018"
 license = "MIT"
-repository = "https://github.com/intendednull/yew-state"
+repository = "https://github.com/yewdux/yewdux"
 readme = "README.md"
 description = "Ergonomic shared state for Yew (comparable to context hooks in React)"
-keywords = ["yew", "state", "session", "storage", "shared"]
+keywords = ["yew", "state", "redux", "shared", "container"]
 categories = ["wasm", "web-programming", "rust-patterns"]
 
 
