@@ -8,6 +8,6 @@ edition = "2018"
 
 [dependencies]
 serde = { version = "1.0.114", features = ["rc"] }
-yew-state = { path = "../.." }
-yewtil = "0.3.0"
-yew = "0.17.2"
+yewdux = { path = "../.." }
+yew = { git = "https://github.com/yewstack/yew.git" }
+yewtil = {  git = "https://github.com/yewstack/yew.git" }

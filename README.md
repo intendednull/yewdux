@@ -2,6 +2,13 @@ State management in Yew can become complex, especially when many components need
 shared state. This crate simplifies that access (comparable to context hooks in React) so you can
 spend less time writing boilerplate!
 
+# Project Rename: yew-state -> Yewdux
+
+This project is undergoing a name change! I began this project before knowing about Redux, so you
+can imagine my surprise when I learned how similar it is. Building this crate I struggled to find
+good terminology for its API. Move to Redux concepts should make things a lot easier to pick up,
+especially for people coming from React.
+
 # Install
 
 Install this package from your terminal:

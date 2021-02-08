@@ -2,53 +2,56 @@ use std::rc::Rc;
 
 use yew::{Component, ComponentLink, Html, Properties, ShouldRender};
 
-use crate::handle::StateHandle;
-use crate::{SharedState, SharedStateComponent};
+use crate::{
+    component::wrapper::WithDispatcher,
+    dispatcher::{Dispatcher, DispatcherProp},
+    store::Store,
+};
 
-pub type Render<H> = Rc<dyn Fn(&H) -> Html>;
-pub type Rendered<H> = Rc<dyn Fn(&H, bool)>;
-pub type Change<H> = Rc<dyn Fn(&H, &H) -> bool>;
+pub type Render<STORE> = Rc<dyn Fn(&Dispatcher<STORE>) -> Html>;
+pub type Rendered<STORE> = Rc<dyn Fn(&Dispatcher<STORE>, bool)>;
+pub type Change<STORE> = Rc<dyn Fn(&Dispatcher<STORE>, &Dispatcher<STORE>) -> bool>;
 
 #[derive(Properties, Clone)]
-pub struct Props<H>
+pub struct Props<STORE>
 where
-    H: StateHandle + Clone + Default,
+    STORE: Store + Clone + Default,
 {
     #[prop_or_default]
-    handle: H,
-    pub view: Render<H>,
+    dispatcher: Dispatcher<STORE>,
+    pub view: Render<STORE>,
     #[prop_or_default]
-    pub rendered: Option<Rendered<H>>,
+    pub rendered: Option<Rendered<STORE>>,
     #[prop_or_default]
-    pub change: Option<Change<H>>,
+    pub change: Option<Change<STORE>>,
 }
 
-impl<H> SharedState for Props<H>
+impl<STORE> DispatcherProp for Props<STORE>
 where
-    H: StateHandle + Clone + Default,
+    STORE: Store + Clone + Default,
 {
-    type Handle = H;
+    type Store = STORE;
 
-    fn handle(&mut self) -> &mut Self::Handle {
-        &mut self.handle
+    fn dispatcher(&mut self) -> &mut Dispatcher<Self::Store> {
+        &mut self.dispatcher
     }
 }
 
 pub enum Msg {}
 
-pub struct Model<H>
+pub struct Model<STORE>
 where
-    H: StateHandle + Clone + Default,
+    STORE: Store + Clone + Default,
 {
-    props: Props<H>,
+    props: Props<STORE>,
 }
 
-impl<H> Component for Model<H>
+impl<STORE> Component for Model<STORE>
 where
-    H: StateHandle + Default + Clone + 'static,
+    STORE: Store + Default + Clone + 'static,
 {
     type Message = Msg;
-    type Properties = Props<H>;
+    type Properties = Props<STORE>;
 
     fn create(props: Self::Properties, _link: ComponentLink<Self>) -> Self {
         Self { props }
@@ -56,7 +59,7 @@ where
 
     fn rendered(&mut self, first_render: bool) {
         if let Some(ref f) = self.props.rendered {
-            f(&self.props.handle, first_render)
+            f(&self.props.dispatcher, first_render)
         }
     }
 
@@ -65,7 +68,7 @@ where
     }
 
     fn view(&self) -> Html {
-        (self.props.view)(&self.props.handle)
+        (self.props.view)(&self.props.dispatcher)
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
@@ -82,7 +85,7 @@ where
         // Check if state should be updated.
         let should_change = {
             if let Some(ref f) = self.props.change {
-                f(&self.props.handle, &props.handle)
+                f(&self.props.dispatcher, &props.dispatcher)
             } else {
                 // Should change by default.
                 true
@@ -90,7 +93,7 @@ where
         };
         // Update state if desired.
         if should_change {
-            self.props.handle = props.handle;
+            self.props.dispatcher = props.dispatcher;
         }
 
         !is_eq || should_change
@@ -104,28 +107,31 @@ fn ptr_eq<T: ?Sized>(a: &Option<Rc<T>>, b: &Option<Rc<T>>) -> bool {
         .unwrap_or_default()
 }
 
-pub type StateView<H> = SharedStateComponent<Model<H>>;
+pub type StateView<H> = WithDispatcher<Model<H>>;
 
 /// Wraps `f` in `Rc`. Helps with resolving type needed for view property.
-pub fn view<F, H>(f: F) -> Render<H>
+pub fn view<F, STORE>(f: F) -> Render<STORE>
 where
-    F: Fn(&H) -> Html + 'static,
+    STORE: Store,
+    F: Fn(&Dispatcher<STORE>) -> Html + 'static,
 {
     Rc::new(f)
 }
 
 /// Wraps `f` in `Rc`. Helps with resolving type needed for rendered property.
-pub fn rendered<F, H>(f: F) -> Rendered<H>
+pub fn rendered<F, STORE>(f: F) -> Rendered<STORE>
 where
-    F: Fn(&H, bool) + 'static,
+    STORE: Store,
+    F: Fn(&Dispatcher<STORE>, bool) + 'static,
 {
     Rc::new(f)
 }
 
 /// Wraps `f` in `Rc`. Helps with resolving type needed for rendered property.
-pub fn change<F, H>(f: F) -> Change<H>
+pub fn change<F, STORE>(f: F) -> Change<STORE>
 where
-    F: Fn(&H, &H) -> bool + 'static,
+    STORE: Store,
+    F: Fn(&Dispatcher<STORE>, &Dispatcher<STORE>) -> bool + 'static,
 {
     Rc::new(f)
 }

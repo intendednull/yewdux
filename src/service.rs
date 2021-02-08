@@ -7,12 +7,12 @@ use yew::{
     prelude::*,
 };
 
-use crate::handler::{HandlerLink, Reduction, ReductionOnce, StateHandler};
+use crate::store::{Reduction, ReductionOnce, Store, StoreLink};
 
 /// Message send to [StateService](StateService).
 pub enum ServiceRequest<H>
 where
-    H: StateHandler,
+    H: Store,
 {
     /// Apply a state change.
     Apply(Reduction<H::Model>),
@@ -25,61 +25,61 @@ where
 /// Message sent to [StateService](StateService) subscribers.
 pub enum ServiceResponse<H>
 where
-    H: StateHandler,
+    H: Store,
 {
     /// Current state, sent every time state changes.
     State(Rc<H::Model>),
     /// Link to state handler. Sent once on [subscribe](ServiceRequest::Subscribe).
-    Link(HandlerLink<H>),
+    Link(StoreLink<H>),
 }
 
 /// Input message for either [StateService](StateService) or
 /// [StateHandler](crate::handler::StateHandler).
 pub enum ServiceInput<H>
 where
-    H: StateHandler,
+    H: Store,
 {
     Service(ServiceRequest<H>),
-    Handler(H::Input),
+    Store(H::Input),
 }
 
 /// Output message from either [StateService](StateService) or
 /// [StateHandler](crate::handler::StateHandler).
 pub enum ServiceOutput<H>
 where
-    H: StateHandler,
+    H: Store,
 {
     Service(ServiceResponse<H>),
-    Handler(H::Output),
+    Store(H::Output),
 }
 
 /// Context agent for managing shared state. In charge of applying changes to state then notifying
 /// subscribers of new state.
-pub struct StateService<HANDLER, SCOPE = HANDLER>
+pub struct StoreService<STORE, SCOPE = STORE>
 where
-    HANDLER: StateHandler + 'static,
+    STORE: Store + 'static,
     SCOPE: 'static,
 {
-    handler: HANDLER,
+    store: STORE,
     subscriptions: HashSet<HandlerId>,
-    link: AgentLink<StateService<HANDLER, SCOPE>>,
+    link: AgentLink<StoreService<STORE, SCOPE>>,
     #[allow(dead_code)]
     self_dispatcher: Dispatcher<Self>,
 }
 
-impl<HANDLER, SCOPE> Agent for StateService<HANDLER, SCOPE>
+impl<STORE, SCOPE> Agent for StoreService<STORE, SCOPE>
 where
-    HANDLER: StateHandler + 'static,
+    STORE: Store + 'static,
     SCOPE: 'static,
 {
-    type Message = HANDLER::Message;
+    type Message = STORE::Message;
     type Reach = Context<Self>;
-    type Input = ServiceInput<HANDLER>;
-    type Output = ServiceOutput<HANDLER>;
+    type Input = ServiceInput<STORE>;
+    type Output = ServiceOutput<STORE>;
 
     fn create(link: AgentLink<Self>) -> Self {
         Self {
-            handler: <HANDLER as StateHandler>::new(HandlerLink::new(link.clone())),
+            store: <STORE as Store>::new(StoreLink::new(link.clone())),
             subscriptions: Default::default(),
             self_dispatcher: Self::dispatcher(),
             link,
@@ -87,9 +87,9 @@ where
     }
 
     fn update(&mut self, msg: Self::Message) {
-        let changed = self.handler.update(msg);
+        let changed = self.store.update(msg);
         if changed {
-            self.handler.changed();
+            self.store.changed();
             self.notify_subscribers();
         }
     }
@@ -98,33 +98,33 @@ where
         match msg {
             ServiceInput::Service(msg) => match msg {
                 ServiceRequest::Apply(reduce) => {
-                    reduce(Rc::make_mut(self.handler.state()));
-                    self.handler.changed();
+                    reduce(Rc::make_mut(self.store.state()));
+                    self.store.changed();
                 }
                 ServiceRequest::ApplyOnce(reduce) => {
-                    reduce(Rc::make_mut(self.handler.state()));
-                    self.handler.changed();
+                    reduce(Rc::make_mut(self.store.state()));
+                    self.store.changed();
                 }
                 ServiceRequest::Subscribe => {
                     // Add component to subscriptions.
                     self.subscriptions.insert(who);
                     // Send current state.
-                    let state = Rc::clone(self.handler.state());
+                    let state = Rc::clone(self.store.state());
                     self.link
                         .respond(who, ServiceOutput::Service(ServiceResponse::State(state)));
                     // Send handler link.
                     self.link.respond(
                         who,
-                        ServiceOutput::Service(ServiceResponse::Link(HandlerLink::new(
+                        ServiceOutput::Service(ServiceResponse::Link(StoreLink::new(
                             self.link.clone(),
                         ))),
                     );
                 }
             },
-            ServiceInput::Handler(msg) => {
-                let changed = self.handler.handle_input(msg, who);
+            ServiceInput::Store(msg) => {
+                let changed = self.store.handle_input(msg, who);
                 if changed {
-                    self.handler.changed();
+                    self.store.changed();
                     self.notify_subscribers();
                 }
             }
@@ -138,13 +138,13 @@ where
     }
 }
 
-impl<HANDLER, SCOPE> StateService<HANDLER, SCOPE>
+impl<STORE, SCOPE> StoreService<STORE, SCOPE>
 where
-    HANDLER: StateHandler + 'static,
+    STORE: Store + 'static,
     SCOPE: 'static,
 {
     fn notify_subscribers(&mut self) {
-        let state = self.handler.state();
+        let state = self.store.state();
         for who in self.subscriptions.iter().cloned() {
             self.link.respond(
                 who,
@@ -161,19 +161,19 @@ where
 /// [StateService]: StateService
 pub struct ServiceBridge<H, SCOPE = H>
 where
-    H: StateHandler + 'static,
+    H: Store + 'static,
     SCOPE: 'static,
 {
-    bridge: Box<dyn Bridge<StateService<H, SCOPE>>>,
+    bridge: Box<dyn Bridge<StoreService<H, SCOPE>>>,
 }
 
 impl<H, SCOPE> ServiceBridge<H, SCOPE>
 where
-    H: StateHandler + 'static,
+    H: Store + 'static,
 {
     /// Create a new bridge, automatically [subscribing](ServiceRequest::Subscribe).
     pub fn new(callback: Callback<ServiceOutput<H>>) -> Self {
-        let mut bridge = StateService::bridge(callback);
+        let mut bridge = StoreService::bridge(callback);
         bridge.send(ServiceInput::Service(ServiceRequest::Subscribe));
 
         Self { bridge }
@@ -185,14 +185,14 @@ where
     }
 
     /// Send message to handler.
-    pub fn send_handler(&mut self, msg: H::Input) {
-        self.bridge.send(ServiceInput::Handler(msg));
+    pub fn send_store(&mut self, msg: H::Input) {
+        self.bridge.send(ServiceInput::Store(msg));
     }
 }
 
 impl<H> From<ServiceRequest<H>> for ServiceInput<H>
 where
-    H: StateHandler,
+    H: Store,
 {
     fn from(msg: ServiceRequest<H>) -> Self {
         ServiceInput::Service(msg)
@@ -201,7 +201,7 @@ where
 
 impl<H> From<ServiceResponse<H>> for ServiceOutput<H>
 where
-    H: StateHandler,
+    H: Store,
 {
     fn from(msg: ServiceResponse<H>) -> Self {
         ServiceOutput::Service(msg)
