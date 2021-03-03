@@ -2,6 +2,10 @@ use yew::{html, Component, ComponentLink, Html, ShouldRender};
 
 use crate::{display::Display, input::Input};
 
+use yewdux::{BasicStore, Dispatch};
+
+pub type AppDispatch = Dispatch<BasicStore<AppState>>;
+
 #[derive(Clone, PartialEq, Default)]
 pub struct AppState {
     pub name: String,

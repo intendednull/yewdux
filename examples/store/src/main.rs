@@ -1,8 +1,9 @@
 use std::rc::Rc;
+use yew::agent::HandlerId;
 use yew::prelude::*;
-use yew_state::{
-    handler::{Changed, HandlerLink, StateHandler},
-    SharedStateComponent, StateHandle,
+use yewdux::{
+    store::{ShouldNotify, Store, StoreLink},
+    Dispatch, WithDispatch,
 };
 use yewtil::NeqAssign;
 
@@ -16,17 +17,17 @@ enum CountMsg {
     Increment,
 }
 
-struct CountHandler {
+struct CounterStore {
     state: Rc<State>,
 }
 
-impl StateHandler for CountHandler {
+impl Store for CounterStore {
     type Model = State;
-    type Message = CountMsg;
-    type Input = ();
+    type Message = ();
+    type Input = CountMsg;
     type Output = ();
 
-    fn new(_link: HandlerLink<Self>) -> Self {
+    fn new(_link: StoreLink<Self>) -> Self {
         Self {
             state: Rc::new(State { count: 0 }),
         }
@@ -36,7 +37,7 @@ impl StateHandler for CountHandler {
         &mut self.state
     }
 
-    fn update(&mut self, msg: Self::Message) -> Changed {
+    fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) -> ShouldNotify {
         match msg {
             CountMsg::Increment => {
                 let state = Rc::make_mut(&mut self.state);
@@ -48,19 +49,17 @@ impl StateHandler for CountHandler {
     }
 }
 
-type Handle = StateHandle<CountHandler>;
-
 struct Model {
-    handle: Handle,
+    dispatch: Dispatch<CounterStore>,
 }
 
 impl Component for Model {
     type Message = ();
-    type Properties = Handle;
+    type Properties = Dispatch<CounterStore>;
 
-    fn create(handle: Self::Properties, _link: ComponentLink<Self>) -> Self {
-        handle.link().send_message(CountMsg::Increment);
-        Self { handle }
+    fn create(dispatch: Self::Properties, _link: ComponentLink<Self>) -> Self {
+        dispatch.send(CountMsg::Increment);
+        Self { dispatch }
     }
 
     fn update(&mut self, _msg: Self::Message) -> ShouldRender {
@@ -68,15 +67,15 @@ impl Component for Model {
     }
 
     fn change(&mut self, handle: Self::Properties) -> ShouldRender {
-        self.handle.neq_assign(handle)
+        self.dispatch.neq_assign(handle)
     }
 
     fn view(&self) -> Html {
-        html! { self.handle.state().count }
+        html! { self.dispatch.state().count }
     }
 }
 
-type App = SharedStateComponent<Model>;
+type App = WithDispatch<Model>;
 
 fn main() {
     yew::start_app::<App>();

@@ -18,8 +18,6 @@ where
     Apply(Reduction<H::Model>),
     /// Apply a state change once.
     ApplyOnce(ReductionOnce<H::Model>),
-    /// Registers the sender to be [notified](ServiceResponse) when state changes.
-    Subscribe,
 }
 
 /// Message sent to [StateService](StateService) subscribers.
@@ -29,8 +27,6 @@ where
 {
     /// Current state, sent every time state changes.
     State(Rc<H::Model>),
-    /// Link to state handler. Sent once on [subscribe](ServiceRequest::Subscribe).
-    Link(StoreLink<H>),
 }
 
 /// Input message for either [StateService](StateService) or
@@ -105,21 +101,6 @@ where
                     reduce(Rc::make_mut(self.store.state()));
                     self.store.changed();
                 }
-                ServiceRequest::Subscribe => {
-                    // Add component to subscriptions.
-                    self.subscriptions.insert(who);
-                    // Send current state.
-                    let state = Rc::clone(self.store.state());
-                    self.link
-                        .respond(who, ServiceOutput::Service(ServiceResponse::State(state)));
-                    // Send handler link.
-                    self.link.respond(
-                        who,
-                        ServiceOutput::Service(ServiceResponse::Link(StoreLink::new(
-                            self.link.clone(),
-                        ))),
-                    );
-                }
             },
             ServiceInput::Store(msg) => {
                 let changed = self.store.handle_input(msg, who);
@@ -131,6 +112,15 @@ where
         }
 
         self.notify_subscribers();
+    }
+
+    fn connected(&mut self, who: HandlerId) {
+        // Add component to subscriptions.
+        self.subscriptions.insert(who);
+        // Send current state.
+        let state = self.store.state().clone();
+        self.link
+            .respond(who, ServiceOutput::Service(ServiceResponse::State(state)));
     }
 
     fn disconnected(&mut self, who: HandlerId) {
@@ -148,7 +138,7 @@ where
         for who in self.subscriptions.iter().cloned() {
             self.link.respond(
                 who,
-                ServiceOutput::Service(ServiceResponse::State(Rc::clone(state))),
+                ServiceOutput::Service(ServiceResponse::State(state.clone())),
             );
         }
     }
@@ -173,10 +163,9 @@ where
 {
     /// Create a new bridge, automatically [subscribing](ServiceRequest::Subscribe).
     pub fn new(callback: Callback<ServiceOutput<H>>) -> Self {
-        let mut bridge = StoreService::bridge(callback);
-        bridge.send(ServiceInput::Service(ServiceRequest::Subscribe));
-
-        Self { bridge }
+        Self {
+            bridge: StoreService::bridge(callback),
+        }
     }
 
     /// Send message to service.

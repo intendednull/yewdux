@@ -1,20 +1,20 @@
 use yew::{html, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
-use yew_state::{SharedHandle, SharedState, SharedStateComponent};
+use yewdux::{BasicStore, Dispatch, DispatchProp, WithDispatch};
 use yewtil::NeqAssign;
 
-use crate::app::AppState;
+use crate::app::{AppDispatch, AppState};
 
 #[derive(Clone, Properties, PartialEq)]
 pub struct Props {
     #[prop_or_default]
-    pub handle: SharedHandle<AppState>,
+    pub dispatch: AppDispatch,
 }
 
-impl SharedState for Props {
-    type Handle = SharedHandle<AppState>;
+impl DispatchProp for Props {
+    type Store = BasicStore<AppState>;
 
-    fn handle(&mut self) -> &mut Self::Handle {
-        &mut self.handle
+    fn dispatch(&mut self) -> &mut Dispatch<Self::Store> {
+        &mut self.dispatch
     }
 }
 
@@ -38,7 +38,7 @@ impl Component for Model {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::SetName(name) => {
-                self.props.handle.reduce(|state| state.name = name);
+                self.props.dispatch.reduce(|state| state.name = name);
                 false
             }
         }
@@ -49,7 +49,7 @@ impl Component for Model {
     }
 
     fn view(&self) -> Html {
-        let input_value = &self.props.handle.state().name;
+        let input_value = &self.props.dispatch.state().name;
         html! {
             <>
                 <input
@@ -63,11 +63,11 @@ impl Component for Model {
                     type="button"
                     value="Clear"
                     // Using provided callback
-                    onclick = self.props.handle.reduce_callback(|state|  state.name.clear())
+                    onclick = self.props.dispatch.reduce_callback(|state|  state.name.clear())
                     />
             </>
         }
     }
 }
 
-pub type Input = SharedStateComponent<Model>;
+pub type Input = WithDispatch<Model>;

@@ -4,13 +4,13 @@ use super::{Store, StoreLink};
 
 /// Handler for basic shared state.
 #[derive(Default, Clone)]
-pub struct DefaultStore<T> {
+pub struct BasicStore<T> {
     state: Rc<T>,
 }
 
-impl<T> Store for DefaultStore<T>
+impl<T> Store for BasicStore<T>
 where
-    T: Clone + Default,
+    T: Clone + Default + 'static,
 {
     type Model = T;
     type Message = ();

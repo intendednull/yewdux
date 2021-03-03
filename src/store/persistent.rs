@@ -8,7 +8,7 @@ use yew_services::{storage::Area, StorageService};
 use super::{Store, StoreLink};
 
 /// Allows state to be stored persistently in local or session storage.
-pub trait StorageModel: Serialize + for<'a> Deserialize<'a> {
+pub trait Persistent: Serialize + for<'a> Deserialize<'a> {
     /// The key used to save and load state from storage.
     fn key() -> &'static str {
         type_name::<Self>()
@@ -23,14 +23,14 @@ pub trait StorageModel: Serialize + for<'a> Deserialize<'a> {
 ///
 /// If persistent storage is disabled it just behaves like a `SharedHandler`.
 #[derive(Default)]
-pub struct Storage<T> {
+pub struct PersistentStore<T> {
     state: Rc<T>,
     storage: Option<StorageService>,
 }
 
-impl<T> Storage<T>
+impl<T> PersistentStore<T>
 where
-    T: StorageModel + Default,
+    T: Persistent + Default,
 {
     pub fn new() -> Self {
         let mut this: Self = Default::default();
@@ -53,9 +53,9 @@ where
     }
 }
 
-impl<T> Store for Storage<T>
+impl<T> Store for PersistentStore<T>
 where
-    T: Default + Clone + StorageModel,
+    T: Default + Clone + Persistent + 'static,
 {
     type Model = T;
     type Message = ();
@@ -75,9 +75,9 @@ where
     }
 }
 
-impl<T> Clone for Storage<T>
+impl<T> Clone for PersistentStore<T>
 where
-    T: Default + Clone + StorageModel,
+    T: Default + Clone + Persistent,
 {
     fn clone(&self) -> Self {
         let mut new = Self::new();
@@ -86,7 +86,7 @@ where
     }
 }
 
-impl<T: StorageModel> StorageModel for Option<T> {
+impl<T: Persistent> Persistent for Option<T> {
     fn key() -> &'static str {
         T::key()
     }
@@ -96,7 +96,7 @@ impl<T: StorageModel> StorageModel for Option<T> {
     }
 }
 
-impl<T: StorageModel> StorageModel for Rc<T> {
+impl<T: Persistent> Persistent for Rc<T> {
     fn key() -> &'static str {
         T::key()
     }

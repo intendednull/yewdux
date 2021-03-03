@@ -3,14 +3,14 @@ use std::rc::Rc;
 use yew::{Component, ComponentLink, Html, Properties, ShouldRender};
 
 use crate::{
-    component::wrapper::WithDispatcher,
-    dispatcher::{Dispatcher, DispatcherProp},
+    component::wrapper::WithDispatch,
+    dispatch::{Dispatch, DispatchProp},
     store::Store,
 };
 
-pub type Render<STORE> = Rc<dyn Fn(&Dispatcher<STORE>) -> Html>;
-pub type Rendered<STORE> = Rc<dyn Fn(&Dispatcher<STORE>, bool)>;
-pub type Change<STORE> = Rc<dyn Fn(&Dispatcher<STORE>, &Dispatcher<STORE>) -> bool>;
+pub type Render<STORE> = Rc<dyn Fn(&Dispatch<STORE>) -> Html>;
+pub type Rendered<STORE> = Rc<dyn Fn(&Dispatch<STORE>, bool)>;
+pub type Change<STORE> = Rc<dyn Fn(&Dispatch<STORE>, &Dispatch<STORE>) -> bool>;
 
 #[derive(Properties, Clone)]
 pub struct Props<STORE>
@@ -18,7 +18,7 @@ where
     STORE: Store + Clone + Default,
 {
     #[prop_or_default]
-    dispatcher: Dispatcher<STORE>,
+    dispatch: Dispatch<STORE>,
     pub view: Render<STORE>,
     #[prop_or_default]
     pub rendered: Option<Rendered<STORE>>,
@@ -26,14 +26,14 @@ where
     pub change: Option<Change<STORE>>,
 }
 
-impl<STORE> DispatcherProp for Props<STORE>
+impl<STORE> DispatchProp for Props<STORE>
 where
     STORE: Store + Clone + Default,
 {
     type Store = STORE;
 
-    fn dispatcher(&mut self) -> &mut Dispatcher<Self::Store> {
-        &mut self.dispatcher
+    fn dispatch(&mut self) -> &mut Dispatch<Self::Store> {
+        &mut self.dispatch
     }
 }
 
@@ -59,7 +59,7 @@ where
 
     fn rendered(&mut self, first_render: bool) {
         if let Some(ref f) = self.props.rendered {
-            f(&self.props.dispatcher, first_render)
+            f(&self.props.dispatch, first_render)
         }
     }
 
@@ -68,7 +68,7 @@ where
     }
 
     fn view(&self) -> Html {
-        (self.props.view)(&self.props.dispatcher)
+        (self.props.view)(&self.props.dispatch)
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
@@ -85,7 +85,7 @@ where
         // Check if state should be updated.
         let should_change = {
             if let Some(ref f) = self.props.change {
-                f(&self.props.dispatcher, &props.dispatcher)
+                f(&self.props.dispatch, &props.dispatch)
             } else {
                 // Should change by default.
                 true
@@ -93,7 +93,7 @@ where
         };
         // Update state if desired.
         if should_change {
-            self.props.dispatcher = props.dispatcher;
+            self.props.dispatch = props.dispatch;
         }
 
         !is_eq || should_change
@@ -107,13 +107,13 @@ fn ptr_eq<T: ?Sized>(a: &Option<Rc<T>>, b: &Option<Rc<T>>) -> bool {
         .unwrap_or_default()
 }
 
-pub type StateView<H> = WithDispatcher<Model<H>>;
+pub type StateView<H> = WithDispatch<Model<H>>;
 
 /// Wraps `f` in `Rc`. Helps with resolving type needed for view property.
 pub fn view<F, STORE>(f: F) -> Render<STORE>
 where
     STORE: Store,
-    F: Fn(&Dispatcher<STORE>) -> Html + 'static,
+    F: Fn(&Dispatch<STORE>) -> Html + 'static,
 {
     Rc::new(f)
 }
@@ -122,7 +122,7 @@ where
 pub fn rendered<F, STORE>(f: F) -> Rendered<STORE>
 where
     STORE: Store,
-    F: Fn(&Dispatcher<STORE>, bool) + 'static,
+    F: Fn(&Dispatch<STORE>, bool) + 'static,
 {
     Rc::new(f)
 }
@@ -131,7 +131,7 @@ where
 pub fn change<F, STORE>(f: F) -> Change<STORE>
 where
     STORE: Store,
-    F: Fn(&Dispatcher<STORE>, &Dispatcher<STORE>) -> bool + 'static,
+    F: Fn(&Dispatch<STORE>, &Dispatch<STORE>) -> bool + 'static,
 {
     Rc::new(f)
 }
