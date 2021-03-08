@@ -147,12 +147,11 @@ impl<STORE: Store, SCOPE: 'static> Dispatch<STORE, SCOPE> {
         let bridge = self.bridge();
         let f = Rc::new(f);
         Callback::from(move |e: E| {
-            let e = e.clone();
             let f = f.clone();
             bridge
                 .borrow_mut()
-                .send_service(ServiceRequest::Apply(Rc::new(move |state| {
-                    f.clone()(state, e.clone())
+                .send_service(ServiceRequest::ApplyOnce(Box::new(move |state| {
+                    f(state, e)
                 })))
         })
     }
