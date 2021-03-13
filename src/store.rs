@@ -16,7 +16,7 @@ pub(crate) type ReductionOnce<T> = Box<dyn FnOnce(&mut T)>;
 
 /// Determines how state should be created, modified, and shared.
 pub trait Store: Sized + 'static {
-    type Model: Clone;
+    type Model;
     type Message;
     type Input;
     type Output;
@@ -24,8 +24,11 @@ pub trait Store: Sized + 'static {
     /// Create new state.
     fn new(_link: StoreLink<Self>) -> Self;
 
-    /// Return a reference to current state.
-    fn state(&mut self) -> &mut Rc<Self::Model>;
+    /// Mutable reference to current state.
+    fn state_mut(&mut self) -> &mut Self::Model;
+
+    /// Reference to current state.
+    fn state(&self) -> Rc<Self::Model>;
 
     /// Called after state is changed.
     fn changed(&mut self) {}
