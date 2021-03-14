@@ -33,12 +33,8 @@ where
         }
     }
 
-    fn state_mut(&mut self) -> &mut Self::Model {
-        Rc::make_mut(&mut self.state)
-    }
-
-    fn state(&self) -> Rc<Self::Model> {
-        Rc::clone(&self.state)
+    fn state(&mut self) -> &mut Rc<Self::Model> {
+        &mut self.state
     }
 
     fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) -> ShouldNotify {

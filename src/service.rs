@@ -53,7 +53,7 @@ where
 /// subscribers of new state.
 pub struct StoreService<STORE, SCOPE = STORE>
 where
-    STORE: Store,
+    STORE: Store + 'static,
     SCOPE: 'static,
 {
     store: STORE,
@@ -94,11 +94,11 @@ where
         match msg {
             ServiceInput::Service(msg) => match msg {
                 ServiceRequest::Apply(reduce) => {
-                    reduce(self.store.state_mut());
+                    reduce(Rc::make_mut(self.store.state()));
                     self.store.changed();
                 }
                 ServiceRequest::ApplyOnce(reduce) => {
-                    reduce(self.store.state_mut());
+                    reduce(Rc::make_mut(self.store.state()));
                     self.store.changed();
                 }
             },
@@ -133,7 +133,7 @@ where
     STORE: Store + 'static,
     SCOPE: 'static,
 {
-    fn notify_subscribers(&self) {
+    fn notify_subscribers(&mut self) {
         let state = self.store.state();
         for who in self.subscriptions.iter().cloned() {
             self.link.respond(
