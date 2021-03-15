@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use serde::{Deserialize, Serialize};
 use yew::format::Json;
-use yew_services::{storage::Area, StorageService};
+use yew::services::{storage::Area, StorageService};
 
 use super::{Store, StoreLink};
 

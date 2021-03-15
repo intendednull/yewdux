@@ -215,14 +215,14 @@ impl<STORE: Store, SCOPE: 'static> PartialEq for Dispatch<STORE, SCOPE> {
 /// # Panics
 /// Accessing methods from a component that isn't wrapped in `WithDispatch` will panic.
 #[derive(Properties)]
-pub struct DispatchProps<STORE: Store, SCOPE: 'static = STORE> {
+pub struct DispatchProps<STORE: Store> {
     #[prop_or_default]
     pub state: Option<Rc<Model<STORE>>>,
     #[prop_or_default]
-    pub(crate) bridge: Option<Rc<RefCell<ServiceBridge<STORE, SCOPE>>>>,
+    pub(crate) bridge: Option<Rc<RefCell<ServiceBridge<STORE>>>>,
 }
 
-impl<STORE: Store, SCOPE: 'static> DispatchProps<STORE, SCOPE> {
+impl<STORE: Store> DispatchProps<STORE> {
     pub(crate) fn new(on_state: Callback<Rc<STORE::Model>>) -> Self {
         let cb = Callback::from(move |msg| match msg {
             ServiceOutput::Store(_) => {}
@@ -261,7 +261,7 @@ impl<STORE: Store> DispatchPropsMut for DispatchProps<STORE> {
     }
 }
 
-impl<STORE: Store, SCOPE: 'static> Default for DispatchProps<STORE, SCOPE> {
+impl<STORE: Store> Default for DispatchProps<STORE> {
     fn default() -> Self {
         Self {
             state: Default::default(),
@@ -270,7 +270,7 @@ impl<STORE: Store, SCOPE: 'static> Default for DispatchProps<STORE, SCOPE> {
     }
 }
 
-impl<STORE: Store, SCOPE: 'static> Clone for DispatchProps<STORE, SCOPE> {
+impl<STORE: Store> Clone for DispatchProps<STORE> {
     fn clone(&self) -> Self {
         Self {
             state: self.state.clone(),
@@ -279,7 +279,7 @@ impl<STORE: Store, SCOPE: 'static> Clone for DispatchProps<STORE, SCOPE> {
     }
 }
 
-impl<STORE: Store, SCOPE: 'static> PartialEq for DispatchProps<STORE, SCOPE> {
+impl<STORE: Store> PartialEq for DispatchProps<STORE> {
     fn eq(&self, other: &Self) -> bool {
         self.bridge
             .as_ref()
