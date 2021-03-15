@@ -18,7 +18,7 @@ impl Reducer for Counter {
         Self { count: 0 }
     }
 
-    fn reduce(&mut self, action: Self::Action) -> ShouldNotify {
+    fn reduce(&mut self, action: Self::Action) -> Changed {
         match action {
             Action::Increment => {
                 self.count += 1;

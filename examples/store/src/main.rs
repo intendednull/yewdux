@@ -40,7 +40,7 @@ impl Store for CounterStore {
         &mut self.state
     }
 
-    fn handle_input(&mut self, msg: Self::Input, who: HandlerId) -> ShouldNotify {
+    fn handle_input(&mut self, msg: Self::Input, who: HandlerId) -> Changed {
         let state = Rc::make_mut(&mut self.state);
         match msg {
             CounterInput::Increment => {

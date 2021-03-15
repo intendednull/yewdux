@@ -2,12 +2,12 @@ use std::rc::Rc;
 
 use yew::agent::HandlerId;
 
-use super::{ShouldNotify, Store, StoreLink};
+use super::{Changed, Store, StoreLink};
 
 pub trait Reducer {
     type Action;
 
-    fn reduce(&mut self, action: Self::Action) -> ShouldNotify;
+    fn reduce(&mut self, action: Self::Action) -> Changed;
     fn new() -> Self;
 }
 
@@ -37,7 +37,7 @@ where
         &mut self.state
     }
 
-    fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) -> ShouldNotify {
+    fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) -> Changed {
         let state = Rc::make_mut(&mut self.state);
         state.reduce(msg)
     }

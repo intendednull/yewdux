@@ -1,4 +1,4 @@
-//! State handlers determine how state should be created, modified, and shared.
+//! Shared state container
 pub mod basic;
 mod link;
 pub mod persistent;
@@ -10,33 +10,33 @@ pub use yew::agent::HandlerId;
 
 pub use link::StoreLink;
 
-pub type ShouldNotify = bool;
+pub type Changed = bool;
 pub(crate) type Reduction<T> = Rc<dyn Fn(&mut T)>;
 pub(crate) type ReductionOnce<T> = Box<dyn FnOnce(&mut T)>;
 
-/// Determines how state should be created, modified, and shared.
+/// A container for shared state.
 pub trait Store: Sized + 'static {
     type Model: Clone;
     type Message;
     type Input;
     type Output;
 
-    /// Create new state.
+    /// Initialize this store.
     fn new(_link: StoreLink<Self>) -> Self;
 
-    /// Return a reference to current state.
+    /// Return a mutable reference to current state.
     fn state(&mut self) -> &mut Rc<Self::Model>;
 
     /// Called after state is changed.
     fn changed(&mut self) {}
 
     /// Receive messages from components.
-    fn update(&mut self, _msg: Self::Message) -> ShouldNotify {
+    fn update(&mut self, _msg: Self::Message) -> Changed {
         false
     }
 
     #[allow(unused_variables)]
-    fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) -> ShouldNotify {
+    fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) -> Changed {
         false
     }
 }

@@ -34,7 +34,7 @@ impl Store for CounterStore {
         &mut self.state
     }
 
-    fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) -> ShouldNotify {
+    fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) -> Changed {
         // IMPORTANT: This changes the outer Rc pointer, so subscribers can determine if state was
         // modified. Otherwise DispatchProps won't work.
         let state = Rc::make_mut(&mut self.state);

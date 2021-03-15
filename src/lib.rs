@@ -13,6 +13,6 @@ pub mod prelude {
         basic::BasicStore,
         persistent::{Persistent, PersistentStore},
         reducer::{Reducer, ReducerStore},
-        ShouldNotify, Store, StoreLink,
+        Changed, Store, StoreLink,
     };
 }
