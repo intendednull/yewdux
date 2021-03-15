@@ -169,14 +169,14 @@ pub fn main() {
 ```rust
 #[derive(Properties, Clone)]
 struct Props {
-    dispatch: Dispatch<BasicStore<Counter>>,
+    dispatch: DispatchProps<BasicStore<Counter>>,
     ...
 }
 
 impl DispatchPropsMut for Props {
     type Store = BasicStore<State>;
 
-    fn dispatch(&mut self) -> &mut Dispatch<Self::Store> {
+    fn dispatch(&mut self) -> &mut DispatchProps<Self::Store> {
         &mut self.dispatch
     }
 }
