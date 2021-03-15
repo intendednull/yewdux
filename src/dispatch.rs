@@ -1,3 +1,4 @@
+//! Primary interface to a [Store](crate::store::Store)
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -208,8 +209,11 @@ impl<STORE: Store, SCOPE: 'static> PartialEq for Dispatch<STORE, SCOPE> {
     }
 }
 
-/// Dispatch for component properties. Use with [WithDispatch](crate::WithDispatch) to
+/// Dispatch for component properties. Use with [WithDispatch](crate::prelude::WithDispatch) to
 /// automatically manage message passing.
+///
+/// # Panics
+/// Accessing methods from a component that isn't wrapped in `WithDispatch` will panic.
 #[derive(Properties)]
 pub struct DispatchProps<STORE: Store, SCOPE: 'static = STORE> {
     #[prop_or_default]
@@ -291,7 +295,7 @@ impl<STORE: Store, SCOPE: 'static> PartialEq for DispatchProps<STORE, SCOPE> {
     }
 }
 
-/// Allows any properties to work with (WithDispatch)[crate::WithDispatch].
+/// Allows any properties to work with [WithDispatch](crate::prelude::WithDispatch).
 pub trait DispatchPropsMut {
     type Store: Store;
 

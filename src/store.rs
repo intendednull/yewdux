@@ -27,14 +27,15 @@ pub trait Store: Sized + 'static {
     /// Return a mutable reference to current state.
     fn state(&mut self) -> &mut Rc<Self::Model>;
 
-    /// Called after state is changed.
+    /// Called after state has changed.
     fn changed(&mut self) {}
 
-    /// Receive messages from components.
+    /// Handle store message, returning whether state has changed.
     fn update(&mut self, _msg: Self::Message) -> Changed {
         false
     }
 
+    /// Handle store input message, returning whether state has changed.
     #[allow(unused_variables)]
     fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) -> Changed {
         false

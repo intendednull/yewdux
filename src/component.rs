@@ -1,3 +1,4 @@
+//! Helpful wrapper components
 pub mod view;
 pub mod wrapper;
 

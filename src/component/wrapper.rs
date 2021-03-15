@@ -18,23 +18,13 @@ where
     State(Rc<Model<PROPS>>),
 }
 
-/// Component wrapper for managing messages and state handles.
+/// Component wrapper for managing message passing.
 ///
-/// Wraps any component with properties that implement `SharedState`:
+/// Wraps any component with properties that implement
+/// [DispatchProps](crate::dispatch::DispatchPropsMut):
 /// ```
-/// pub type MyComponent = SharedStateComponent<MyComponentModel>;
+/// pub type App = WithDispatch<MyComponent>;
 /// ```
-///
-/// A scope may be provided to specify where the state is shared:
-/// ```
-/// // This will only share state with other components using `FooScope`.
-/// pub struct FooScope;
-/// pub type MyComponent = SharedStateComponent<MyComponentModel, FooScope>;
-/// ```
-///
-/// # Important
-/// By default `StorageHandle` and `GlobalHandle` have different scopes. Though not enforced,
-/// components with different handles should not use the same scope.
 pub struct WithDispatch<C>
 where
     C: Component,
