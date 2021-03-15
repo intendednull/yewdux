@@ -5,7 +5,7 @@ use yew::{Callback, Properties};
 
 use crate::{
     service::{ServiceBridge, ServiceOutput, ServiceRequest, ServiceResponse},
-    store::{Store, StoreLink},
+    store::Store,
 };
 
 type Model<T> = <T as Store>::Model;
@@ -233,7 +233,9 @@ impl<STORE: Store, SCOPE: 'static> DispatchProps<STORE, SCOPE> {
     }
 
     pub fn state(&self) -> &Model<STORE> {
-        self.state.as_ref().expect("State accessed prematurely.")
+        self.state
+            .as_ref()
+            .expect("State accessed prematurely. Missing WithDispatch?")
     }
 }
 
@@ -241,7 +243,9 @@ impl<STORE: Store> Dispatcher for DispatchProps<STORE> {
     type Store = STORE;
 
     fn bridge(&self) -> &Rc<RefCell<ServiceBridge<Self::Store>>> {
-        self.bridge.as_ref().expect("Bridge accessed prematurely.")
+        self.bridge
+            .as_ref()
+            .expect("Bridge accessed prematurely. Missing WithDispatch?")
     }
 }
 
@@ -262,11 +266,7 @@ impl<STORE: Store, SCOPE: 'static> Default for DispatchProps<STORE, SCOPE> {
     }
 }
 
-impl<STORE: Store, SCOPE: 'static> Clone for DispatchProps<STORE, SCOPE>
-where
-    STORE: Store,
-    StoreLink<STORE>: Clone,
-{
+impl<STORE: Store, SCOPE: 'static> Clone for DispatchProps<STORE, SCOPE> {
     fn clone(&self) -> Self {
         Self {
             state: self.state.clone(),
@@ -275,18 +275,19 @@ where
     }
 }
 
-impl<STORE: Store, SCOPE: 'static> PartialEq for DispatchProps<STORE, SCOPE>
-where
-    STORE: Store,
-    STORE::Model: PartialEq,
-{
+impl<STORE: Store, SCOPE: 'static> PartialEq for DispatchProps<STORE, SCOPE> {
     fn eq(&self, other: &Self) -> bool {
         self.bridge
             .as_ref()
             .zip(other.bridge.as_ref())
             .map(|(a, b)| Rc::ptr_eq(a, b))
             .unwrap_or(false)
-            && self.state == other.state
+            && self
+                .state
+                .as_ref()
+                .zip(other.state.as_ref())
+                .map(|(a, b)| Rc::ptr_eq(a, b))
+                .unwrap_or(false)
     }
 }
 

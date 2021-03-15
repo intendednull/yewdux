@@ -2,41 +2,18 @@ use yew::prelude::*;
 use yewdux::prelude::*;
 use yewtil::NeqAssign;
 
-enum Action {
-    Increment,
+#[derive(Default, Clone)]
+struct State {
+    count: u32,
 }
-
-#[derive(Clone)]
-struct Counter {
-    count: u64,
-}
-
-impl Reducer for Counter {
-    type Action = Action;
-
-    fn new() -> Self {
-        Self { count: 0 }
-    }
-
-    fn reduce(&mut self, action: Self::Action) -> ShouldNotify {
-        match action {
-            Action::Increment => {
-                self.count += 1;
-                true
-            }
-        }
-    }
-}
-
-type AppDispatch = DispatchProps<ReducerStore<Counter>>;
 
 struct App {
-    dispatch: AppDispatch,
+    dispatch: DispatchProps<BasicStore<State>>,
 }
 
 impl Component for App {
     type Message = ();
-    type Properties = AppDispatch;
+    type Properties = DispatchProps<BasicStore<State>>;
 
     fn create(dispatch: Self::Properties, _link: ComponentLink<Self>) -> Self {
         Self { dispatch }
@@ -52,16 +29,16 @@ impl Component for App {
 
     fn view(&self) -> Html {
         let count = self.dispatch.state().count;
-        let increment = self.dispatch.callback(|_| Action::Increment);
+        let onclick = self.dispatch.reduce_callback(|s| s.count += 1);
         html! {
             <>
             <h1>{ count }</h1>
-            <button onclick=increment>{"+1"}</button>
+            <button onclick=onclick>{"+1"}</button>
             </>
         }
     }
 }
 
-fn main() {
+pub fn main() {
     yew::start_app::<WithDispatch<App>>();
 }

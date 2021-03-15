@@ -1,10 +1,11 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use yew::prelude::*;
 use yewdux::prelude::*;
 use yewtil::NeqAssign;
 
-#[derive(Clone)]
+#[derive(Default)]
 struct State {
     count: u32,
 }
@@ -14,18 +15,18 @@ enum CountMsg {
 }
 
 struct CounterStore {
-    state: Rc<State>,
+    state: Rc<Rc<RefCell<State>>>,
 }
 
 impl Store for CounterStore {
-    type Model = State;
+    type Model = Rc<RefCell<State>>;
     type Message = ();
     type Input = CountMsg;
     type Output = ();
 
     fn new(_link: StoreLink<Self>) -> Self {
         Self {
-            state: Rc::new(State { count: 0 }),
+            state: Default::default(),
         }
     }
 
@@ -34,10 +35,13 @@ impl Store for CounterStore {
     }
 
     fn handle_input(&mut self, msg: Self::Input, _who: HandlerId) -> ShouldNotify {
+        // IMPORTANT: This changes the outer Rc pointer, so subscribers can determine if state was
+        // modified. Otherwise DispatchProps won't work.
         let state = Rc::make_mut(&mut self.state);
+
         match msg {
             CountMsg::Increment => {
-                state.count += 1;
+                state.borrow_mut().count += 1;
             }
         }
 
@@ -54,8 +58,6 @@ impl Component for Model {
     type Properties = DispatchProps<CounterStore>;
 
     fn create(dispatch: Self::Properties, _link: ComponentLink<Self>) -> Self {
-        // Magically increment counter for this example.
-        dispatch.send(CountMsg::Increment);
         Self { dispatch }
     }
 
@@ -68,12 +70,14 @@ impl Component for Model {
     }
 
     fn view(&self) -> Html {
-        let count = self.dispatch.state().count;
-        let onclick = self.dispatch.callback(|_| CountMsg::Increment);
+        let count = self.dispatch.state().borrow().count;
+        let incr = self.dispatch.callback(|_| CountMsg::Increment);
+        let double = self.dispatch.reduce_callback(|s| s.borrow_mut().count *= 2);
         html! {
             <>
             <h1>{ count }</h1>
-            <button onclick=onclick>{"+1"}</button>
+            <button onclick=incr>{"+1"}</button>
+            <button onclick=double>{"x2"}</button>
             </>
         }
     }
