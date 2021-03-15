@@ -1,4 +1,3 @@
-//! Ergonomic interface with shared state.
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -11,23 +10,216 @@ use crate::{
 
 type Model<T> = <T as Store>::Model;
 
-pub trait DispatchProp {
+/// Primary interface to a [Store](crate::store::Store)
+pub trait Dispatcher {
     type Store: Store;
 
-    fn dispatch(&mut self) -> &mut Dispatch<Self::Store>;
+    #[doc(hidden)]
+    fn bridge(&self) -> &Rc<RefCell<ServiceBridge<Self::Store>>>;
+
+    /// Send an input message.
+    ///
+    /// ```ignore
+    /// dispatch.send(StoreMsg::AddOne)
+    /// ```
+    fn send(&self, msg: impl Into<<Self::Store as Store>::Input>) {
+        self.bridge().borrow_mut().send_store(msg.into())
+    }
+
+    /// Callback for sending input messages.
+    ///
+    /// ```ignore
+    /// let onclick = dispatch.callback(|_| StoreMsg::AddOne);
+    /// html! { <button onclick=onclick>{"+1"}</button> }
+    /// ```
+    fn callback<E, M>(&self, f: impl Fn(E) -> M + 'static) -> Callback<E>
+    where
+        M: Into<<Self::Store as Store>::Input>,
+    {
+        let bridge = Rc::clone(self.bridge());
+        let f = Rc::new(f);
+        Callback::from(move |e| {
+            let msg = f(e);
+            bridge.borrow_mut().send_store(msg.into())
+        })
+    }
+
+    /// Once variation of [Self::callback].
+    fn callback_once<E, M>(&self, f: impl Fn(E) -> M + 'static) -> Callback<E>
+    where
+        M: Into<<Self::Store as Store>::Input>,
+    {
+        let bridge = Rc::clone(self.bridge());
+        let f = Rc::new(f);
+        Callback::once(move |e| {
+            let msg = f(e);
+            bridge.borrow_mut().send_store(msg.into())
+        })
+    }
+
+    /// Send a message that applies given function to shared state. Changes are not immediate, and
+    /// [should be handled as needed](Dispatch::bridge_state).
+    ///
+    /// ```ignore
+    /// let onclick = dispatch.reduce(|_| StoreMsg::AddOne);
+    /// html! { <button onclick=onclick>{"+1"}</button> }
+    /// ```
+    fn reduce(&self, f: impl FnOnce(&mut Model<Self::Store>) + 'static) {
+        self.bridge()
+            .borrow_mut()
+            .send_service(ServiceRequest::ApplyOnce(Box::new(f)))
+    }
+
+    /// Like [reduce](Self::reduce) but from a callback.
+    ///
+    /// ```ignore
+    /// let onclick = dispatch.reduce_callback(|s| s.count += 1);
+    /// html! { <button onclick=onclick>{"+1"}</button> }
+    /// ```
+    fn reduce_callback<E: 'static>(
+        &self,
+        f: impl Fn(&mut Model<Self::Store>) + 'static,
+    ) -> Callback<E> {
+        let bridge = Rc::clone(self.bridge());
+        let f = Rc::new(f);
+        Callback::from(move |_| {
+            bridge
+                .borrow_mut()
+                .send_service(ServiceRequest::Apply(f.clone()))
+        })
+    }
+
+    /// Once variation of [Self::reduce_callback].
+    fn reduce_callback_once<E: 'static>(
+        &self,
+        f: impl FnOnce(&mut Model<Self::Store>) + 'static,
+    ) -> Callback<E> {
+        let bridge = Rc::clone(self.bridge());
+        let f = Box::new(f);
+        Callback::once(move |_| {
+            bridge
+                .borrow_mut()
+                .send_service(ServiceRequest::ApplyOnce(f))
+        })
+    }
+
+    /// Similar to [Self::reduce_callback] but also provides the fired event.
+    ///
+    /// ```ignore
+    /// let oninput = dispatch.reduce_callback(|s, i: InputData| s.user_name i.value);
+    /// html! { <input oninput=oninput>{"+1"}</input> }
+    /// ```
+    fn reduce_callback_with<E: 'static>(
+        &self,
+        f: impl Fn(&mut Model<Self::Store>, E) + 'static,
+    ) -> Callback<E>
+    where
+        E: Clone,
+    {
+        let bridge = Rc::clone(self.bridge());
+        let f = Rc::new(f);
+        Callback::from(move |e: E| {
+            let f = f.clone();
+            bridge
+                .borrow_mut()
+                .send_service(ServiceRequest::ApplyOnce(Box::new(move |state| {
+                    f(state, e)
+                })))
+        })
+    }
+
+    /// Once variation of [Self::reduce_callback_with].
+    fn reduce_callback_once_with<E: 'static>(
+        &self,
+        f: impl FnOnce(&mut Model<Self::Store>, E) + 'static,
+    ) -> Callback<E> {
+        let bridge = Rc::clone(self.bridge());
+        Callback::once(move |e: E| {
+            bridge
+                .borrow_mut()
+                .send_service(ServiceRequest::ApplyOnce(Box::new(|state| f(state, e))))
+        })
+    }
 }
 
-/// Interface to shared state
-#[derive(Properties)]
+/// A basic [Dispatcher].
 pub struct Dispatch<STORE: Store, SCOPE: 'static = STORE> {
+    pub(crate) bridge: Rc<RefCell<ServiceBridge<STORE, SCOPE>>>,
+}
+
+impl<STORE: Store, SCOPE: 'static> Dispatch<STORE, SCOPE> {
+    /// Dispatch without receiving capabilities. Able to send messages, though all state/output
+    /// responses are ignored.
+    pub fn new() -> Self {
+        Self {
+            bridge: Rc::new(RefCell::new(ServiceBridge::new(Callback::noop()))),
+        }
+    }
+
+    /// Dispatch with callbacks to receive new state and Store output messages.
+    pub fn bridge(
+        on_state: Callback<Rc<STORE::Model>>,
+        on_output: Callback<STORE::Output>,
+    ) -> Self {
+        let cb = Callback::from(move |msg| match msg {
+            ServiceOutput::Store(msg) => on_output.emit(msg),
+            ServiceOutput::Service(msg) => match msg {
+                ServiceResponse::State(state) => on_state.emit(state),
+            },
+        });
+        Self {
+            bridge: Rc::new(RefCell::new(ServiceBridge::new(cb))),
+        }
+    }
+
+    /// Dispatch with callback to receive new state.
+    pub fn bridge_state(on_state: Callback<Rc<STORE::Model>>) -> Self {
+        let cb = Callback::from(move |msg| match msg {
+            ServiceOutput::Store(_) => {}
+            ServiceOutput::Service(msg) => match msg {
+                ServiceResponse::State(state) => on_state.emit(state),
+            },
+        });
+        Self {
+            bridge: Rc::new(RefCell::new(ServiceBridge::new(cb))),
+        }
+    }
+}
+
+impl<STORE: Store> Dispatcher for Dispatch<STORE> {
+    type Store = STORE;
+
+    fn bridge(&self) -> &Rc<RefCell<ServiceBridge<Self::Store>>> {
+        &self.bridge
+    }
+}
+
+impl<STORE: Store, SCOPE: 'static> Clone for Dispatch<STORE, SCOPE> {
+    fn clone(&self) -> Self {
+        Self {
+            bridge: self.bridge.clone(),
+        }
+    }
+}
+
+impl<STORE: Store, SCOPE: 'static> PartialEq for Dispatch<STORE, SCOPE> {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.bridge, &other.bridge)
+    }
+}
+
+/// Dispatch for component properties. Use with [WithDispatch](crate::WithDispatch) to
+/// automatically manage message passing.
+#[derive(Properties)]
+pub struct DispatchProps<STORE: Store, SCOPE: 'static = STORE> {
     #[prop_or_default]
     pub state: Option<Rc<Model<STORE>>>,
     #[prop_or_default]
     pub(crate) bridge: Option<Rc<RefCell<ServiceBridge<STORE, SCOPE>>>>,
 }
 
-impl<STORE: Store, SCOPE: 'static> Dispatch<STORE, SCOPE> {
-    pub fn new(on_state: Callback<Rc<STORE::Model>>) -> Self {
+impl<STORE: Store, SCOPE: 'static> DispatchProps<STORE, SCOPE> {
+    pub(crate) fn new(on_state: Callback<Rc<STORE::Model>>) -> Self {
         let cb = Callback::from(move |msg| match msg {
             ServiceOutput::Store(_) => {}
             ServiceOutput::Service(msg) => match msg {
@@ -40,152 +232,28 @@ impl<STORE: Store, SCOPE: 'static> Dispatch<STORE, SCOPE> {
         }
     }
 
-    pub fn bridged(
-        on_state: Callback<Rc<STORE::Model>>,
-        on_output: Callback<STORE::Output>,
-    ) -> Self {
-        let cb = Callback::from(move |msg| match msg {
-            ServiceOutput::Store(msg) => on_output.emit(msg),
-            ServiceOutput::Service(msg) => match msg {
-                ServiceResponse::State(state) => on_state.emit(state),
-            },
-        });
-        Self {
-            state: Default::default(),
-            bridge: Some(Rc::new(RefCell::new(ServiceBridge::new(cb)))),
-        }
-    }
-
-    /// Whether or not this dispatch is ready to be used.
-    pub fn is_ready(&self) -> bool {
-        self.state.is_some()
-    }
-
     pub fn state(&self) -> &Model<STORE> {
         self.state.as_ref().expect("State accessed prematurely.")
     }
+}
 
-    fn bridge(&self) -> Rc<RefCell<ServiceBridge<STORE, SCOPE>>> {
-        self.bridge
-            .as_ref()
-            .map(Rc::clone)
-            .expect("Bridge accessed prematurely.")
-    }
+impl<STORE: Store> Dispatcher for DispatchProps<STORE> {
+    type Store = STORE;
 
-    /// Send a Store input message.
-    pub fn send(&self, msg: impl Into<STORE::Input>) {
-        self.bridge().borrow_mut().send_store(msg.into())
-    }
-
-    /// Callback for sending input message to store.
-    pub fn callback<E>(&self, f: impl Fn(E) -> STORE::Input + 'static) -> Callback<E> {
-        let bridge = self.bridge();
-        let f = Rc::new(f);
-        Callback::from(move |e| {
-            let msg = f(e);
-            bridge.borrow_mut().send_store(msg)
-        })
-    }
-
-    /// Callback for sending input message to store.
-    pub fn callback_once<E>(&self, f: impl Fn(E) -> STORE::Input + 'static) -> Callback<E> {
-        let bridge = self.bridge();
-        let f = Rc::new(f);
-        Callback::once(move |e| {
-            let msg = f(e);
-            bridge.borrow_mut().send_store(msg)
-        })
-    }
-
-    /// Apply a function that may mutate shared state.
-    /// Changes are not immediate, and must be handled in `Component::change`.
-    pub fn reduce(&self, f: impl FnOnce(&mut Model<STORE>) + 'static) {
-        self.bridge()
-            .borrow_mut()
-            .send_service(ServiceRequest::ApplyOnce(Box::new(f)))
-    }
-
-    /// Convenience method for modifying shared state directly from a `Callback`.
-    /// The callback event is ignored here, see `reduce_callback_with` for the alternative.
-    pub fn reduce_callback<E: 'static>(
-        &self,
-        f: impl Fn(&mut Model<STORE>) + 'static,
-    ) -> Callback<E> {
-        let bridge = self.bridge();
-        let f = Rc::new(f);
-        Callback::from(move |_| {
-            bridge
-                .borrow_mut()
-                .send_service(ServiceRequest::Apply(f.clone()))
-        })
-    }
-
-    /// Convenience method for modifying shared state directly from a `CallbackOnce`.
-    /// The callback event is ignored here, see `reduce_callback_once_with` for the alternative.
-    pub fn reduce_callback_once<E: 'static>(
-        &self,
-        f: impl FnOnce(&mut Model<STORE>) + 'static,
-    ) -> Callback<E> {
-        let bridge = self.bridge();
-        let f = Box::new(f);
-        Callback::once(move |_| {
-            bridge
-                .borrow_mut()
-                .send_service(ServiceRequest::ApplyOnce(f))
-        })
-    }
-
-    /// Convenience method for modifying shared state directly from a `Callback`.
-    /// Similar to `reduce_callback` but it also accepts the fired event.
-    pub fn reduce_callback_with<E: 'static>(
-        &self,
-        f: impl Fn(&mut Model<STORE>, E) + 'static,
-    ) -> Callback<E>
-    where
-        E: Clone,
-    {
-        let bridge = self.bridge();
-        let f = Rc::new(f);
-        Callback::from(move |e: E| {
-            let f = f.clone();
-            bridge
-                .borrow_mut()
-                .send_service(ServiceRequest::ApplyOnce(Box::new(move |state| {
-                    f(state, e)
-                })))
-        })
-    }
-
-    /// Convenience method for modifying shared state directly from a `CallbackOnce`.
-    /// Similar to `reduce_callback` but it also accepts the fired event.
-    pub fn reduce_callback_once_with<E: 'static>(
-        &self,
-        f: impl FnOnce(&mut Model<STORE>, E) + 'static,
-    ) -> Callback<E> {
-        let bridge = self.bridge();
-        Callback::once(move |e: E| {
-            bridge
-                .borrow_mut()
-                .send_service(ServiceRequest::ApplyOnce(Box::new(|state| f(state, e))))
-        })
+    fn bridge(&self) -> &Rc<RefCell<ServiceBridge<Self::Store>>> {
+        self.bridge.as_ref().expect("Bridge accessed prematurely.")
     }
 }
 
-impl<STORE> DispatchProp for Dispatch<STORE>
-where
-    STORE: Store,
-{
+impl<STORE: Store> DispatchPropsMut for DispatchProps<STORE> {
     type Store = STORE;
 
-    fn dispatch(&mut self) -> &mut Dispatch<Self::Store> {
+    fn dispatch(&mut self) -> &mut DispatchProps<Self::Store> {
         self
     }
 }
 
-impl<STORE: Store, SCOPE: 'static> Default for Dispatch<STORE, SCOPE>
-where
-    STORE: Store,
-{
+impl<STORE: Store, SCOPE: 'static> Default for DispatchProps<STORE, SCOPE> {
     fn default() -> Self {
         Self {
             state: Default::default(),
@@ -194,7 +262,7 @@ where
     }
 }
 
-impl<STORE: Store, SCOPE: 'static> Clone for Dispatch<STORE, SCOPE>
+impl<STORE: Store, SCOPE: 'static> Clone for DispatchProps<STORE, SCOPE>
 where
     STORE: Store,
     StoreLink<STORE>: Clone,
@@ -207,7 +275,7 @@ where
     }
 }
 
-impl<STORE: Store, SCOPE: 'static> PartialEq for Dispatch<STORE, SCOPE>
+impl<STORE: Store, SCOPE: 'static> PartialEq for DispatchProps<STORE, SCOPE>
 where
     STORE: Store,
     STORE::Model: PartialEq,
@@ -220,4 +288,11 @@ where
             .unwrap_or(false)
             && self.state == other.state
     }
+}
+
+/// Allows any properties to work with (WithDispatch)[crate::WithDispatch].
+pub trait DispatchPropsMut {
+    type Store: Store;
+
+    fn dispatch(&mut self) -> &mut DispatchProps<Self::Store>;
 }

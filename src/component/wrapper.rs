@@ -3,16 +3,16 @@ use std::rc::Rc;
 
 use yew::prelude::*;
 
-use crate::dispatch::{Dispatch, DispatchProp};
+use crate::dispatch::{DispatchProps, DispatchPropsMut};
 use crate::store::Store;
 
-type PropStore<PROPS> = <PROPS as DispatchProp>::Store;
+type PropStore<PROPS> = <PROPS as DispatchPropsMut>::Store;
 type Model<T> = <PropStore<T> as Store>::Model;
 
 #[doc(hidden)]
 pub enum Msg<PROPS>
 where
-    PROPS: DispatchProp,
+    PROPS: DispatchPropsMut,
 {
     /// Recieve new local state.
     State(Rc<Model<PROPS>>),
@@ -38,7 +38,7 @@ where
 pub struct WithDispatch<C>
 where
     C: Component,
-    C::Properties: DispatchProp + Clone,
+    C::Properties: DispatchPropsMut + Clone,
 {
     props: C::Properties,
     is_ready: bool,
@@ -47,13 +47,13 @@ where
 impl<C> Component for WithDispatch<C>
 where
     C: Component,
-    C::Properties: DispatchProp + Clone,
+    C::Properties: DispatchPropsMut + Clone,
 {
     type Message = Msg<C::Properties>;
     type Properties = C::Properties;
 
     fn create(mut props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        *props.dispatch() = Dispatch::new(link.callback(Msg::State));
+        *props.dispatch() = DispatchProps::new(link.callback(Msg::State));
         Self {
             props,
             is_ready: false,

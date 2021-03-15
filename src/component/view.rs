@@ -4,13 +4,13 @@ use yew::{Component, ComponentLink, Html, Properties, ShouldRender};
 
 use crate::{
     component::wrapper::WithDispatch,
-    dispatch::{Dispatch, DispatchProp},
+    dispatch::{DispatchProps, DispatchPropsMut},
     store::Store,
 };
 
-pub type Render<STORE> = Rc<dyn Fn(&Dispatch<STORE>) -> Html>;
-pub type Rendered<STORE> = Rc<dyn Fn(&Dispatch<STORE>, bool)>;
-pub type Change<STORE> = Rc<dyn Fn(&Dispatch<STORE>, &Dispatch<STORE>) -> bool>;
+pub type Render<STORE> = Rc<dyn Fn(&DispatchProps<STORE>) -> Html>;
+pub type Rendered<STORE> = Rc<dyn Fn(&DispatchProps<STORE>, bool)>;
+pub type Change<STORE> = Rc<dyn Fn(&DispatchProps<STORE>, &DispatchProps<STORE>) -> bool>;
 
 #[derive(Properties, Clone)]
 pub struct Props<STORE>
@@ -18,7 +18,7 @@ where
     STORE: Store + Clone + Default,
 {
     #[prop_or_default]
-    dispatch: Dispatch<STORE>,
+    dispatch: DispatchProps<STORE>,
     pub view: Render<STORE>,
     #[prop_or_default]
     pub rendered: Option<Rendered<STORE>>,
@@ -26,13 +26,13 @@ where
     pub change: Option<Change<STORE>>,
 }
 
-impl<STORE> DispatchProp for Props<STORE>
+impl<STORE> DispatchPropsMut for Props<STORE>
 where
     STORE: Store + Clone + Default,
 {
     type Store = STORE;
 
-    fn dispatch(&mut self) -> &mut Dispatch<Self::Store> {
+    fn dispatch(&mut self) -> &mut DispatchProps<Self::Store> {
         &mut self.dispatch
     }
 }
@@ -113,7 +113,7 @@ pub type StateView<H> = WithDispatch<Model<H>>;
 pub fn view<F, STORE>(f: F) -> Render<STORE>
 where
     STORE: Store,
-    F: Fn(&Dispatch<STORE>) -> Html + 'static,
+    F: Fn(&DispatchProps<STORE>) -> Html + 'static,
 {
     Rc::new(f)
 }
@@ -122,7 +122,7 @@ where
 pub fn rendered<F, STORE>(f: F) -> Rendered<STORE>
 where
     STORE: Store,
-    F: Fn(&Dispatch<STORE>, bool) + 'static,
+    F: Fn(&DispatchProps<STORE>, bool) + 'static,
 {
     Rc::new(f)
 }
@@ -131,7 +131,7 @@ where
 pub fn change<F, STORE>(f: F) -> Change<STORE>
 where
     STORE: Store,
-    F: Fn(&Dispatch<STORE>, &Dispatch<STORE>) -> bool + 'static,
+    F: Fn(&DispatchProps<STORE>, &DispatchProps<STORE>) -> bool + 'static,
 {
     Rc::new(f)
 }
