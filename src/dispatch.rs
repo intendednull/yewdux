@@ -113,10 +113,7 @@ pub trait Dispatcher {
     fn reduce_callback_with<E: 'static>(
         &self,
         f: impl Fn(&mut Model<Self::Store>, E) + 'static,
-    ) -> Callback<E>
-    where
-        E: Clone,
-    {
+    ) -> Callback<E> {
         let bridge = Rc::clone(self.bridge());
         let f = Rc::new(f);
         Callback::from(move |e: E| {
