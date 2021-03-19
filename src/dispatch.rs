@@ -214,7 +214,7 @@ impl<STORE: Store, SCOPE: 'static> PartialEq for Dispatch<STORE, SCOPE> {
 #[derive(Properties)]
 pub struct DispatchProps<STORE: Store, SCOPE: 'static = STORE> {
     #[prop_or_default]
-    pub state: Option<Rc<Model<STORE>>>,
+    pub(crate) state: Option<Rc<Model<STORE>>>,
     #[prop_or_default]
     pub(crate) bridge: Option<Rc<RefCell<ServiceBridge<STORE, SCOPE>>>>,
 }
