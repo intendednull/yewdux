@@ -113,10 +113,7 @@ pub trait Dispatcher {
     fn reduce_callback_with<E: 'static>(
         &self,
         f: impl Fn(&mut Model<Self::Store>, E) + 'static,
-    ) -> Callback<E>
-    where
-        E: Clone,
-    {
+    ) -> Callback<E> {
         let bridge = Rc::clone(self.bridge());
         let f = Rc::new(f);
         Callback::from(move |e: E| {
@@ -217,7 +214,7 @@ impl<STORE: Store, SCOPE: 'static> PartialEq for Dispatch<STORE, SCOPE> {
 #[derive(Properties)]
 pub struct DispatchProps<STORE: Store> {
     #[prop_or_default]
-    pub state: Option<Rc<Model<STORE>>>,
+    pub(crate) state: Option<Rc<Model<STORE>>>,
     #[prop_or_default]
     pub(crate) bridge: Option<Rc<RefCell<ServiceBridge<STORE>>>>,
 }
