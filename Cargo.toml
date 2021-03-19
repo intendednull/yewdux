@@ -6,7 +6,7 @@ edition = "2018"
 license = "MIT"
 repository = "https://github.com/yewdux/yewdux"
 readme = "README.md"
-description = "Redux-like state containers for Yew apps"
+description = "Ergonomic state management for Yew applications"
 keywords = ["yew", "state", "redux", "shared", "container"]
 categories = ["wasm", "web-programming", "rust-patterns"]
 
