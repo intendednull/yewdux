@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use yew::prelude::*;
 use yew_functional::*;
-use yewdux::store::Store;
 use yewdux::dispatch::Dispatch;
+use yewdux::store::Store;
 
 /// This hook allows accessing the state of a store. When the store is modified, a re-render is automatically triggered.
 ///
@@ -17,7 +17,7 @@ use yewdux::dispatch::Dispatch;
 ///
 /// #[function_component(UseStore)]
 /// fn dispatch() -> Html {
-///     let state = use_store::<Store>();
+///     let state = use_store_state::<Store>();
 ///     
 ///     // Make sure Dispatch is connected.
 ///     if let Some(state) = state.as_ref() {
@@ -27,14 +27,54 @@ use yewdux::dispatch::Dispatch;
 ///     }
 /// }
 /// ```
-pub fn use_store<T: Store>() -> Rc<Option<Rc<T::Model>>> {
+pub fn use_store_state<T: Store>() -> Rc<Option<Rc<T::Model>>> {
     let (state, set_state) = use_state(|| None);
 
     // persist the Dispatch across renders
-    use_ref(|| {
-        Dispatch::<T>::new(Callback::from(move |new_state: Rc<T::Model>| {
+    use_ref(move || {
+        let on_state = Callback::from(move |new_state| {
             set_state(Some(new_state));
-        }))
+        });
+
+        Dispatch::<T>::bridge_state(on_state);
+    });
+
+    state
+}
+
+/// This hook allows accessing the state of a store. When the store is modified, a re-render is automatically triggered.
+/// This hook also accepts a callback that is triggered for state output. To only receive state, use [`use_store_state`] instead.
+///
+/// This function returns the state of the store.
+///
+/// # Example
+/// ```ignore
+/// # use yew_functional::function_component;
+/// # use yew::prelude::*;
+/// use yewdux::use_store;
+///
+/// #[function_component(UseStore)]
+/// fn dispatch() -> Html {
+///     let state = use_store::<Store>(|_| ());
+///     
+///     // Make sure Dispatch is connected.
+///     if let Some(state) = state.as_ref() {
+///         html! { <p>{ state.value }</p> }
+///     } else {
+///         html! {}
+///     }
+/// }
+/// ```
+pub fn use_store<T: Store>(on_output: impl Fn(T::Output) + 'static) -> Rc<Option<Rc<T::Model>>> {
+    let (state, set_state) = use_state(|| None);
+
+    // persist the Dispatch across renders
+    use_ref(move || {
+        let on_state = Callback::from(move |new_state| {
+            set_state(Some(new_state));
+        });
+
+        Dispatch::<T>::bridge(on_state, Callback::from(on_output));
     });
 
     state
@@ -62,7 +102,7 @@ pub fn use_store<T: Store>() -> Rc<Option<Rc<T::Model>>> {
 /// ```
 pub fn use_dispatch<T: Store>() -> Rc<Dispatch<T>> {
     // persist the Dispatch across renders
-    let (dispatch, _set_dispatch) = use_state(|| Dispatch::<T>::new(Callback::from(move |_| ())));
+    let (dispatch, _set_dispatch) = use_state(Dispatch::<T>::new);
 
     dispatch
 }
