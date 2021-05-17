@@ -1,0 +1,23 @@
+[package]
+name = "yewdux"
+version = "0.6.1"
+authors = ["Noah <noah@coronasoftware.net>"]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/yewdux/yewdux"
+readme = "README.md"
+description = "Ergonomic state management for Yew applications"
+keywords = ["yew", "state", "redux", "shared", "container"]
+categories = ["wasm", "web-programming", "rust-patterns"]
+
+
+[features]
+default = []
+future = ["yewtil"]
+
+[dependencies]
+serde = { version = "1.0.114", features = ["rc"] }
+yew = { git = "https://github.com/yewstack/yew.git" }
+yew-services = { git = "https://github.com/yewstack/yew.git" }
+yewtil = {  git = "https://github.com/yewstack/yew.git", optional = true }
+
