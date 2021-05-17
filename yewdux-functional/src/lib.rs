@@ -1,45 +1,33 @@
-use std::rc::Rc;
+use std::{cell::RefCell, ops::Deref, rc::Rc};
 
 use yew::prelude::*;
 use yew_functional::*;
 use yewdux::dispatch::Dispatch;
 use yewdux::store::Store;
 
-/// This hook allows accessing the state of a store. When the store is modified, a re-render is automatically triggered.
-///
-/// This function returns the state of the store.
-///
-/// # Example
-/// ```ignore
-/// # use yew_functional::function_component;
-/// # use yew::prelude::*;
-/// use yewdux::use_store;
-///
-/// #[function_component(UseStore)]
-/// fn dispatch() -> Html {
-///     let state = use_store_state::<Store>();
-///     
-///     // Make sure Dispatch is connected.
-///     if let Some(state) = state.as_ref() {
-///         html! { <p>{ state.value }</p> }
-///     } else {
-///         html! {}
-///     }
-/// }
-/// ```
-pub fn use_store_state<T: Store>() -> Rc<Option<Rc<T::Model>>> {
-    let (state, set_state) = use_state(|| None);
+/// Reference to a store's state and dispatch.
+pub struct StoreRef<T: Store> {
+    state: UseStateHandle<Option<Rc<T::Model>>>,
+    dispatch: Rc<RefCell<Dispatch<T>>>,
+    #[allow(dead_code)]
+    output: Option<Rc<RefCell<Dispatch<T>>>>,
+}
 
-    // persist the Dispatch across renders
-    use_ref(move || {
-        let on_state = Callback::from(move |new_state| {
-            set_state(Some(new_state));
-        });
+impl<T: Store> StoreRef<T> {
+    pub fn dispatch<'a>(&'a self) -> impl Deref<Target = Dispatch<T>> + 'a {
+        self.dispatch.borrow()
+    }
 
-        Dispatch::<T>::bridge_state(on_state);
-    });
+    pub fn state(&self) -> Option<&T::Model> {
+        self.state.as_ref().map(Rc::as_ref)
+    }
 
-    state
+    pub fn on_output(mut self, on_output: impl Fn(T::Output) + 'static) -> Self {
+        self.output = Some(use_ref(move || {
+            Dispatch::bridge(Default::default(), on_output.into())
+        }));
+        self
+    }
 }
 
 /// This hook allows accessing the state of a store. When the store is modified, a re-render is automatically triggered.
@@ -51,33 +39,46 @@ pub fn use_store_state<T: Store>() -> Rc<Option<Rc<T::Model>>> {
 /// ```ignore
 /// # use yew_functional::function_component;
 /// # use yew::prelude::*;
-/// use yewdux::use_store;
+/// use yewdux_functional::use_store;
 ///
-/// #[function_component(UseStore)]
-/// fn dispatch() -> Html {
-///     let state = use_store::<Store>(|_| ());
-///     
-///     // Make sure Dispatch is connected.
-///     if let Some(state) = state.as_ref() {
-///         html! { <p>{ state.value }</p> }
-///     } else {
-///         html! {}
+/// #[derive(Default, Clone)]
+/// struct State {
+///     count: u32,
+/// }
+///
+/// #[function_component(App)]
+/// fn app() -> Html {
+///     let store = use_store::<BasicStore<State>>();
+///     let count = store.state().map(|s| s.count).unwrap_or(0);
+///     let onclick = store.dispatch().reduce_callback(|s| s.count += 1);
+///     html! {
+///         <>
+///         <p>{ count }</p>
+///         <button onclick=onclick>{"+1"}</button>
+///         </>
 ///     }
 /// }
 /// ```
-pub fn use_store<T: Store>(on_output: impl Fn(T::Output) + 'static) -> Rc<Option<Rc<T::Model>>> {
-    let (state, set_state) = use_state(|| None);
+pub fn use_store<T: Store>() -> StoreRef<T> {
+    let state = use_state(|| None);
 
-    // persist the Dispatch across renders
-    use_ref(move || {
-        let on_state = Callback::from(move |new_state| {
-            set_state(Some(new_state));
-        });
+    let dispatch = {
+        let state = state.clone();
+        // persist the Dispatch across renders
+        use_ref(move || {
+            let on_state = Callback::from(move |new_state| {
+                state.set(Some(new_state));
+            });
 
-        Dispatch::<T>::bridge(on_state, Callback::from(on_output));
-    });
+            Dispatch::<T>::bridge_state(on_state)
+        })
+    };
 
-    state
+    StoreRef {
+        state,
+        dispatch,
+        output: None,
+    }
 }
 
 /// This hook allows getting a [`Dispatch`] to the store.
@@ -100,9 +101,9 @@ pub fn use_store<T: Store>(on_output: impl Fn(T::Output) + 'static) -> Rc<Option
 ///     }
 /// }
 /// ```
-pub fn use_dispatch<T: Store>() -> Rc<Dispatch<T>> {
+pub fn use_dispatch<T: Store>() -> impl Deref<Target = Dispatch<T>> {
     // persist the Dispatch across renders
-    let (dispatch, _set_dispatch) = use_state(Dispatch::<T>::new);
+    let dispatch = use_state(Dispatch::<T>::new);
 
     dispatch
 }

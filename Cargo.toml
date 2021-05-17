@@ -7,4 +7,5 @@ members = [
   "examples/props",
   "examples/reducer",
   "examples/store",
+  "examples/functional",
 ]
