@@ -9,4 +9,5 @@ members = [
   "examples/reducer",
   "examples/store",
   "examples/functional",
+  "examples/input",
 ]

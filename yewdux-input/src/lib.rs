@@ -1,5 +1,7 @@
 #[cfg(feature = "functional")]
 pub mod functional;
+#[cfg(feature = "functional")]
+pub use functional::*;
 
 use std::{cell::RefCell, rc::Rc};
 
