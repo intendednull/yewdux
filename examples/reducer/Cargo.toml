@@ -8,5 +8,5 @@ edition = "2018"
 
 [dependencies]
 yew = { git = "https://github.com/yewstack/yew.git" }
-yewdux = { path = "../.." }
+yewdux = { path = "../../yewdux" }
 yewtil = { git = "https://github.com/yewstack/yew.git" }
