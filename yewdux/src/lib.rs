@@ -85,7 +85,7 @@
 
 pub mod component;
 pub mod dispatch;
-mod service;
+pub mod service;
 pub mod store;
 
 pub mod prelude {

@@ -2,10 +2,12 @@
 members = [
   "yewdux",
   "yewdux-functional",
+  "yewdux-input",
   "examples/basic",
   "examples/no_copy",
   "examples/props",
   "examples/reducer",
   "examples/store",
   "examples/functional",
+  "examples/input",
 ]
