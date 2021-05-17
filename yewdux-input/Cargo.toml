@@ -3,12 +3,8 @@ name = "yewdux-input"
 version = "0.1.0"
 edition = "2018"
 
-[features]
-functional = ["yew-functional"]
-
 [dependencies]
 yew = {git = "https://github.com/yewstack/yew.git"}
 yew-services = {git = "https://github.com/yewstack/yew.git"}
-yew-functional = { git = "https://github.com/yewstack/yew.git", optional = true}
 yewdux = {path = "../yewdux", version = "0.6"}
 js-sys = "0.3.50"
