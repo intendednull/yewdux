@@ -1,11 +1,22 @@
 use yew::{
     prelude::{Callback, InputData},
-    ChangeData,
+    ChangeData, FocusEvent,
 };
 use yew_services::reader::{File, FileData, ReaderService};
 use yewdux::{dispatch::Dispatcher, store::Store};
 
 pub trait InputDispatcher: Dispatcher {
+    /// Callback submitting a form. Disables default event behavior for forms.
+    fn submit(
+        &self,
+        f: impl Fn(&mut <Self::Store as Store>::Model) + 'static,
+    ) -> Callback<FocusEvent> {
+        self.reduce_callback_with(move |s, e: FocusEvent| {
+            e.prevent_default();
+            f(s)
+        })
+    }
+
     /// Callback that sets state, ignoring callback event.
     fn set<E: 'static>(
         &self,
