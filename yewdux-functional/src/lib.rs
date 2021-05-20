@@ -18,8 +18,8 @@ impl<T: Store> StoreRef<T> {
         self.dispatch.borrow()
     }
 
-    pub fn state(&self) -> Option<&T::Model> {
-        self.state.as_ref().map(Rc::as_ref)
+    pub fn state(&self) -> Option<&Rc<T::Model>> {
+        self.state.as_ref()
     }
 
     pub fn on_output(mut self, on_output: impl Fn(T::Output) + 'static) -> Self {
