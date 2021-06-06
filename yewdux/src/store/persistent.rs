@@ -2,8 +2,10 @@ use std::any::type_name;
 use std::rc::Rc;
 
 use serde::{Deserialize, Serialize};
-use yew::format::Json;
-use yew_services::{storage::Area, StorageService};
+use yew::{
+    format::Json,
+    services::{storage::Area, StorageService},
+};
 
 use super::{Store, StoreLink};
 

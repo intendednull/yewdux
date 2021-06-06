@@ -91,8 +91,7 @@ pub mod store;
 pub mod prelude {
     //! Everything you need to use Yewdux.
 
-    pub use yew::agent::HandlerId;
-    pub use yew_services::storage::Area;
+    pub use yew::{agent::HandlerId, services::storage::Area};
 
     pub use crate::component::{StateView, WithDispatch};
     pub use crate::dispatch::{Dispatch, DispatchProps, DispatchPropsMut, Dispatcher};

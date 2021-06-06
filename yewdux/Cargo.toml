@@ -1,11 +1,11 @@
 [package]
 name = "yewdux"
-version = "0.6.1"
+version = "0.6.2"
 authors = ["Noah <noah@coronasoftware.net>"]
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/yewdux/yewdux"
-readme = "README.md"
+readme = "../README.md"
 description = "Ergonomic state management for Yew applications"
 keywords = ["yew", "state", "redux", "shared", "container"]
 categories = ["wasm", "web-programming", "rust-patterns"]
@@ -17,7 +17,8 @@ future = ["yewtil"]
 
 [dependencies]
 serde = { version = "1.0.114", features = ["rc"] }
-yew = { git = "https://github.com/yewstack/yew.git" }
-yew-services = { git = "https://github.com/yewstack/yew.git" }
-yewtil = {  git = "https://github.com/yewstack/yew.git", optional = true }
+yew = "0.18.0"
+# yew = { git = "https://github.com/yewstack/yew.git" }
+# yew-services = { git = "https://github.com/yewstack/yew.git" }
+yewtil = {  version = "0.4.0", optional = true }
 
