@@ -1,0 +1,14 @@
+[package]
+name = "multi_component"
+version = "0.1.0"
+authors = ["William Brown <william@blackhats.net.au>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0.114", features = ["rc"] }
+yewdux = { path = "../../yewdux" }
+yew = { git = "https://github.com/yewstack/yew.git" }
+yewtil = {  git = "https://github.com/yewstack/yew.git" }
+yew-services = { git = "https://github.com/yewstack/yew.git" }

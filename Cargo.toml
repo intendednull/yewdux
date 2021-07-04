@@ -10,4 +10,5 @@ members = [
   "examples/store",
   "examples/functional",
   "examples/input",
+  "examples/multi_component",
 ]
