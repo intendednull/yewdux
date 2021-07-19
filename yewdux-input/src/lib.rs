@@ -1,8 +1,8 @@
+use gloo::file::{File, FileReadError};
 use yew::{
     prelude::{Callback, InputData},
-    ChangeData, FocusEvent,
+    web_sys, ChangeData, FocusEvent,
 };
-use yew_services::reader::{File, FileData, ReaderService};
 use yewdux::{dispatch::Dispatcher, store::Store};
 
 pub trait InputDispatcher: Dispatcher {
@@ -104,7 +104,7 @@ pub trait InputDispatcher: Dispatcher {
     /// Callback for setting files
     fn file(
         &self,
-        f: impl Fn(&mut <Self::Store as Store>::Model, FileData) + Copy + 'static,
+        f: impl Fn(&mut <Self::Store as Store>::Model, Result<Vec<u8>, FileReadError>) + Copy + 'static,
     ) -> Callback<ChangeData> {
         let set_file = self.set_with(f);
         Callback::from(move |data| {
@@ -113,9 +113,13 @@ pub trait InputDispatcher: Dispatcher {
                     .unwrap()
                     .unwrap()
                     .into_iter()
-                    .map(|v| File::from(v.unwrap()))
+                    .map(|v| web_sys::File::from(v.unwrap()))
+                    .map(File::from)
                 {
-                    ReaderService::read_file(file, set_file.clone()).ok();
+                    let cb = set_file.clone();
+                    gloo::file::callbacks::read_as_bytes(&file, move |result| {
+                        cb.emit(result);
+                    });
                 }
             }
         })

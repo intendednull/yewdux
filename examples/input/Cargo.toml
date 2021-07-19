@@ -12,5 +12,3 @@ yewdux = { path = "../../yewdux" }
 yewdux-functional = { path = "../../yewdux-functional" }
 yewdux-input = { path = "../../yewdux-input" }
 yew = { git = "https://github.com/yewstack/yew.git" }
-yewtil = {  git = "https://github.com/yewstack/yew.git" }
-yew-functional = {  git = "https://github.com/yewstack/yew.git" }

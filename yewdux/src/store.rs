@@ -6,9 +6,8 @@ pub mod reducer;
 
 use std::rc::Rc;
 
-pub use yew::agent::HandlerId;
-
 pub use link::StoreLink;
+use yew_agent::HandlerId;
 
 pub type Changed = bool;
 pub(crate) type Reduction<T> = Rc<dyn Fn(&mut T)>;

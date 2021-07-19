@@ -11,13 +11,10 @@ keywords = ["yew", "state", "redux", "shared", "container"]
 categories = ["wasm", "web-programming", "rust-patterns"]
 
 
-[features]
-default = []
-future = ["yewtil"]
-
 [dependencies]
 serde = { version = "1.0.114", features = ["rc"] }
+serde_json = "1.0.64"
+web-sys = "0.3.51"
 yew = { git = "https://github.com/yewstack/yew.git" }
-yew-services = { git = "https://github.com/yewstack/yew.git" }
-yewtil = {  git = "https://github.com/yewstack/yew.git", optional = true }
+yew-agent = { git = "https://github.com/yewstack/yew.git" }
 

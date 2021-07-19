@@ -2,10 +2,8 @@
 use std::collections::HashSet;
 use std::rc::Rc;
 
-use yew::{
-    agent::{Agent, AgentLink, Context, Dispatcher, HandlerId},
-    prelude::*,
-};
+use yew::prelude::*;
+use yew_agent::{Agent, AgentLink, Bridge, Bridged, Context, Dispatched, Dispatcher, HandlerId};
 
 use crate::store::{Reduction, ReductionOnce, Store, StoreLink};
 

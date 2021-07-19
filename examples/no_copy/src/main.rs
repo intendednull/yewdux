@@ -1,9 +1,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use yew::prelude::*;
+use yew::{prelude::*, utils::NeqAssign};
 use yewdux::prelude::*;
-use yewtil::NeqAssign;
 
 #[derive(Default)]
 struct State {
@@ -76,8 +75,8 @@ impl Component for Model {
         html! {
             <>
             <h1>{ count }</h1>
-            <button onclick=incr>{"+1"}</button>
-            <button onclick=double>{"x2"}</button>
+            <button onclick={incr}>{"+1"}</button>
+            <button onclick={double}>{"x2"}</button>
             </>
         }
     }

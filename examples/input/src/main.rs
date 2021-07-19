@@ -19,14 +19,14 @@ fn input_name() -> Html {
         let value = form.state().map(|s| s.first.clone()).unwrap_or_default();
         let oninput = form.dispatch().input(|form, value| form.first = value);
         html! {
-            <input placeholder="First name" value=value oninput=oninput />
+            <input placeholder="First name" value={value} oninput={oninput} />
         }
     };
     let input_last = {
         let value = form.state().map(|s| s.last.clone()).unwrap_or_default();
         let oninput = form.dispatch().input(|form, value| form.last = value);
         html! {
-            <input placeholder="Last name" value=value oninput=oninput />
+            <input placeholder="Last name" value={value} oninput={oninput} />
         }
     };
 
@@ -48,7 +48,7 @@ fn input_pet() -> Html {
         .map(|&val| {
             let selected = value == val;
             html! {
-                <option selected=selected value=val>{ val }</option>
+                <option selected={selected} value={val}>{ val }</option>
             }
         })
         .collect::<Html>();
@@ -56,7 +56,7 @@ fn input_pet() -> Html {
         <>
         <label>{"Do you have a pet?"}</label>
         {" "}
-        <select onchange=onchange>
+        <select onchange={onchange}>
             { options }
         </select>
         </>
@@ -71,7 +71,7 @@ fn input_avatar() -> Html {
         <>
         <label>{"Select an avatar"}</label>
         {" "}
-        <input type="file" onchange=onchange />
+        <input type="file" onchange={onchange} />
         </>
     }
 }

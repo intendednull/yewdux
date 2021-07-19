@@ -1,6 +1,5 @@
-use yew::prelude::*;
+use yew::{prelude::*, utils::NeqAssign};
 use yewdux::prelude::*;
-use yewtil::NeqAssign;
 
 enum Action {
     Increment,

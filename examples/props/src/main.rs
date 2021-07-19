@@ -1,6 +1,5 @@
-use yew::prelude::*;
+use yew::{prelude::*, utils::NeqAssign};
 use yewdux::prelude::*;
-use yewtil::NeqAssign;
 
 #[derive(Default, Clone)]
 struct State {
@@ -33,7 +32,7 @@ impl Component for App {
         html! {
             <>
             <h1>{ count }</h1>
-            <button onclick=onclick>{"+1"}</button>
+            <button onclick={onclick}>{"+1"}</button>
             </>
         }
     }

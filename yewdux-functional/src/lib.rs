@@ -1,7 +1,6 @@
 use std::{cell::RefCell, ops::Deref, rc::Rc};
 
-use yew::prelude::*;
-use yew_functional::*;
+use yew::{functional::*, prelude::*};
 use yewdux::dispatch::Dispatch;
 use yewdux::store::Store;
 

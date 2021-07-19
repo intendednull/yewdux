@@ -11,5 +11,4 @@ version = "0.1.0"
 
 [dependencies]
 yew = {git = "https://github.com/yewstack/yew.git"}
-yew-functional = {git = "https://github.com/yewstack/yew.git"}
 yewdux = {path = "../yewdux", version = "0.6"}

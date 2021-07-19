@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use yew::agent::HandlerId;
+use yew_agent::HandlerId;
 
 use super::{Changed, Store, StoreLink};
 

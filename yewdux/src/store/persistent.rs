@@ -2,10 +2,15 @@ use std::any::type_name;
 use std::rc::Rc;
 
 use serde::{Deserialize, Serialize};
-use yew::format::Json;
-use yew_services::{storage::Area, StorageService};
+use web_sys::Storage;
+use yew::utils::window;
 
 use super::{Store, StoreLink};
+
+pub enum Area {
+    Local,
+    Session,
+}
 
 /// Allows state to be stored persistently in local or session storage.
 pub trait Persistent: Serialize + for<'a> Deserialize<'a> {
@@ -25,7 +30,7 @@ pub trait Persistent: Serialize + for<'a> Deserialize<'a> {
 #[derive(Default)]
 pub struct PersistentStore<T> {
     state: Rc<T>,
-    storage: Option<StorageService>,
+    storage: Option<Storage>,
 }
 
 impl<T> PersistentStore<T>
@@ -34,21 +39,29 @@ where
 {
     pub fn new() -> Self {
         let mut this: Self = Default::default();
-        this.storage = StorageService::new(T::area()).ok();
+        let window = window();
+        this.storage = match T::area() {
+            Area::Local => window.local_storage().ok().flatten(),
+            Area::Session => window.session_storage().ok().flatten(),
+        };
         this.load_state();
         this
     }
 
     pub fn load_state(&mut self) {
-        let result = self.storage.as_mut().map(|s| s.restore(T::key()));
-        if let Some(Json(Ok(state))) = result {
-            self.state = state;
+        let result = self.storage.as_mut().map(|s| s.get(T::key()));
+        if let Some(Ok(Some(result))) = result {
+            if let Ok(state) = serde_json::from_str(&result) {
+                self.state = state;
+            }
         }
     }
 
     pub fn save_state(&mut self) {
         if let Some(storage) = &mut self.storage {
-            storage.store(T::key(), Json(&self.state));
+            if let Ok(data) = serde_json::to_string(&self.state) {
+                storage.set(T::key(), &data).ok();
+            }
         }
     }
 }

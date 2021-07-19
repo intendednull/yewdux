@@ -1,16 +1,11 @@
 //! State handlers determine how state should be created, modified, and shared.
-#[cfg(feature = "future")]
 use std::pin::Pin;
 use std::rc::Rc;
 
-#[cfg(feature = "future")]
 use std::future::Future;
-use yew::{
-    agent::{AgentLink, HandlerId},
-    Callback,
-};
-#[cfg(feature = "future")]
-use yewtil::future::LinkFuture;
+use yew::Callback;
+
+use yew_agent::{AgentLink, HandlerId};
 
 use super::Store;
 use crate::service::{ServiceInput, ServiceOutput, StoreService};
@@ -111,7 +106,6 @@ impl<STORE: Store> StoreLink<STORE> {
         Callback::once(cb)
     }
 
-    #[cfg(feature = "future")]
     pub fn send_future<F, M>(&self, future: F)
     where
         M: Into<StoreMsg<STORE>>,
@@ -121,7 +115,6 @@ impl<STORE: Store> StoreLink<STORE> {
         self.link.send_future(Box::pin(future))
     }
 
-    #[cfg(feature = "future")]
     pub fn callback_future<FN, FU, IN, M>(&self, function: FN) -> yew::Callback<IN>
     where
         StoreInput<STORE>: 'static,
@@ -141,7 +134,6 @@ impl<STORE: Store> StoreLink<STORE> {
         cb.into()
     }
 
-    #[cfg(feature = "future")]
     pub fn callback_once_future<FN, FU, IN, M>(&self, function: FN) -> yew::Callback<IN>
     where
         StoreInput<STORE>: 'static,
@@ -170,7 +162,6 @@ pub(crate) trait AgentLinkWrapper {
     fn send_message(&self, msg: Self::Message);
     fn send_input(&self, input: Self::Input);
     fn respond(&self, who: HandlerId, output: Self::Output);
-    #[cfg(feature = "future")]
     fn send_future(&self, future: Pin<Box<dyn Future<Output = Self::Message>>>);
 }
 
@@ -194,8 +185,7 @@ where
         AgentLink::<StoreService<H, SCOPE>>::respond(self, who, ServiceOutput::Store(output))
     }
 
-    #[cfg(feature = "future")]
     fn send_future(&self, future: Pin<Box<dyn Future<Output = Self::Message>>>) {
-        LinkFuture::send_future(self, future)
+        AgentLink::<StoreService<H, SCOPE>>::send_future(self, future)
     }
 }
