@@ -174,11 +174,11 @@ where
     type Output = H::Output;
 
     fn send_message(&self, msg: Self::Message) {
-        AgentLink::<StoreService<H, SCOPE>>::send_message(self, msg)
+        AgentLink::<StoreService<H, SCOPE>>::send_input(self, ServiceInput::StoreMessage(msg))
     }
 
     fn send_input(&self, input: Self::Input) {
-        AgentLink::<StoreService<H, SCOPE>>::send_input(self, ServiceInput::Store(input))
+        AgentLink::<StoreService<H, SCOPE>>::send_input(self, ServiceInput::StoreInput(input))
     }
 
     fn respond(&self, who: HandlerId, output: Self::Output) {
@@ -186,6 +186,9 @@ where
     }
 
     fn send_future(&self, future: Pin<Box<dyn Future<Output = Self::Message>>>) {
-        AgentLink::<StoreService<H, SCOPE>>::send_future(self, future)
+        AgentLink::<StoreService<H, SCOPE>>::send_input(
+            self,
+            ServiceInput::StoreMessageFuture(future),
+        )
     }
 }

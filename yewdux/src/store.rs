@@ -10,8 +10,6 @@ pub use link::StoreLink;
 use yew_agent::HandlerId;
 
 pub type Changed = bool;
-pub(crate) type Reduction<T> = Rc<dyn Fn(&mut T)>;
-pub(crate) type ReductionOnce<T> = Box<dyn FnOnce(&mut T)>;
 
 /// A container for shared state.
 pub trait Store: Sized + 'static {

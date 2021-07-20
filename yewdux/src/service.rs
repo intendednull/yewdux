@@ -1,21 +1,28 @@
 //! Wrapper for components with shared state.
-use std::collections::HashSet;
+use std::borrow::{Borrow, BorrowMut};
+use std::future::Future;
+use std::pin::Pin;
 use std::rc::Rc;
+use std::{cell::RefCell, collections::HashSet};
 
 use yew::prelude::*;
 use yew_agent::{Agent, AgentLink, Bridge, Bridged, Context, Dispatched, Dispatcher, HandlerId};
 
-use crate::store::{Reduction, ReductionOnce, Store, StoreLink};
+use crate::store::{Store, StoreLink};
+
+pub enum Reduction<T> {
+    Reduce(Rc<dyn Fn(&mut T)>),
+    ReduceOnce(Box<dyn FnOnce(&mut T)>),
+    ReduceFuture(Pin<Box<dyn Future<Output = ()>>>),
+}
 
 /// Message send to [StateService](StateService).
 pub enum ServiceRequest<H>
 where
     H: Store,
 {
-    /// Apply a state change.
+    /// Apply a change to state.
     Apply(Reduction<H::Model>),
-    /// Apply a state change once.
-    ApplyOnce(ReductionOnce<H::Model>),
 }
 
 /// Message sent to [StateService](StateService) subscribers.
@@ -34,7 +41,9 @@ where
     H: Store,
 {
     Service(ServiceRequest<H>),
-    Store(H::Input),
+    StoreInput(H::Input),
+    StoreMessage(H::Message),
+    StoreMessageFuture(Pin<Box<dyn Future<Output = H::Message>>>),
 }
 
 /// Output message from either [StateService](StateService) or
@@ -66,46 +75,58 @@ where
     STORE: Store + 'static,
     SCOPE: 'static,
 {
-    type Message = STORE::Message;
+    type Message = ();
     type Reach = Context<Self>;
     type Input = ServiceInput<STORE>;
     type Output = ServiceOutput<STORE>;
 
     fn create(link: AgentLink<Self>) -> Self {
+        let store = <STORE as Store>::new(StoreLink::new(link.clone()));
         Self {
-            store: <STORE as Store>::new(StoreLink::new(link.clone())),
+            store,
             subscriptions: Default::default(),
             self_dispatcher: Self::dispatcher(),
             link,
         }
     }
 
-    fn update(&mut self, msg: Self::Message) {
-        let changed = self.store.update(msg);
-        if changed {
-            self.store.changed();
-            self.notify_subscribers();
-        }
-    }
+    fn update(&mut self, _msg: Self::Message) {}
 
     fn handle_input(&mut self, msg: Self::Input, who: HandlerId) {
         match msg {
             ServiceInput::Service(msg) => match msg {
                 ServiceRequest::Apply(reduce) => {
-                    reduce(Rc::make_mut(self.store.state()));
-                    self.store.changed();
-                }
-                ServiceRequest::ApplyOnce(reduce) => {
-                    reduce(Rc::make_mut(self.store.state()));
+                    let state = Rc::make_mut(self.store.state());
+
+                    match reduce {
+                        Reduction::Reduce(f) => f(state),
+                        Reduction::ReduceOnce(f) => f(state),
+                        Reduction::ReduceFuture(fut) => self.link.send_future(fut),
+                    }
+
                     self.store.changed();
                 }
             },
-            ServiceInput::Store(msg) => {
+            ServiceInput::StoreInput(msg) => {
                 let changed = self.store.handle_input(msg, who);
                 if changed {
                     self.store.changed();
                     self.notify_subscribers();
                 }
+            }
+            ServiceInput::StoreMessage(msg) => {
+                let changed = self.store.update(msg);
+                if changed {
+                    self.store.changed();
+                    self.notify_subscribers();
+                }
+            }
+            ServiceInput::StoreMessageFuture(fut) => {
+                let link = self.link.clone();
+                self.link.send_future(async move {
+                    let msg = fut.await;
+                    link.send_input(ServiceInput::StoreMessage(msg))
+                })
             }
         }
 
@@ -132,11 +153,10 @@ where
     SCOPE: 'static,
 {
     fn notify_subscribers(&mut self) {
-        let state = self.store.state();
         for who in self.subscriptions.iter().cloned() {
             self.link.respond(
                 who,
-                ServiceOutput::Service(ServiceResponse::State(state.clone())),
+                ServiceOutput::Service(ServiceResponse::State(self.store.state().clone())),
             );
         }
     }
@@ -173,7 +193,7 @@ where
 
     /// Send message to handler.
     pub fn send_store(&mut self, msg: H::Input) {
-        self.bridge.send(ServiceInput::Store(msg));
+        self.bridge.send(ServiceInput::StoreInput(msg));
     }
 }
 

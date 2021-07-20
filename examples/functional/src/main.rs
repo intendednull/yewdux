@@ -1,5 +1,4 @@
-use yew::prelude::*;
-use yew_functional::*;
+use yew::{functional::*, prelude::*};
 use yewdux::prelude::*;
 use yewdux_functional::*;
 
@@ -11,14 +10,13 @@ struct State {
 #[function_component(App)]
 fn app() -> Html {
     let store = use_store::<BasicStore<State>>();
-
-    let count = store.state().map(|s| s.count).unwrap_or(0);
+    let count = store.state().count;
     let onclick = store.dispatch().reduce_callback(|s| s.count += 1);
 
     html! {
         <>
         <p>{ count }</p>
-        <button onclick=onclick>{"+1"}</button>
+        <button onclick={onclick}>{"+1"}</button>
         </>
     }
 }
