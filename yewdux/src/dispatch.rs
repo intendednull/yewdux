@@ -142,76 +142,112 @@ pub trait Dispatcher {
         })
     }
 
-    fn reduce_future<F, FU, OUT>(&self, future: FU, f: F)
+    fn future<F, FU, OUT>(&self, f: F)
     where
-        F: FnOnce(&mut Model<Self::Store>, OUT) + 'static,
+        F: FnOnce(Self) -> FU + 'static,
         FU: Future<Output = OUT> + 'static,
         OUT: 'static,
+        Self: Clone + 'static,
     {
-        let reduce = self.reduce_callback_once_with(move |state, output: OUT| {
-            f(state, output);
-        });
-        let fut = async move {
-            let result = future.await;
-            reduce.emit(result);
-        };
+        let this = self.clone();
         self.bridge()
             .borrow_mut()
             .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin(
-                fut,
+                async move {
+                    f(this).await;
+                },
             ))))
     }
 
-    fn reduce_future_callback<F, FU, FFU, OUT, E>(&self, future: FFU, f: F) -> Callback<E>
+    fn future_callback<F, FU, OUT, E>(&self, f: F) -> Callback<E>
     where
-        F: Fn(&mut Model<Self::Store>, OUT) + 'static,
-        FFU: Fn(E) -> FU + 'static,
-        FU: Future<Output = OUT> + 'static,
+        F: Fn(Self) -> FU + 'static,
+        FU: Future<Output = OUT>,
         OUT: 'static,
+        Self: Clone + 'static,
+        E: 'static,
     {
-        let reduce = self.reduce_callback_with(move |state, output: OUT| {
-            f(state, output);
-        });
-        let bridge = self.bridge().clone();
-        Callback::from(move |e| {
-            let future = future(e);
-            let reduce = reduce.clone();
-            let fut = async move {
-                let result = future.await;
-                reduce.emit(result);
-            };
-
+        let this = self.clone();
+        let f = Rc::new(f);
+        Callback::from(move |_| {
+            let bridge = this.bridge();
+            let this = this.clone();
             bridge
                 .borrow_mut()
-                .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin(
-                    fut,
-                ))))
+                .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin({
+                    let this = this.clone();
+                    let f = f.clone();
+                    async move {
+                        f(this).await;
+                    }
+                }))))
         })
     }
 
-    fn reduce_future_callback_once<F, FU, FFU, OUT, E>(&self, future: FFU, f: F) -> Callback<E>
+    fn future_callback_with<F, FU, OUT, E>(&self, f: F) -> Callback<E>
     where
-        F: FnOnce(&mut Model<Self::Store>, OUT) + 'static,
-        FU: Future<Output = OUT> + 'static,
-        FFU: Fn(E) -> FU + 'static,
+        F: Fn(Self, E) -> FU + 'static,
+        FU: Future<Output = OUT>,
         OUT: 'static,
+        Self: Clone + 'static,
         E: 'static,
     {
-        let reduce = self.reduce_callback_once_with(move |state, output: OUT| {
-            f(state, output);
-        });
-        let bridge = self.bridge().clone();
-        Callback::once(move |e| {
-            let fut = async move {
-                let result = future(e).await;
-                reduce.emit(result);
-            };
-
+        let this = self.clone();
+        let f = Rc::new(f);
+        Callback::from(move |e| {
+            let bridge = this.bridge();
+            let this = this.clone();
             bridge
                 .borrow_mut()
-                .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin(
-                    fut,
-                ))))
+                .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin({
+                    let this = this.clone();
+                    let f = f.clone();
+                    async move {
+                        f(this, e).await;
+                    }
+                }))))
+        })
+    }
+
+    fn future_callback_once<F, FU, OUT, E>(&self, f: F) -> Callback<E>
+    where
+        F: FnOnce(Self) -> FU + 'static,
+        FU: Future<Output = OUT>,
+        OUT: 'static,
+        Self: Clone + 'static,
+        E: 'static,
+    {
+        let this = self.clone();
+        let bridge = this.bridge().clone();
+        Callback::once(move |_| {
+            bridge
+                .borrow_mut()
+                .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin({
+                    async move {
+                        f(this).await;
+                    }
+                }))))
+        })
+    }
+
+    fn future_callback_once_with<F, FU, OUT, E>(&self, f: F) -> Callback<E>
+    where
+        F: FnOnce(Self, E) -> FU + 'static,
+        FU: Future<Output = OUT>,
+        OUT: 'static,
+        Self: Clone + 'static,
+        E: 'static,
+    {
+        let this = self.clone();
+        let bridge = this.bridge().clone();
+        Callback::once(move |e| {
+            bridge
+                .borrow_mut()
+                .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin({
+                    async move {
+                        f(this, e).await;
+                    }
+                }))))
         })
     }
 }

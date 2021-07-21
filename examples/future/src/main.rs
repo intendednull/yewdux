@@ -47,7 +47,7 @@ impl Component for App {
         let count = self.state.count;
         let onclick = self
             .dispatch
-            .reduce_future_callback(|_| async { 1 }, |s, result| s.count += result);
+            .future_callback(|dispatch| async move { dispatch.reduce(|s| s.count += 1) });
         html! {
             <>
             <h1>{ count }</h1>
