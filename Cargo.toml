@@ -4,6 +4,7 @@ members = [
   "yewdux-functional",
   "yewdux-input",
   "examples/basic",
+  "examples/future",
   "examples/no_copy",
   "examples/props",
   "examples/reducer",

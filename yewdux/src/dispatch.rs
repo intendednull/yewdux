@@ -72,26 +72,6 @@ pub trait Dispatcher {
             .send_service(ServiceRequest::Apply(Reduction::ReduceOnce(Box::new(f))))
     }
 
-    fn reduce_future<F, FU, OUT>(&self, future: FU, f: F)
-    where
-        F: FnOnce(&mut Model<Self::Store>, OUT) + 'static,
-        FU: Future<Output = OUT> + 'static,
-        OUT: 'static,
-    {
-        let reduce = self.reduce_callback_once_with(move |state, output: OUT| {
-            f(state, output);
-        });
-        let fut = async move {
-            let result = future.await;
-            reduce.emit(result);
-        };
-        self.bridge()
-            .borrow_mut()
-            .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin(
-                fut,
-            ))))
-    }
-
     /// Like [reduce](Self::reduce) but from a callback.
     ///
     /// ```ignore
@@ -158,6 +138,79 @@ pub trait Dispatcher {
                 .borrow_mut()
                 .send_service(ServiceRequest::Apply(Reduction::ReduceOnce(Box::new(
                     |state| f(state, e),
+                ))))
+        })
+    }
+
+    fn reduce_future<F, FU, OUT>(&self, future: FU, f: F)
+    where
+        F: FnOnce(&mut Model<Self::Store>, OUT) + 'static,
+        FU: Future<Output = OUT> + 'static,
+        OUT: 'static,
+    {
+        let reduce = self.reduce_callback_once_with(move |state, output: OUT| {
+            f(state, output);
+        });
+        let fut = async move {
+            let result = future.await;
+            reduce.emit(result);
+        };
+        self.bridge()
+            .borrow_mut()
+            .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin(
+                fut,
+            ))))
+    }
+
+    fn reduce_future_callback<F, FU, FFU, OUT, E>(&self, future: FFU, f: F) -> Callback<E>
+    where
+        F: Fn(&mut Model<Self::Store>, OUT) + 'static,
+        FFU: Fn(E) -> FU + 'static,
+        FU: Future<Output = OUT> + 'static,
+        OUT: 'static,
+    {
+        let reduce = self.reduce_callback_with(move |state, output: OUT| {
+            f(state, output);
+        });
+        let bridge = self.bridge().clone();
+        Callback::from(move |e| {
+            let future = future(e);
+            let reduce = reduce.clone();
+            let fut = async move {
+                let result = future.await;
+                reduce.emit(result);
+            };
+
+            bridge
+                .borrow_mut()
+                .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin(
+                    fut,
+                ))))
+        })
+    }
+
+    fn reduce_future_callback_once<F, FU, FFU, OUT, E>(&self, future: FFU, f: F) -> Callback<E>
+    where
+        F: FnOnce(&mut Model<Self::Store>, OUT) + 'static,
+        FU: Future<Output = OUT> + 'static,
+        FFU: Fn(E) -> FU + 'static,
+        OUT: 'static,
+        E: 'static,
+    {
+        let reduce = self.reduce_callback_once_with(move |state, output: OUT| {
+            f(state, output);
+        });
+        let bridge = self.bridge().clone();
+        Callback::once(move |e| {
+            let fut = async move {
+                let result = future(e).await;
+                reduce.emit(result);
+            };
+
+            bridge
+                .borrow_mut()
+                .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin(
+                    fut,
                 ))))
         })
     }
