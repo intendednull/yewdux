@@ -10,19 +10,15 @@ use yew_agent::{Agent, AgentLink, Bridge, Bridged, Context, Dispatched, Dispatch
 
 use crate::store::{Store, StoreLink};
 
-pub enum Reduction<T> {
-    Reduce(Rc<dyn Fn(&mut T)>),
-    ReduceOnce(Box<dyn FnOnce(&mut T)>),
-    ReduceFuture(Pin<Box<dyn Future<Output = ()>>>),
-}
-
 /// Message send to [StateService](StateService).
 pub enum ServiceRequest<H>
 where
     H: Store,
 {
     /// Apply a change to state.
-    Apply(Reduction<H::Model>),
+    Reduce(Box<dyn FnOnce(&mut H::Model)>),
+    /// Execute a future.
+    Future(Pin<Box<dyn Future<Output = ()>>>),
 }
 
 /// Message sent to [StateService](StateService) subscribers.
@@ -94,19 +90,15 @@ where
 
     fn handle_input(&mut self, msg: Self::Input, who: HandlerId) {
         match msg {
-            ServiceInput::Service(msg) => match msg {
-                ServiceRequest::Apply(reduce) => {
-                    let state = Rc::make_mut(self.store.state());
-
-                    match reduce {
-                        Reduction::Reduce(f) => f(state),
-                        Reduction::ReduceOnce(f) => f(state),
-                        Reduction::ReduceFuture(fut) => self.link.send_future(fut),
-                    }
-
-                    self.store.changed();
+            ServiceInput::Service(msg) => {
+                let state = Rc::make_mut(self.store.state());
+                match msg {
+                    ServiceRequest::Reduce(f) => f(state),
+                    ServiceRequest::Future(fut) => self.link.send_future(fut),
                 }
-            },
+
+                self.store.changed();
+            }
             ServiceInput::StoreInput(msg) => {
                 let changed = self.store.handle_input(msg, who);
                 if changed {

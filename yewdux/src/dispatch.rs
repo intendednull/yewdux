@@ -6,7 +6,7 @@ use std::{cell::RefCell, future::Future};
 use yew::{Callback, Properties};
 
 use crate::{
-    service::{Reduction, ServiceBridge, ServiceOutput, ServiceRequest, ServiceResponse},
+    service::{ServiceBridge, ServiceOutput, ServiceRequest, ServiceResponse},
     store::Store,
 };
 
@@ -66,10 +66,15 @@ pub trait Dispatcher {
     /// let onclick = dispatch.reduce(|_| StoreMsg::AddOne);
     /// html! { <button onclick=onclick>{"+1"}</button> }
     /// ```
-    fn reduce(&self, f: impl FnOnce(&mut Model<Self::Store>) + 'static) {
+    fn reduce<F, R>(&self, f: F)
+    where
+        F: FnOnce(&mut Model<Self::Store>) -> R + 'static,
+    {
         self.bridge()
             .borrow_mut()
-            .send_service(ServiceRequest::Apply(Reduction::ReduceOnce(Box::new(f))))
+            .send_service(ServiceRequest::Reduce(Box::new(move |state| {
+                f(state);
+            })))
     }
 
     /// Like [reduce](Self::reduce) but from a callback.
@@ -78,30 +83,20 @@ pub trait Dispatcher {
     /// let onclick = dispatch.reduce_callback(|s| s.count += 1);
     /// html! { <button onclick=onclick>{"+1"}</button> }
     /// ```
-    fn reduce_callback<E: 'static>(
-        &self,
-        f: impl Fn(&mut Model<Self::Store>) + 'static,
-    ) -> Callback<E> {
+    fn reduce_callback<F, R, E>(&self, f: F) -> Callback<E>
+    where
+        F: Fn(&mut Model<Self::Store>) -> R + 'static,
+        E: 'static,
+    {
         let bridge = Rc::clone(self.bridge());
         let f = Rc::new(f);
         Callback::from(move |_| {
-            bridge
-                .borrow_mut()
-                .send_service(ServiceRequest::Apply(Reduction::Reduce(f.clone())))
-        })
-    }
-
-    /// Once variation of [Self::reduce_callback].
-    fn reduce_callback_once<E: 'static>(
-        &self,
-        f: impl FnOnce(&mut Model<Self::Store>) + 'static,
-    ) -> Callback<E> {
-        let bridge = Rc::clone(self.bridge());
-        let f = Box::new(f);
-        Callback::once(move |_| {
-            bridge
-                .borrow_mut()
-                .send_service(ServiceRequest::Apply(Reduction::ReduceOnce(f)))
+            bridge.borrow_mut().send_service(ServiceRequest::Reduce({
+                let f = f.clone();
+                Box::new(move |state| {
+                    f(state);
+                })
+            }))
         })
     }
 
@@ -111,34 +106,53 @@ pub trait Dispatcher {
     /// let oninput = dispatch.reduce_callback(|s, i: InputData| s.user_name i.value);
     /// html! { <input oninput=oninput>{"+1"}</input> }
     /// ```
-    fn reduce_callback_with<E: 'static>(
-        &self,
-        f: impl Fn(&mut Model<Self::Store>, E) + 'static,
-    ) -> Callback<E> {
+    fn reduce_callback_with<F, R, E>(&self, f: F) -> Callback<E>
+    where
+        F: Fn(&mut Model<Self::Store>, E) -> R + 'static,
+        E: 'static,
+    {
         let bridge = Rc::clone(self.bridge());
         let f = Rc::new(f);
         Callback::from(move |e: E| {
             let f = f.clone();
+            bridge.borrow_mut().send_service(ServiceRequest::Reduce({
+                let f = f.clone();
+                Box::new(move |state| {
+                    f(state, e);
+                })
+            }))
+        })
+    }
+
+    /// Once variation of [Self::reduce_callback].
+    fn reduce_callback_once<F, R, E>(&self, f: F) -> Callback<E>
+    where
+        F: FnOnce(&mut Model<Self::Store>) -> R + 'static,
+        E: 'static,
+    {
+        let bridge = Rc::clone(self.bridge());
+        Callback::once(move |_| {
             bridge
                 .borrow_mut()
-                .send_service(ServiceRequest::Apply(Reduction::ReduceOnce(Box::new(
-                    move |state| f(state, e),
-                ))))
+                .send_service(ServiceRequest::Reduce(Box::new(move |state| {
+                    f(state);
+                })))
         })
     }
 
     /// Once variation of [Self::reduce_callback_with].
-    fn reduce_callback_once_with<E: 'static>(
-        &self,
-        f: impl FnOnce(&mut Model<Self::Store>, E) + 'static,
-    ) -> Callback<E> {
+    fn reduce_callback_once_with<F, R, E>(&self, f: F) -> Callback<E>
+    where
+        F: FnOnce(&mut Model<Self::Store>, E) -> R + 'static,
+        E: 'static,
+    {
         let bridge = Rc::clone(self.bridge());
         Callback::once(move |e: E| {
             bridge
                 .borrow_mut()
-                .send_service(ServiceRequest::Apply(Reduction::ReduceOnce(Box::new(
-                    |state| f(state, e),
-                ))))
+                .send_service(ServiceRequest::Reduce(Box::new(move |state| {
+                    f(state, e);
+                })))
         })
     }
 
@@ -152,11 +166,9 @@ pub trait Dispatcher {
         let this = self.clone();
         self.bridge()
             .borrow_mut()
-            .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin(
-                async move {
-                    f(this).await;
-                },
-            ))))
+            .send_service(ServiceRequest::Future(Box::pin(async move {
+                f(this).await;
+            })))
     }
 
     fn future_callback<F, FU, OUT, E>(&self, f: F) -> Callback<E>
@@ -174,13 +186,13 @@ pub trait Dispatcher {
             let this = this.clone();
             bridge
                 .borrow_mut()
-                .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin({
+                .send_service(ServiceRequest::Future(Box::pin({
                     let this = this.clone();
                     let f = f.clone();
                     async move {
                         f(this).await;
                     }
-                }))))
+                })))
         })
     }
 
@@ -199,13 +211,13 @@ pub trait Dispatcher {
             let this = this.clone();
             bridge
                 .borrow_mut()
-                .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin({
+                .send_service(ServiceRequest::Future(Box::pin({
                     let this = this.clone();
                     let f = f.clone();
                     async move {
                         f(this, e).await;
                     }
-                }))))
+                })))
         })
     }
 
@@ -222,11 +234,11 @@ pub trait Dispatcher {
         Callback::once(move |_| {
             bridge
                 .borrow_mut()
-                .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin({
+                .send_service(ServiceRequest::Future(Box::pin({
                     async move {
                         f(this).await;
                     }
-                }))))
+                })))
         })
     }
 
@@ -243,11 +255,11 @@ pub trait Dispatcher {
         Callback::once(move |e| {
             bridge
                 .borrow_mut()
-                .send_service(ServiceRequest::Apply(Reduction::ReduceFuture(Box::pin({
+                .send_service(ServiceRequest::Future(Box::pin({
                     async move {
                         f(this, e).await;
                     }
-                }))))
+                })))
         })
     }
 }
