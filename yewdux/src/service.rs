@@ -93,11 +93,12 @@ where
             ServiceInput::Service(msg) => {
                 let state = Rc::make_mut(self.store.state());
                 match msg {
-                    ServiceRequest::Reduce(f) => f(state),
+                    ServiceRequest::Reduce(f) => {
+                        f(state);
+                        self.store.changed();
+                    }
                     ServiceRequest::Future(fut) => self.link.send_future(fut),
                 }
-
-                self.store.changed();
             }
             ServiceInput::StoreInput(msg) => {
                 let changed = self.store.handle_input(msg, who);
