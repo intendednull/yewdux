@@ -10,7 +10,7 @@ struct State {
 #[function_component(App)]
 fn app() -> Html {
     let store = use_store::<BasicStore<State>>();
-    let count = store.state().count;
+    let count = store.state().map(|s| s.count).unwrap_or_default();
     let onclick = store.dispatch().reduce_callback(|s| s.count += 1);
 
     html! {

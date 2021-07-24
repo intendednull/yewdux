@@ -1,9 +1,8 @@
 //! Wrapper for components with shared state.
-use std::borrow::{Borrow, BorrowMut};
+use std::collections::HashSet;
 use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
-use std::{cell::RefCell, collections::HashSet};
 
 use yew::prelude::*;
 use yew_agent::{Agent, AgentLink, Bridge, Bridged, Context, Dispatched, Dispatcher, HandlerId};

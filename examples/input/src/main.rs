@@ -1,5 +1,4 @@
-use yew::prelude::*;
-use yew_functional::*;
+use yew::{functional::*, prelude::*};
 use yewdux::prelude::*;
 use yewdux_functional::use_store;
 use yewdux_input::*;
@@ -63,18 +62,18 @@ fn input_pet() -> Html {
     }
 }
 
-#[function_component(InputAvatar)]
-fn input_avatar() -> Html {
-    let form = use_store::<BasicStore<UserForm>>();
-    let onchange = form.dispatch().file(|form, value| form.avatar = value.name);
-    html! {
-        <>
-        <label>{"Select an avatar"}</label>
-        {" "}
-        <input type="file" onchange={onchange} />
-        </>
-    }
-}
+// #[function_component(InputAvatar)]
+// fn input_avatar() -> Html {
+// let form = use_store::<BasicStore<UserForm>>();
+// let onchange = form.dispatch().file(|form, value| form.avatar = value.name);
+// html! {
+// <>
+// <label>{"Select an avatar"}</label>
+// {" "}
+// <input type="file" onchange={onchange} />
+// </>
+// }
+// }
 
 #[function_component(App)]
 fn app() -> Html {
@@ -98,7 +97,7 @@ fn app() -> Html {
         <div>
             <div><InputName /></div>
             <div><InputPet /></div>
-            <div><InputAvatar /></div>
+            // <div><InputAvatar /></div>
         </div>
         </>
 

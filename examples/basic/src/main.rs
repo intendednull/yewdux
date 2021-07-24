@@ -49,7 +49,7 @@ impl Component for App {
         html! {
             <>
             <h1>{ count }</h1>
-            <button onclick=onclick>{"+1"}</button>
+            <button onclick={onclick}>{"+1"}</button>
             </>
         }
     }

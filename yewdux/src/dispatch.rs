@@ -1,5 +1,4 @@
 //! Primary interface to a [Store](crate::store::Store)
-use std::pin::Pin;
 use std::rc::Rc;
 use std::{cell::RefCell, future::Future};
 
