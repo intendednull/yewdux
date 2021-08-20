@@ -1,7 +1,9 @@
 use gloo::file::{File, FileReadError};
 use yew::{
-    prelude::{Callback, InputData},
-    web_sys, ChangeData, FocusEvent,
+    events::{Event, InputEvent},
+    prelude::{Callback, TargetCast},
+    web_sys::{self, HtmlInputElement},
+    FocusEvent,
 };
 use yewdux::{dispatch::Dispatcher, store::Store};
 
@@ -34,70 +36,46 @@ pub trait InputDispatcher: Dispatcher {
     }
 
     /// Callback for setting state from `InputData`.
-    fn input(
+    fn on_input(
         &self,
         f: impl Fn(&mut <Self::Store as Store>::Model, String) + 'static,
-    ) -> Callback<InputData> {
-        self.reduce_callback_with(f)
-            .reform(|data: InputData| data.value)
-    }
-
-    /// Callback for setting state from `InputData`.
-    fn input_once(
-        &self,
-        f: impl FnOnce(&mut <Self::Store as Store>::Model, String) + 'static,
-    ) -> Callback<InputData> {
-        self.reduce_callback_once_with(f)
-            .reform(|data: InputData| data.value)
-    }
-
-    /// Callback for setting state from `InputData`.
-    fn text(
-        &self,
-        f: impl Fn(&mut <Self::Store as Store>::Model, String) + 'static,
-    ) -> Callback<ChangeData> {
-        let on_change = self.reduce_callback_with(f);
-        Callback::from(move |data: ChangeData| {
-            if let ChangeData::Value(val) = data {
-                on_change.emit(val);
-            }
+    ) -> Callback<InputEvent> {
+        self.reduce_callback_with(f).reform(|e: InputEvent| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            input.value()
         })
     }
 
     /// Callback for setting state from `InputData`.
-    fn text_once(
+    fn on_input_once(
         &self,
         f: impl FnOnce(&mut <Self::Store as Store>::Model, String) + 'static,
-    ) -> Callback<ChangeData> {
-        let on_change = self.reduce_callback_once_with(f);
-        Callback::from(move |data: ChangeData| {
-            if let ChangeData::Value(val) = data {
-                on_change.emit(val);
-            }
+    ) -> Callback<InputEvent> {
+        self.reduce_callback_once_with(f).reform(|e: InputEvent| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            input.value()
         })
     }
 
-    fn select(
+    /// Callback for setting state from `InputData`.
+    fn on_change(
         &self,
         f: impl Fn(&mut <Self::Store as Store>::Model, String) + 'static,
-    ) -> Callback<ChangeData> {
-        let on_change = self.reduce_callback_with(f);
-        Callback::from(move |data: ChangeData| {
-            if let ChangeData::Select(el) = data {
-                on_change.emit(el.value());
-            }
+    ) -> Callback<Event> {
+        self.reduce_callback_with(f).reform(|e: Event| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            input.value()
         })
     }
 
-    fn select_once(
+    /// Callback for setting state from `InputData`.
+    fn on_change_once(
         &self,
         f: impl FnOnce(&mut <Self::Store as Store>::Model, String) + 'static,
-    ) -> Callback<ChangeData> {
-        let on_change = self.reduce_callback_once_with(f);
-        Callback::from(move |data: ChangeData| {
-            if let ChangeData::Select(el) = data {
-                on_change.emit(el.value());
-            }
+    ) -> Callback<Event> {
+        self.reduce_callback_once_with(f).reform(|e: Event| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            input.value()
         })
     }
 
@@ -105,10 +83,11 @@ pub trait InputDispatcher: Dispatcher {
     fn file(
         &self,
         f: impl Fn(&mut <Self::Store as Store>::Model, Result<Vec<u8>, FileReadError>) + Copy + 'static,
-    ) -> Callback<ChangeData> {
+    ) -> Callback<Event> {
         let set_file = self.set_with(f);
-        Callback::from(move |data| {
-            if let ChangeData::Files(files) = data {
+        Callback::from(move |e: Event| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            if let Some(files) = input.files() {
                 for file in js_sys::try_iter(&files)
                     .unwrap()
                     .unwrap()

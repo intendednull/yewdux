@@ -10,5 +10,3 @@ edition = "2018"
 serde = { version = "1.0.114", features = ["rc"] }
 yewdux = { path = "../../yewdux" }
 yew = { git = "https://github.com/yewstack/yew.git" }
-yewtil = {  git = "https://github.com/yewstack/yew.git" }
-yew-services = { git = "https://github.com/yewstack/yew.git" }

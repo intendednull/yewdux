@@ -2,7 +2,6 @@ use std::rc::Rc;
 
 use yew::prelude::*;
 use yewdux::prelude::*;
-use yew_services::ConsoleService;
 
 #[derive(Default, Clone)]
 struct State {
@@ -41,10 +40,7 @@ impl Component for App {
                 true
             }
             Msg::Increment => {
-                self.dispatch.reduce(|s| {
-                    ConsoleService::log("count += 1");
-                    s.count += 1
-                });
+                self.dispatch.reduce(|s| s.count += 1);
                 true
             }
         }
@@ -61,7 +57,7 @@ impl Component for App {
             <>
                 <CountApp/>
                 <CountApp/>
-                <button onclick=self.link.callback(|_| Msg::Increment)>{"+1"}</button>
+                <button onclick={self.link.callback(|_| Msg::Increment)}>{"+1"}</button>
             </>
         }
     }
@@ -108,7 +104,6 @@ impl Component for CountApp {
         }
     }
 }
-
 
 pub fn main() {
     yew::start_app::<App>();

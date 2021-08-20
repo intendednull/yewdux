@@ -16,14 +16,14 @@ fn input_name() -> Html {
     let form = use_store::<BasicStore<UserForm>>();
     let input_first = {
         let value = form.state().map(|s| s.first.clone()).unwrap_or_default();
-        let oninput = form.dispatch().input(|form, value| form.first = value);
+        let oninput = form.dispatch().on_input(|form, value| form.first = value);
         html! {
             <input placeholder="First name" value={value} oninput={oninput} />
         }
     };
     let input_last = {
         let value = form.state().map(|s| s.last.clone()).unwrap_or_default();
-        let oninput = form.dispatch().input(|form, value| form.last = value);
+        let oninput = form.dispatch().on_input(|form, value| form.last = value);
         html! {
             <input placeholder="Last name" value={value} oninput={oninput} />
         }
@@ -40,7 +40,7 @@ fn input_name() -> Html {
 #[function_component(InputPet)]
 fn input_pet() -> Html {
     let form = use_store::<BasicStore<UserForm>>();
-    let onchange = form.dispatch().select(|form, value| form.pet = value);
+    let onchange = form.dispatch().on_change(|form, value| form.pet = value);
     let value = form.state().map(|s| s.pet.clone()).unwrap_or_default();
     let options = ["None", "Cat", "Dog"]
         .iter()
