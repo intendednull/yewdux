@@ -329,6 +329,12 @@ impl<STORE: Store, SCOPE: 'static> PartialEq for Dispatch<STORE, SCOPE> {
     }
 }
 
+impl<STORE: Store, SCOPE: 'static> std::fmt::Debug for Dispatch<STORE, SCOPE> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Dispatch").finish()
+    }
+}
+
 /// Dispatch for component properties. Use with [WithDispatch](crate::prelude::WithDispatch) to
 /// automatically manage message passing.
 ///
@@ -415,9 +421,43 @@ impl<STORE: Store, SCOPE: 'static> PartialEq for DispatchProps<STORE, SCOPE> {
     }
 }
 
+impl<STORE: Store, SCOPE: 'static> std::fmt::Debug for DispatchProps<STORE, SCOPE>
+where
+    STORE::Model: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DispatchProps")
+            .field("state", &self.state)
+            .finish()
+    }
+}
+
 /// Allows any properties to work with [WithDispatch](crate::prelude::WithDispatch).
 pub trait DispatchPropsMut {
     type Store: Store;
 
     fn dispatch(&mut self) -> &mut DispatchProps<Self::Store>;
+}
+
+#[cfg(test)]
+pub mod tests {
+    use crate::prelude::BasicStore;
+
+    use super::*;
+
+    #[test]
+    fn dispatch_impl_debug() {
+        #[derive(Debug)]
+        struct Foo {
+            dispatch: Dispatch<BasicStore<()>>,
+        }
+    }
+
+    #[test]
+    fn dispatch_props_impl_debug() {
+        #[derive(Debug)]
+        struct Foo {
+            dispatch: DispatchProps<BasicStore<()>>,
+        }
+    }
 }
