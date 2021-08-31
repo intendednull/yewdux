@@ -3,16 +3,16 @@ use std::rc::Rc;
 
 use yew::prelude::*;
 
-use crate::dispatch::{DispatchProps, DispatchPropsMut};
+use crate::dispatch::{Dispatch, DispatchProps, Dispatched};
 use crate::store::Store;
 
-type PropStore<PROPS> = <PROPS as DispatchPropsMut>::Store;
+type PropStore<PROPS> = <PROPS as Dispatched>::Store;
 type Model<T> = <PropStore<T> as Store>::Model;
 
 #[doc(hidden)]
 pub enum Msg<PROPS>
 where
-    PROPS: DispatchPropsMut,
+    PROPS: Dispatched,
 {
     /// Recieve new local state.
     State(Rc<Model<PROPS>>),
@@ -28,50 +28,45 @@ where
 pub struct WithDispatch<C>
 where
     C: Component,
-    C::Properties: DispatchPropsMut + Clone,
+    C::Properties: Dispatched + Clone,
 {
-    props: C::Properties,
     is_ready: bool,
+    _mark: std::marker::PhantomData<C>,
 }
 
 impl<C> Component for WithDispatch<C>
 where
     C: Component,
-    C::Properties: DispatchPropsMut + Clone,
+    C::Properties: Dispatched + Clone,
 {
     type Message = Msg<C::Properties>;
     type Properties = C::Properties;
 
-    fn create(mut props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        *props.dispatch() = DispatchProps::new(link.callback(Msg::State));
+    fn create(ctx: &Context<Self>) -> Self {
+        *ctx.props().dispatch().dispatch.borrow_mut() =
+            Dispatch::bridge_state(ctx.link().callback(Msg::State));
         Self {
-            props,
             is_ready: false,
+            _mark: Default::default(),
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         use Msg::*;
         match msg {
             State(state) => {
-                self.props.dispatch().state = Some(state);
+                *ctx.props().dispatch().state.borrow_mut() = Some(state);
                 self.is_ready = true;
                 true
             }
         }
     }
 
-    fn change(&mut self, mut props: Self::Properties) -> ShouldRender {
-        *props.dispatch() = self.props.dispatch().clone();
-        self.props = props;
-        true
-    }
-
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         // Dispatch is ready when both fields are set.
         // Only render wrapped component when we're ready.
         if self.is_ready {
-            let props = self.props.clone();
+            let props = ctx.props().clone();
             html! {
                 <C with props />
             }

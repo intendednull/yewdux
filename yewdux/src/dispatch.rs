@@ -16,7 +16,7 @@ pub trait Dispatcher {
     type Store: Store;
 
     #[doc(hidden)]
-    fn bridge(&self) -> &Rc<RefCell<ServiceBridge<Self::Store>>>;
+    fn bridge(&self) -> Rc<RefCell<ServiceBridge<Self::Store>>>;
 
     /// Send an input message.
     ///
@@ -37,7 +37,7 @@ pub trait Dispatcher {
     where
         M: Into<<Self::Store as Store>::Input>,
     {
-        let bridge = Rc::clone(self.bridge());
+        let bridge = self.bridge();
         let f = Rc::new(f);
         Callback::from(move |e| {
             let msg = f(e);
@@ -50,7 +50,7 @@ pub trait Dispatcher {
     where
         M: Into<<Self::Store as Store>::Input>,
     {
-        let bridge = Rc::clone(self.bridge());
+        let bridge = self.bridge();
         let f = Rc::new(f);
         Callback::once(move |e| {
             let msg = f(e);
@@ -87,7 +87,7 @@ pub trait Dispatcher {
         F: Fn(&mut Model<Self::Store>) -> R + 'static,
         E: 'static,
     {
-        let bridge = Rc::clone(self.bridge());
+        let bridge = self.bridge();
         let f = Rc::new(f);
         Callback::from(move |_| {
             bridge.borrow_mut().send_service(ServiceRequest::Reduce({
@@ -110,7 +110,7 @@ pub trait Dispatcher {
         F: Fn(&mut Model<Self::Store>, E) -> R + 'static,
         E: 'static,
     {
-        let bridge = Rc::clone(self.bridge());
+        let bridge = self.bridge();
         let f = Rc::new(f);
         Callback::from(move |e: E| {
             let f = f.clone();
@@ -129,7 +129,7 @@ pub trait Dispatcher {
         F: FnOnce(&mut Model<Self::Store>) -> R + 'static,
         E: 'static,
     {
-        let bridge = Rc::clone(self.bridge());
+        let bridge = self.bridge();
         Callback::once(move |_| {
             bridge
                 .borrow_mut()
@@ -145,7 +145,7 @@ pub trait Dispatcher {
         F: FnOnce(&mut Model<Self::Store>, E) -> R + 'static,
         E: 'static,
     {
-        let bridge = Rc::clone(self.bridge());
+        let bridge = self.bridge();
         Callback::once(move |e: E| {
             bridge
                 .borrow_mut()
@@ -179,9 +179,9 @@ pub trait Dispatcher {
         E: 'static,
     {
         let this = self.clone();
+        let bridge = this.bridge();
         let f = Rc::new(f);
         Callback::from(move |_| {
-            let bridge = this.bridge();
             let this = this.clone();
             bridge
                 .borrow_mut()
@@ -204,9 +204,9 @@ pub trait Dispatcher {
         E: 'static,
     {
         let this = self.clone();
+        let bridge = this.bridge();
         let f = Rc::new(f);
         Callback::from(move |e| {
-            let bridge = this.bridge();
             let this = this.clone();
             bridge
                 .borrow_mut()
@@ -310,8 +310,8 @@ impl<STORE: Store, SCOPE: 'static> Dispatch<STORE, SCOPE> {
 impl<STORE: Store> Dispatcher for Dispatch<STORE> {
     type Store = STORE;
 
-    fn bridge(&self) -> &Rc<RefCell<ServiceBridge<Self::Store>>> {
-        &self.bridge
+    fn bridge(&self) -> Rc<RefCell<ServiceBridge<Self::Store>>> {
+        Rc::clone(&self.bridge)
     }
 }
 
@@ -335,6 +335,12 @@ impl<STORE: Store, SCOPE: 'static> std::fmt::Debug for Dispatch<STORE, SCOPE> {
     }
 }
 
+impl<STORE: Store, SCOPE: 'static> Default for Dispatch<STORE, SCOPE> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Dispatch for component properties. Use with [WithDispatch](crate::prelude::WithDispatch) to
 /// automatically manage message passing.
 ///
@@ -343,46 +349,42 @@ impl<STORE: Store, SCOPE: 'static> std::fmt::Debug for Dispatch<STORE, SCOPE> {
 #[derive(Properties)]
 pub struct DispatchProps<STORE: Store, SCOPE: 'static = STORE> {
     #[prop_or_default]
-    pub(crate) state: Option<Rc<Model<STORE>>>,
+    pub(crate) state: RefCell<Option<Rc<Model<STORE>>>>,
     #[prop_or_default]
-    pub(crate) bridge: Option<Rc<RefCell<ServiceBridge<STORE, SCOPE>>>>,
+    pub(crate) dispatch: RefCell<Dispatch<STORE, SCOPE>>,
 }
 
 impl<STORE: Store, SCOPE: 'static> DispatchProps<STORE, SCOPE> {
     pub(crate) fn new(on_state: Callback<Rc<STORE::Model>>) -> Self {
-        let cb = Callback::from(move |msg| match msg {
-            ServiceOutput::Store(_) => {}
-            ServiceOutput::Service(msg) => match msg {
-                ServiceResponse::State(state) => on_state.emit(state),
-            },
-        });
         Self {
             state: Default::default(),
-            bridge: Some(Rc::new(RefCell::new(ServiceBridge::new(cb)))),
+            dispatch: Dispatch::bridge_state(on_state).into(),
         }
     }
 
-    pub fn state(&self) -> &Model<STORE> {
-        self.state
-            .as_ref()
-            .expect("State accessed prematurely. Missing WithDispatch?")
+    pub fn state(&self) -> Rc<Model<STORE>> {
+        Rc::clone(
+            &self
+                .state
+                .borrow()
+                .as_ref()
+                .expect("State accessed prematurely. Missing WithDispatch?"),
+        )
     }
 }
 
 impl<STORE: Store> Dispatcher for DispatchProps<STORE> {
     type Store = STORE;
 
-    fn bridge(&self) -> &Rc<RefCell<ServiceBridge<Self::Store>>> {
-        self.bridge
-            .as_ref()
-            .expect("Bridge accessed prematurely. Missing WithDispatch?")
+    fn bridge(&self) -> Rc<RefCell<ServiceBridge<Self::Store>>> {
+        self.dispatch.borrow().bridge()
     }
 }
 
-impl<STORE: Store> DispatchPropsMut for DispatchProps<STORE> {
+impl<STORE: Store> Dispatched for DispatchProps<STORE> {
     type Store = STORE;
 
-    fn dispatch(&mut self) -> &mut DispatchProps<Self::Store> {
+    fn dispatch(&self) -> &DispatchProps<Self::Store> {
         self
     }
 }
@@ -391,7 +393,7 @@ impl<STORE: Store, SCOPE: 'static> Default for DispatchProps<STORE, SCOPE> {
     fn default() -> Self {
         Self {
             state: Default::default(),
-            bridge: Default::default(),
+            dispatch: Default::default(),
         }
     }
 }
@@ -400,22 +402,19 @@ impl<STORE: Store, SCOPE: 'static> Clone for DispatchProps<STORE, SCOPE> {
     fn clone(&self) -> Self {
         Self {
             state: self.state.clone(),
-            bridge: self.bridge.clone(),
+            dispatch: self.dispatch.clone(),
         }
     }
 }
 
 impl<STORE: Store, SCOPE: 'static> PartialEq for DispatchProps<STORE, SCOPE> {
     fn eq(&self, other: &Self) -> bool {
-        self.bridge
-            .as_ref()
-            .zip(other.bridge.as_ref())
-            .map(|(a, b)| Rc::ptr_eq(a, b))
-            .unwrap_or(false)
+        self.dispatch == other.dispatch
             && self
                 .state
+                .borrow()
                 .as_ref()
-                .zip(other.state.as_ref())
+                .zip(other.state.borrow().as_ref())
                 .map(|(a, b)| Rc::ptr_eq(a, b))
                 .unwrap_or(false)
     }
@@ -433,10 +432,30 @@ where
 }
 
 /// Allows any properties to work with [WithDispatch](crate::prelude::WithDispatch).
-pub trait DispatchPropsMut {
+///
+/// # Example
+///
+/// ```
+/// # #[derive(Clone)]
+/// # struct MyState;
+///     
+/// #[derive(Clone, PartialEq, Properties)]
+/// struct Props {
+///     dispatch: DispatchProps<BasicStore<MyState>>,
+/// }
+///
+/// impl Dispatched for Props {
+///     type Store = BasicStore<MyState>;
+///
+///     fn dispatch(&self) -> &DispatchProps<Self::Store> {
+///         &self.dispatch
+///     }
+/// }
+
+pub trait Dispatched {
     type Store: Store;
 
-    fn dispatch(&mut self) -> &mut DispatchProps<Self::Store>;
+    fn dispatch(&self) -> &DispatchProps<Self::Store>;
 }
 
 #[cfg(test)]
