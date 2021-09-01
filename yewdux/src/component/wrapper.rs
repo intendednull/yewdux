@@ -30,8 +30,7 @@ where
     C: Component,
     C::Properties: Dispatched + Clone,
 {
-    is_ready: bool,
-    _mark: std::marker::PhantomData<C>,
+    state: Option<Rc<<<C::Properties as Dispatched>::Store as Store>::Model>>,
 }
 
 impl<C> Component for WithDispatch<C>
@@ -46,17 +45,15 @@ where
         *ctx.props().dispatch().dispatch.borrow_mut() =
             Dispatch::bridge_state(ctx.link().callback(Msg::State));
         Self {
-            is_ready: false,
-            _mark: Default::default(),
+            state: Default::default(),
         }
     }
 
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         use Msg::*;
         match msg {
             State(state) => {
-                *ctx.props().dispatch().state.borrow_mut() = Some(state);
-                self.is_ready = true;
+                self.state = Some(state);
                 true
             }
         }
@@ -65,8 +62,9 @@ where
     fn view(&self, ctx: &Context<Self>) -> Html {
         // Dispatch is ready when both fields are set.
         // Only render wrapped component when we're ready.
-        if self.is_ready {
+        if let Some(state) = &self.state {
             let props = ctx.props().clone();
+            *props.dispatch().state.borrow_mut() = Some(Rc::clone(state));
             html! {
                 <C with props />
             }
