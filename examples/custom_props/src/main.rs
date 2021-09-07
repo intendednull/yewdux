@@ -11,7 +11,7 @@ struct Props {
     dispatch: DispatchProps<BasicStore<State>>,
 }
 
-impl Dispatched for Props {
+impl WithDispatchProps for Props {
     type Store = BasicStore<State>;
 
     fn dispatch(&self) -> &DispatchProps<Self::Store> {

@@ -94,7 +94,7 @@ pub mod prelude {
     pub use yew_agent::HandlerId;
 
     pub use crate::component::WithDispatch;
-    pub use crate::dispatch::{Dispatch, DispatchProps, Dispatched, Dispatcher};
+    pub use crate::dispatch::{Dispatch, DispatchProps, Dispatcher, WithDispatchProps};
     pub use crate::store::{
         basic::BasicStore,
         persistent::{Area, Persistent, PersistentStore},

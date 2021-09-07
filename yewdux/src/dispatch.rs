@@ -381,7 +381,7 @@ impl<STORE: Store> Dispatcher for DispatchProps<STORE> {
     }
 }
 
-impl<STORE: Store> Dispatched for DispatchProps<STORE> {
+impl<STORE: Store> WithDispatchProps for DispatchProps<STORE> {
     type Store = STORE;
 
     fn dispatch(&self) -> &DispatchProps<Self::Store> {
@@ -452,7 +452,7 @@ where
 ///     }
 /// }
 
-pub trait Dispatched {
+pub trait WithDispatchProps {
     type Store: Store;
 
     fn dispatch(&self) -> &DispatchProps<Self::Store>;

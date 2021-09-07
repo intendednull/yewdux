@@ -3,16 +3,16 @@ use std::rc::Rc;
 
 use yew::prelude::*;
 
-use crate::dispatch::{Dispatch, DispatchProps, Dispatched};
+use crate::dispatch::{Dispatch, DispatchProps, WithDispatchProps};
 use crate::store::Store;
 
-type PropStore<PROPS> = <PROPS as Dispatched>::Store;
+type PropStore<PROPS> = <PROPS as WithDispatchProps>::Store;
 type Model<T> = <PropStore<T> as Store>::Model;
 
 #[doc(hidden)]
 pub enum Msg<PROPS>
 where
-    PROPS: Dispatched,
+    PROPS: WithDispatchProps,
 {
     /// Recieve new local state.
     State(Rc<Model<PROPS>>),
@@ -28,15 +28,15 @@ where
 pub struct WithDispatch<C>
 where
     C: Component,
-    C::Properties: Dispatched + Clone,
+    C::Properties: WithDispatchProps + Clone,
 {
-    state: Option<Rc<<<C::Properties as Dispatched>::Store as Store>::Model>>,
+    state: Option<Rc<<<C::Properties as WithDispatchProps>::Store as Store>::Model>>,
 }
 
 impl<C> Component for WithDispatch<C>
 where
     C: Component,
-    C::Properties: Dispatched + Clone,
+    C::Properties: WithDispatchProps + Clone,
 {
     type Message = Msg<C::Properties>;
     type Properties = C::Properties;
