@@ -66,7 +66,7 @@ where
             let props = ctx.props().clone();
             *props.dispatch().state.borrow_mut() = Some(Rc::clone(state));
             html! {
-                <C with props />
+                <C ..props />
             }
         } else {
             Default::default()
