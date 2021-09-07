@@ -1,4 +1,4 @@
-use yew::{prelude::*, utils::NeqAssign};
+use yew::prelude::*;
 use yewdux::prelude::*;
 
 enum Action {
@@ -29,29 +29,23 @@ impl Reducer for Counter {
 
 type AppDispatch = DispatchProps<ReducerStore<Counter>>;
 
-struct App {
-    dispatch: AppDispatch,
-}
+struct App;
 
 impl Component for App {
     type Message = ();
     type Properties = AppDispatch;
 
-    fn create(dispatch: Self::Properties, _link: ComponentLink<Self>) -> Self {
-        Self { dispatch }
+    fn create(_ctx: &Context<Self>) -> Self {
+        Self
     }
 
-    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
         false
     }
 
-    fn change(&mut self, dispatch: Self::Properties) -> ShouldRender {
-        self.dispatch.neq_assign(dispatch)
-    }
-
-    fn view(&self) -> Html {
-        let count = self.dispatch.state().count;
-        let increment = self.dispatch.callback(|_| Action::Increment);
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        let count = ctx.props().state().count;
+        let increment = ctx.props().callback(|_| Action::Increment);
         html! {
             <>
             <h1>{ count }</h1>

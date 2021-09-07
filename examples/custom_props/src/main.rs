@@ -6,11 +6,24 @@ struct State {
     count: u32,
 }
 
+#[derive(Clone, PartialEq, Properties, Default)]
+struct Props {
+    dispatch: DispatchProps<BasicStore<State>>,
+}
+
+impl WithDispatchProps for Props {
+    type Store = BasicStore<State>;
+
+    fn dispatch(&self) -> &DispatchProps<Self::Store> {
+        &self.dispatch
+    }
+}
+
 struct App;
 
 impl Component for App {
     type Message = ();
-    type Properties = DispatchProps<BasicStore<State>>;
+    type Properties = Props;
 
     fn create(ctx: &Context<Self>) -> Self {
         Self
@@ -21,8 +34,8 @@ impl Component for App {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let count = ctx.props().state().count;
-        let onclick = ctx.props().reduce_callback(|s| s.count += 1);
+        let count = ctx.props().dispatch.state().count;
+        let onclick = ctx.props().dispatch.reduce_callback(|s| s.count += 1);
         html! {
             <>
             <h1>{ count }</h1>

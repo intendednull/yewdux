@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use yew::{prelude::*, utils::NeqAssign};
+use yew::prelude::*;
 use yewdux::prelude::*;
 
 #[derive(Default)]
@@ -48,30 +48,24 @@ impl Store for CounterStore {
     }
 }
 
-struct Model {
-    dispatch: DispatchProps<CounterStore>,
-}
+struct Model;
 
 impl Component for Model {
     type Message = ();
     type Properties = DispatchProps<CounterStore>;
 
-    fn create(dispatch: Self::Properties, _link: ComponentLink<Self>) -> Self {
-        Self { dispatch }
+    fn create(_ctx: &Context<Self>) -> Self {
+        Self
     }
 
-    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
         false
     }
 
-    fn change(&mut self, handle: Self::Properties) -> ShouldRender {
-        self.dispatch.neq_assign(handle)
-    }
-
-    fn view(&self) -> Html {
-        let count = self.dispatch.state().borrow().count;
-        let incr = self.dispatch.callback(|_| CountMsg::Increment);
-        let double = self.dispatch.reduce_callback(|s| s.borrow_mut().count *= 2);
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        let count = ctx.props().state().borrow().count;
+        let incr = ctx.props().callback(|_| CountMsg::Increment);
+        let double = ctx.props().reduce_callback(|s| s.borrow_mut().count *= 2);
         html! {
             <>
             <h1>{ count }</h1>

@@ -12,7 +12,6 @@ struct App {
     /// Our local version of state.
     state: Rc<State>,
     dispatch: Dispatch<BasicStore<State>>,
-    link: ComponentLink<Self>,
 }
 
 enum Msg {
@@ -25,15 +24,14 @@ impl Component for App {
     type Message = Msg;
     type Properties = ();
 
-    fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         Self {
-            dispatch: Dispatch::bridge_state(link.callback(Msg::State)),
+            dispatch: Dispatch::bridge_state(ctx.link().callback(Msg::State)),
             state: Default::default(),
-            link,
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::State(state) => {
                 self.state = state;
@@ -46,18 +44,14 @@ impl Component for App {
         }
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         // We use self.link.callback here because onclick = dispatch_withcallback appears
         // to not be working at this time.
         html! {
             <>
                 <CountApp/>
                 <CountApp/>
-                <button onclick={self.link.callback(|_| Msg::Increment)}>{"+1"}</button>
+                <button onclick={ctx.link().callback(|_| Msg::Increment)}>{"+1"}</button>
             </>
         }
     }
@@ -77,14 +71,14 @@ impl Component for CountApp {
     type Message = CountMsg;
     type Properties = ();
 
-    fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         Self {
-            _dispatch: Dispatch::bridge_state(link.callback(CountMsg::State)),
+            _dispatch: Dispatch::bridge_state(ctx.link().callback(CountMsg::State)),
             state: Default::default(),
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             CountMsg::State(state) => {
                 self.state = state;
@@ -93,11 +87,7 @@ impl Component for CountApp {
         }
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn view(&self) -> Html {
+    fn view(&self, _ctx: &Context<Self>) -> Html {
         let count = self.state.count;
         html! {
             <h1>{ count }</h1>

@@ -69,10 +69,10 @@ impl Component for App {
     type Message = Msg;
     type Properties = ();
 
-    fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         let dispatch = {
-            let on_state = link.callback(Msg::State);
-            let on_output = link.callback(Msg::Output);
+            let on_state = ctx.link().callback(Msg::State);
+            let on_output = ctx.link().callback(Msg::Output);
 
             Dispatch::bridge(on_state, on_output)
         };
@@ -85,7 +85,7 @@ impl Component for App {
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::State(state) => {
                 self.state = state;
@@ -100,11 +100,7 @@ impl Component for App {
         }
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn view(&self) -> Html {
+    fn view(&self, _ctx: &Context<Self>) -> Html {
         let count = self.state.count;
         let onclick = self.dispatch.callback(|_| CounterInput::Increment);
         html! {

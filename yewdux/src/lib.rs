@@ -93,8 +93,8 @@ pub mod prelude {
 
     pub use yew_agent::HandlerId;
 
-    pub use crate::component::{StateView, WithDispatch};
-    pub use crate::dispatch::{Dispatch, DispatchProps, DispatchPropsMut, Dispatcher};
+    pub use crate::component::WithDispatch;
+    pub use crate::dispatch::{Dispatch, DispatchProps, Dispatcher, WithDispatchProps};
     pub use crate::store::{
         basic::BasicStore,
         persistent::{Area, Persistent, PersistentStore},
