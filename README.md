@@ -62,7 +62,7 @@ cb.emit(5);
 
 ## Reading shared state
 
-To read state we need need only a bridge to receive it. State is received once when a bridge is
+To read state we need only a bridge to receive it. State is received once when a bridge is
 created, and every time state is changed afterwards.
 
 ```rust
@@ -79,7 +79,7 @@ struct MyComponent {
 }
 
 enum Msg {
-    State(Rc<MyState>>),
+    State(Rc<MyState>),
 }
 
 impl Component for MyComponent {
@@ -115,8 +115,9 @@ Setting up a bridge for every component can be cumbersome. A solution is provide
 automatically: `WithDispatch` and `DispatchProps`.
 
 Simply give your component `DispatchProps` properties and wrap it with the `WithDispatch` component
-wrapper. **IMPORTANT**: `WithDispatch` and `DispatchProps` **must** be used together, or your app
-will panic.
+wrapper.
+
+**IMPORTANT**: `WithDispatch` and `DispatchProps` **must** be used together, or your app will panic.
 
 ```rust
 struct MyComponentBase;
