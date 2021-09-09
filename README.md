@@ -1,269 +1,179 @@
-Shared state containers for [Yew](https://yew.rs/docs/en/) applications.
+# Yewdux
 
-State management in Yew can get cumbersome, especially when you need to give many (potentially
-isolated) components mutable access to shared state. Normally you would need to write individual
-properties and callbacks for each component to propagate changes -- too much typing if you as me!
-Yewdux provides an ergonomic interface for shared state containers. They can be accessed from any
-component or agent, live for entire application lifetime, and are clone-on-write by default.
+Simple state management for [Yew](https://yew.rs/docs/en/) applications.
+
+This is the development branch. Latest stable release may be found
+[here](https://github.com/intendednull/yewdux/tree/0.6.2).
 
 # Install
 
-Use [cargo-edit](https://github.com/killercup/cargo-edit):
-
-```
-$ cargo install cargo-edit
-$ cargo add yewdux
-```
-
-Or add Yewdux to your project's `Cargo.toml`:
+Add Yewdux to your project's `Cargo.toml`:
 
 ```toml
 [dependencies]
-yewdux = "^0.6"
+yewdux = { git = "https://github.com/intendednull/yewdux.git" }
 ```
 
 # Usage
 
-## Dispatch
+`Dispatch` is the primary interface for Yewdux. It allows shared mutable access to global
+application state, held in specialized agent-like containers called `Store`s.
 
-Let's implement a global counter using Yewdux!
+## Writing to shared state
 
-`Dispatch` provides various methods to interact with `Store`s. Here we'll use `BasicStore`, but you
-could also write your own store implementation! 
+Creating a dispatch is simple, just give it a store type. 
+
+```rust
+use yewdux::prelude::*;
+
+#[derive(Clone, Default)]
+struct MyState {
+    count: usize,
+}
+
+let dispatch = Dispatch::<BasicStore<MyState>>::new();
+```
+
+Note we're using `BasicStore` above, which is one of the default store types provided by Yewdux. [It
+is also possible to define your own store type](https://github.com/intendednull/yewdux/blob/master/examples/store/src/main.rs).
+
+Mutating state is done through `reduce`. Here we immediately send a message to increment count by 1.
+
+```rust
+dispatch.reduce(|state| state.count += 1);
+```
+
+We may also create callbacks that do the same. This button sends the message every time it is clicked.
+
+```rust
+let onclick = dispatch.reduce_callback(|state| state.count += 1);
+html! {
+    <button {onclick}>{"+1"}</button>
+}
+```
+
+If the callback parameter is needed, it may be accessed using the \*_with variant. The following
+creates a new callback, then immediately calls it, incrementing count by 5.
+
+```rust
+let cb = dispatch.reduce_callback_with(|state, incr: usize| state.count += incr);
+cb.emit(5);
+```
+
+## Reading shared state
+
+To read state we need need only a bridge to receive it. State is received once when a bridge is
+created, and every time state is changed afterwards.
+
 ```rust
 use std::rc::Rc;
 
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-#[derive(Default, Clone)]
-struct State {
-    count: u32,
-}
+...
 
-struct App {
-    /// Our local version of state.
-    state: Rc<State>,
-    dispatch: Dispatch<BasicStore<State>>,
+struct MyComponent {
+    dispatch: Dispatch<BasicStore<MyState>>,
+    state: Option<Rc<MyState>>,
 }
 
 enum Msg {
-    /// Message to receive new state.
-    State(Rc<State>),
+    State(Rc<MyState>>),
 }
 
-impl Component for App {
+impl Component for MyComponent {
+    type Properties = (); 
     type Message = Msg;
-    type Properties = ();
 
-    fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        // Create Dispatch with a bridge that receives new state.
-        let dispatch = Dispatch::bridge_state(link.callback(Msg::State)); 
-        // Magically increment our counter for this example.
-        // NOTE: Changes aren't immediate! We won't see new state until we receive it in our update
-        // method.
-        dispatch.reduce(|s| s.count += 1);
-
+    fn create(ctx: &Context<Self>) -> Self {
+        // Create a bridge to receive new state. Changes are handled in `update`.
+        let dispatch = Dispatch::bridge_state(ctx.link().callback(Msg::State));
         Self {
-            dispatch, 
-            state: Default::default(),
+            dispatch,
+            state: Default::default()
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&self, ctx: &Context<Self>, msg: Msg) -> bool {
         match msg {
+            // Receive new state
             Msg::State(state) => {
-                // Receive new state and re-render.
-                self.state = state;
+                self.state = Some(state);
                 true
             }
         }
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn view(&self) -> Html {
-        let count = self.state.count;
-        // We can modify state with callbacks too! 
-        let incr = self.dispatch.reduce_callback(|s| s.count += 1);
-
-        html! {
-            <>
-            <h1>{ count }</h1>
-            <button onclick=incr>{"+1"}</button>
-            </>
-        }
-    }
-}
-
-
-pub fn main() {
-    yew::start_app::<App>();
+    ...
 }
 ```
 
+### Less boilerplate please
 
-## Automatic message passing
+Setting up a bridge for every component can be cumbersome. A solution is provided to handle this
+automatically: `WithDispatch` and `DispatchProps`.
 
-`Dispatch` is neat and all, but all that manual message passing is making me tired. Fortunately
-Yewdux can handle that too! 
-
-`WithDispatch` is a simple component wrapper that handles all that boring message passing for you.
-Simply give your component `DispatchProps` properties. 
+Simply give your component `DispatchProps` properties and wrap it with the `WithDispatch` component
+wrapper. **IMPORTANT**: `WithDispatch` and `DispatchProps` **must** be used together, or your app
+will panic.
 
 ```rust
-use yew::prelude::*;
-use yewdux::prelude::*;
-use yewtil::NeqAssign;
+struct MyComponentBase;
+// I suggest using a type alias. Saves you some typing :)
+type MyComponent = WithDispatch<MyComponentBase>;
 
-#[derive(Default, Clone)]
-struct State {
-    count: u32,
+impl Component for MyComponentBase {
+    type Properties = DispatchProps<BasicStore<MyState>>; 
+    ...
 }
-
-struct App {
-    dispatch: DispatchProps<BasicStore<State>>,
-}
-
-impl Component for App {
-    type Message = ();
-    type Properties = DispatchProps<BasicStore<State>>;
-
-    fn create(dispatch: Self::Properties, _link: ComponentLink<Self>) -> Self {
-        Self { dispatch }
-    }
-
-    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
-        false
-    }
-
-    fn change(&mut self, dispatch: Self::Properties) -> ShouldRender {
-        self.dispatch.neq_assign(dispatch)
-    }
-
-    fn view(&self) -> Html {
-        let count = self.dispatch.state().count;
-        let onclick = self.dispatch.reduce_callback(|s| s.count += 1);
-        html! {
-            <>
-            <h1>{ count }</h1>
-            <button onclick=onclick>{"+1"}</button>
-            </>
-        }
-    }
-}
-
-pub fn main() {
-    // IMPORTANT: Don't forget to wrap your component in `WithDispatch` or it will panic!
-    yew::start_app::<WithDispatch<App>>();
+html! {
+    <MyComponent />
 }
 ```
 
-
-### Custom properties 
-
-`WithDispatch` works with any props that implement `DispatchPropsMut`:
+Now your component will automatically receive updates to state. Its properties also behave exactly
+like a regular `Dispatch`, with the notable addition of a single method for getting state.
 
 ```rust
-#[derive(Properties, Clone)]
+let onclick = ctx.props().reduce_callback(|s| s.count + 1);
+let count = ctx.props().state().count;
+
+html! {
+    <>
+    <p>{"Count is "}{ count }</p>
+    <button {onclick}>{"+1"}</button>
+    </>
+}
+```
+
+Did you notice we don't have to deal with an `Option` this way? The component wrapper postpones
+rendering until it receives state for the first time, making it a little more ergonomic to use. 
+
+
+#### Need custom properties?
+
+`WithDispatch` wrapper works with any component that has properties which implement
+`WithDispatchProps`. Simply implement it for your properties and you're good to go! This is likely
+to be a macro in the future.
+
+```rust
+#[derive(Properties, Clone, PartialEq)]
 struct Props {
-    dispatch: DispatchProps<BasicStore<Counter>>,
+    dispatch: DispatchProps<BasicStore<MyState>>,
     ...
 }
 
-impl DispatchPropsMut for Props {
-    type Store = BasicStore<State>;
+impl WithDispatchProps for Props {
+    type Store = BasicStore<MyState>;
 
-    fn dispatch(&mut self) -> &mut DispatchProps<Self::Store> {
-        &mut self.dispatch
+    fn dispatch(&self) -> &DispatchProps<Self::Store> {
+        &self.dispatch
     }
 }
 ```
 
-
-## Reducer
-
-`ReducerStore` provides predictable, Redux-like behavior for your state containers. They need only
-implement `Reducer`:
-
-```rust
-use yew::prelude::*;
-use yewdux::prelude::*;
-use yewtil::NeqAssign;
-
-enum Action {
-    Increment,
-}
-
-#[derive(Clone)]
-struct Counter {
-    count: u64,
-}
-
-impl Reducer for Counter {
-    type Action = Action;
-
-    fn new() -> Self {
-        Self { count: 0 }
-    }
-
-    fn reduce(&mut self, action: Self::Action) -> ShouldNotify {
-        match action {
-            Action::Increment => {
-                self.count += 1;
-                true
-            }
-        }
-    }
-}
-
-type AppDispatch = DispatchProps<ReducerStore<Counter>>;
-
-struct App {
-    dispatch: AppDispatch,
-}
-
-impl Component for App {
-    type Message = ();
-    type Properties = AppDispatch;
-
-    fn create(dispatch: Self::Properties, _link: ComponentLink<Self>) -> Self {
-        // Magically increment counter for this example.
-        self.dispatch.send(Action::Increment);
-
-        Self { dispatch }
-    }
-
-    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
-        false
-    }
-
-    fn change(&mut self, dispatch: Self::Properties) -> ShouldRender {
-        self.dispatch.neq_assign(dispatch)
-    }
-
-    fn view(&self) -> Html {
-        let count = self.dispatch.state().count;
-        let increment = self.dispatch.callback(|_| Action::Increment);
-        html! {
-            <>
-            <h1>{ count }</h1>
-            <button onclick=increment>{"+1"}</button>
-            </>
-        }
-    }
-}
-
-fn main() {
-    yew::start_app::<WithDispatch<App>>();
-}
-```
-
-
-
-## Persistence
+# Persistence
 
 Yewdux supports state persistence so you don't lose it when your app reloads. This requires your
 state to also implement `Serialize`, `Deserialize`, and `Persistent`.
@@ -273,24 +183,63 @@ use serde::{Serialize, Deserialize};
 use yewdux::prelude::*;
 
 #[derive(Clone, Default, Serialize, Deserialize)]
-struct State;
+struct MyState { ... };
 
-impl Persistent for State {
+impl Persistent for MyState {
     fn area() -> Area {
         Area::Session // Default is Area::Local
     }
 }
 
-struct App {
+struct MyComponent {
     dispatch: Dispatch<PersistentStore<State>>,
 }
 ```
 
-## Examples
+A persistent store checks for previously saved state on startup, using default if none is found.
+State is saved on every change.
 
-More examples can be found [here](https://github.com/intendednull/yewdux/tree/master/examples).
+# Functional
 
-To run an example you'll need to install [trunk](https://github.com/thedodd/trunk), then run:
+Yewdux supports functional! 
+
+Add it to your project:
+
+```toml
+[dependencies]
+yewdux-functional = { git = "https://github.com/intendednull/yewdux.git" }
+```
+
+And enjoy the terse goodness:
+
+```rust
+use yew::{prelude::*, functional::*};
+use yewdux::prelude::*;
+use yewdux_functional::*;
+
+
+#[derive(function_component(MyComponent))]
+fn my_component() -> Html {
+    let store = use_store::<BasicStore<MyState>>();
+    let onclick = store.dispatch().reduce_callback(|s| s.count += 1);
+    let count = store.state().map(|s| s.count).unwrap_or_default();
+
+    html! {
+        <>
+        <p>{"Count is "}{ count }</p>
+        <button {onclick}>{"+1"}</button>
+        </>
+    }
+}
+```
+
+# Examples
+
+Complete working examples can be found
+[here](https://github.com/intendednull/yewdux/tree/master/examples).
+
+To run an example you'll need to install [trunk](https://github.com/thedodd/trunk), then run
+(replacing [example] with your desired example name):
 
     trunk serve examples/[example]/index.html --open
 
