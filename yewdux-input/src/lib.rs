@@ -1,10 +1,11 @@
 use gloo::file::{File, FileReadError};
+use web_sys::HtmlInputElement;
 use yew::{
     events::{Event, InputEvent},
     prelude::{Callback, TargetCast},
-    web_sys::{self, HtmlInputElement},
     FocusEvent,
 };
+
 use yewdux::{dispatch::Dispatcher, store::Store};
 
 pub trait InputDispatcher: Dispatcher {

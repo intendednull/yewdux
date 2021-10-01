@@ -8,3 +8,4 @@ yew = {git = "https://github.com/yewstack/yew.git"}
 yewdux = {path = "../yewdux", version = "0.6"}
 js-sys = "0.3.50"
 gloo = "0.2.1"
+web-sys = "0.3.55"
