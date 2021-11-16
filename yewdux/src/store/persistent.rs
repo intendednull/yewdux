@@ -3,7 +3,6 @@ use std::rc::Rc;
 
 use serde::{Deserialize, Serialize};
 use web_sys::Storage;
-use yew::utils::window;
 
 use super::{Store, StoreLink};
 
@@ -39,7 +38,7 @@ where
 {
     pub fn new() -> Self {
         let mut this: Self = Default::default();
-        let window = window();
+        let window = web_sys::window().expect("no window available");
         this.storage = match T::area() {
             Area::Local => window.local_storage().ok().flatten(),
             Area::Session => window.session_storage().ok().flatten(),
