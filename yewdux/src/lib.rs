@@ -9,7 +9,7 @@
 //! component or agent, live for entire application lifetime, and are clone-on-write by default.
 //!
 //! ## Example
-//! ```
+//! ```no_run
 //! use std::rc::Rc;
 //!
 //! use yew::prelude::*;
@@ -35,13 +35,13 @@
 //!     type Message = Msg;
 //!     type Properties = ();
 //!
-//!     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
+//!     fn create(ctx: &Context<Self>) -> Self {
 //!         // Create Dispatch with a bridge that receives new state.
-//!         let dispatch = Dispatch::bridge_state(link.callback(Msg::State));
+//!         let dispatch = Dispatch::bridge_state(ctx.link().callback(Msg::State));
 //!         // Magically increment our counter for this example.
 //!         // NOTE: Changes aren't immediate! We won't see new state until we receive it in our update
 //!         // method.
-//!         dispatch.reduce(|s| s.count += 1);
+//!         dispatch.reduce(|s: &mut State| s.count += 1);
 //!
 //!         Self {
 //!             dispatch,
@@ -49,7 +49,7 @@
 //!         }
 //!     }
 //!
-//!     fn update(&mut self, msg: Self::Message) -> ShouldRender {
+//!     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
 //!         match msg {
 //!             Msg::State(state) => {
 //!                 // Receive new state and re-render.
@@ -59,19 +59,15 @@
 //!         }
 //!     }
 //!
-//!     fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-//!         false
-//!     }
-//!
-//!     fn view(&self) -> Html {
+//!     fn view(&self, _ctx: &Context<Self>) -> Html {
 //!         let count = self.state.count;
 //!         // We can modify state with callbacks too!
-//!         let incr = self.dispatch.reduce_callback(|s| s.count += 1);
+//!         let onclick = self.dispatch.reduce_callback(|s| s.count += 1);
 //!
 //!         html! {
 //!             <>
 //!             <h1>{ count }</h1>
-//!             <button onclick=incr>{"+1"}</button>
+//!             <button {onclick}>{"+1"}</button>
 //!             </>
 //!         }
 //!     }
@@ -82,6 +78,7 @@
 //!     yew::start_app::<App>();
 //! }
 //! ```
+#![allow(clippy::needless_doctest_main)]
 
 pub mod component;
 pub mod dispatch;

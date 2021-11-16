@@ -115,7 +115,6 @@ pub trait Dispatcher {
         Callback::from(move |e: E| {
             let f = f.clone();
             bridge.borrow_mut().send_service(ServiceRequest::Reduce({
-                let f = f.clone();
                 Box::new(move |state| {
                     f(state, e);
                 })
@@ -186,7 +185,6 @@ pub trait Dispatcher {
             bridge
                 .borrow_mut()
                 .send_service(ServiceRequest::Future(Box::pin({
-                    let this = this.clone();
                     let f = f.clone();
                     async move {
                         f(this).await;
@@ -211,7 +209,6 @@ pub trait Dispatcher {
             bridge
                 .borrow_mut()
                 .send_service(ServiceRequest::Future(Box::pin({
-                    let this = this.clone();
                     let f = f.clone();
                     async move {
                         f(this, e).await;
@@ -229,7 +226,7 @@ pub trait Dispatcher {
         E: 'static,
     {
         let this = self.clone();
-        let bridge = this.bridge().clone();
+        let bridge = this.bridge();
         Callback::once(move |_| {
             bridge
                 .borrow_mut()
@@ -250,7 +247,7 @@ pub trait Dispatcher {
         E: 'static,
     {
         let this = self.clone();
-        let bridge = this.bridge().clone();
+        let bridge = this.bridge();
         Callback::once(move |e| {
             bridge
                 .borrow_mut()
@@ -355,6 +352,7 @@ pub struct DispatchProps<STORE: Store, SCOPE: 'static = STORE> {
 }
 
 impl<STORE: Store, SCOPE: 'static> DispatchProps<STORE, SCOPE> {
+    #[allow(unused)]
     pub(crate) fn new(on_state: Callback<Rc<STORE::Model>>) -> Self {
         Self {
             state: Default::default(),
@@ -364,8 +362,7 @@ impl<STORE: Store, SCOPE: 'static> DispatchProps<STORE, SCOPE> {
 
     pub fn state(&self) -> Rc<Model<STORE>> {
         Rc::clone(
-            &self
-                .state
+            self.state
                 .borrow()
                 .as_ref()
                 .expect("State accessed prematurely. Missing WithDispatch?"),
@@ -436,22 +433,23 @@ where
 /// # Example
 ///
 /// ```
-/// # #[derive(Clone)]
+/// # #[derive(Clone, Default)]
 /// # struct MyState;
-///     
+/// # use yew::Properties;
+/// # use yewdux::prelude::*;
+///
 /// #[derive(Clone, PartialEq, Properties)]
 /// struct Props {
 ///     dispatch: DispatchProps<BasicStore<MyState>>,
 /// }
 ///
-/// impl Dispatched for Props {
+/// impl WithDispatchProps for Props {
 ///     type Store = BasicStore<MyState>;
 ///
 ///     fn dispatch(&self) -> &DispatchProps<Self::Store> {
 ///         &self.dispatch
 ///     }
 /// }
-
 pub trait WithDispatchProps {
     type Store: Store;
 

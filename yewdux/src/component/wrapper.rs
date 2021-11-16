@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use yew::prelude::*;
 
-use crate::dispatch::{Dispatch, DispatchProps, WithDispatchProps};
+use crate::dispatch::{Dispatch, WithDispatchProps};
 use crate::store::Store;
 
 type PropStore<PROPS> = <PROPS as WithDispatchProps>::Store;
@@ -23,6 +23,8 @@ where
 /// Wraps any component with properties that implement
 /// [DispatchProps](crate::dispatch::DispatchPropsMut):
 /// ```
+/// # use yewdux::component::WithDispatch;
+/// # struct MyComponent;
 /// pub type App = WithDispatch<MyComponent>;
 /// ```
 pub struct WithDispatch<C>
