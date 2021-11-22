@@ -22,7 +22,7 @@ impl<T: Store> StoreRef<T> {
     }
 
     pub fn on_output(mut self, on_output: impl Fn(T::Output) + 'static) -> Self {
-        self.output = Some(use_ref(move || {
+        self.output = Some(use_mut_ref(move || {
             Dispatch::bridge(Default::default(), on_output.into())
         }));
         self
@@ -64,7 +64,7 @@ pub fn use_store<T: Store>() -> StoreRef<T> {
     let dispatch = {
         let state = state.clone();
         // persist the Dispatch across renders
-        use_ref(move || {
+        use_mut_ref(move || {
             let on_state = Callback::from(move |new_state| {
                 state.set(Some(new_state));
             });
