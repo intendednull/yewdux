@@ -120,16 +120,13 @@ wrapper.
 **IMPORTANT**: `WithDispatch` and `DispatchProps` **must** be used together, or your app will panic.
 
 ```rust
-struct MyComponentBase;
-// I suggest using a type alias. Saves you some typing :)
-type MyComponent = WithDispatch<MyComponentBase>;
-
-impl Component for MyComponentBase {
+struct MyComponent;
+impl Component for MyComponent {
     type Properties = DispatchProps<BasicStore<MyState>>; 
     ...
 }
 html! {
-    <MyComponent />
+    <WithDispatch<MyComponent> />
 }
 ```
 
@@ -137,20 +134,34 @@ Now your component will automatically receive updates to state. Its properties a
 like a regular `Dispatch`, with the notable addition of a single method for getting state.
 
 ```rust
-let onclick = ctx.props().reduce_callback(|s| s.count + 1);
-let count = ctx.props().state().count;
+fn view(&self, ctx: &Context<Self>) -> Html {
+    let onclick = ctx.props().reduce_callback(|s| s.count + 1);
+    let count = ctx.props().state().count;
 
-html! {
-    <>
-    <p>{"Count is "}{ count }</p>
-    <button {onclick}>{"+1"}</button>
-    </>
+    html! {
+        <>
+        <p>{"Count is "}{ count }</p>
+        <button {onclick}>{"+1"}</button>
+        </>
+    }
 }
 ```
 
 Did you notice we don't have to deal with an `Option` this way? The component wrapper postpones
-rendering until it receives state for the first time, making it a little more ergonomic to use. 
+rendering until it receives state for the first time, making it a little more ergonomic to use.
 
+
+*Hint: to save a little typing, use a type alias*
+```rust
+type MyComponent = WithDispatch<MyComponentBase>;
+
+struct MyComponentBase;
+impl Component for MyComponentBase { .. }
+
+html! {
+    <MyComponent />
+}
+```
 
 #### Need custom properties?
 
