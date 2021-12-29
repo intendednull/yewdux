@@ -45,19 +45,6 @@ pub trait Dispatcher {
         })
     }
 
-    /// Once variation of [Self::callback].
-    fn callback_once<E, M>(&self, f: impl Fn(E) -> M + 'static) -> Callback<E>
-    where
-        M: Into<<Self::Store as Store>::Input>,
-    {
-        let bridge = self.bridge();
-        let f = Rc::new(f);
-        Callback::once(move |e| {
-            let msg = f(e);
-            bridge.borrow_mut().send_store(msg.into())
-        })
-    }
-
     /// Send a message that applies given function to shared state. Changes are not immediate, and
     /// [should be handled as needed](Dispatch::bridge_state).
     ///
@@ -122,38 +109,6 @@ pub trait Dispatcher {
         })
     }
 
-    /// Once variation of [Self::reduce_callback].
-    fn reduce_callback_once<F, R, E>(&self, f: F) -> Callback<E>
-    where
-        F: FnOnce(&mut Model<Self::Store>) -> R + 'static,
-        E: 'static,
-    {
-        let bridge = self.bridge();
-        Callback::once(move |_| {
-            bridge
-                .borrow_mut()
-                .send_service(ServiceRequest::Reduce(Box::new(move |state| {
-                    f(state);
-                })))
-        })
-    }
-
-    /// Once variation of [Self::reduce_callback_with].
-    fn reduce_callback_once_with<F, R, E>(&self, f: F) -> Callback<E>
-    where
-        F: FnOnce(&mut Model<Self::Store>, E) -> R + 'static,
-        E: 'static,
-    {
-        let bridge = self.bridge();
-        Callback::once(move |e: E| {
-            bridge
-                .borrow_mut()
-                .send_service(ServiceRequest::Reduce(Box::new(move |state| {
-                    f(state, e);
-                })))
-        })
-    }
-
     fn future<F, FU, OUT>(&self, f: F)
     where
         F: FnOnce(Self) -> FU + 'static,
@@ -210,48 +165,6 @@ pub trait Dispatcher {
                 .borrow_mut()
                 .send_service(ServiceRequest::Future(Box::pin({
                     let f = f.clone();
-                    async move {
-                        f(this, e).await;
-                    }
-                })))
-        })
-    }
-
-    fn future_callback_once<F, FU, OUT, E>(&self, f: F) -> Callback<E>
-    where
-        F: FnOnce(Self) -> FU + 'static,
-        FU: Future<Output = OUT>,
-        OUT: 'static,
-        Self: Clone + 'static,
-        E: 'static,
-    {
-        let this = self.clone();
-        let bridge = this.bridge();
-        Callback::once(move |_| {
-            bridge
-                .borrow_mut()
-                .send_service(ServiceRequest::Future(Box::pin({
-                    async move {
-                        f(this).await;
-                    }
-                })))
-        })
-    }
-
-    fn future_callback_once_with<F, FU, OUT, E>(&self, f: F) -> Callback<E>
-    where
-        F: FnOnce(Self, E) -> FU + 'static,
-        FU: Future<Output = OUT>,
-        OUT: 'static,
-        Self: Clone + 'static,
-        E: 'static,
-    {
-        let this = self.clone();
-        let bridge = this.bridge();
-        Callback::once(move |e| {
-            bridge
-                .borrow_mut()
-                .send_service(ServiceRequest::Future(Box::pin({
                     async move {
                         f(this, e).await;
                     }

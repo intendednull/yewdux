@@ -89,23 +89,6 @@ impl<STORE: Store> StoreLink<STORE> {
         cb.into()
     }
 
-    pub fn callback_once<F, IN, M>(&self, function: F) -> Callback<IN>
-    where
-        StoreInput<STORE>: 'static,
-        StoreOutput<STORE>: 'static,
-        StoreMsg<STORE>: 'static,
-        M: Into<StoreMsg<STORE>>,
-        F: FnOnce(IN) -> M + 'static,
-    {
-        let link = self.link.clone();
-        let cb = move |x| {
-            let result = function(x);
-            link.send_message(result.into());
-        };
-
-        Callback::once(cb)
-    }
-
     pub fn send_future<F, M>(&self, future: F)
     where
         M: Into<StoreMsg<STORE>>,
@@ -132,25 +115,6 @@ impl<STORE: Store> StoreLink<STORE> {
         };
 
         cb.into()
-    }
-
-    pub fn callback_once_future<FN, FU, IN, M>(&self, function: FN) -> yew::Callback<IN>
-    where
-        StoreInput<STORE>: 'static,
-        StoreOutput<STORE>: 'static,
-        StoreMsg<STORE>: 'static,
-        M: Into<StoreMsg<STORE>>,
-        FU: Future<Output = M> + 'static,
-        FN: FnOnce(IN) -> FU + 'static,
-    {
-        let link = self.link.clone();
-        let cb = move |x| {
-            let future = function(x);
-            let future = async { future.await.into() };
-            link.send_future(Box::pin(future));
-        };
-
-        Callback::once(cb)
     }
 }
 

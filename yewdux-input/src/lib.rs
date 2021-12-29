@@ -23,17 +23,17 @@ pub trait InputDispatcher: Dispatcher {
     /// Callback that sets state, ignoring callback event.
     fn set<E: 'static>(
         &self,
-        f: impl FnOnce(&mut <Self::Store as Store>::Model) + 'static,
+        f: impl Fn(&mut <Self::Store as Store>::Model) + 'static,
     ) -> Callback<E> {
-        self.reduce_callback_once(f)
+        self.reduce_callback(f)
     }
 
     /// Callback that sets state from callback event
     fn set_with<E: 'static>(
         &self,
-        f: impl FnOnce(&mut <Self::Store as Store>::Model, E) + 'static,
+        f: impl Fn(&mut <Self::Store as Store>::Model, E) + 'static,
     ) -> Callback<E> {
-        self.reduce_callback_once_with(f)
+        self.reduce_callback_with(f)
     }
 
     /// Callback for setting state from `InputData`.
@@ -50,9 +50,9 @@ pub trait InputDispatcher: Dispatcher {
     /// Callback for setting state from `InputData`.
     fn on_input_once(
         &self,
-        f: impl FnOnce(&mut <Self::Store as Store>::Model, String) + 'static,
+        f: impl Fn(&mut <Self::Store as Store>::Model, String) + 'static,
     ) -> Callback<InputEvent> {
-        self.reduce_callback_once_with(f).reform(|e: InputEvent| {
+        self.reduce_callback_with(f).reform(|e: InputEvent| {
             let input: HtmlInputElement = e.target_unchecked_into();
             input.value()
         })
@@ -72,9 +72,9 @@ pub trait InputDispatcher: Dispatcher {
     /// Callback for setting state from `InputData`.
     fn on_change_once(
         &self,
-        f: impl FnOnce(&mut <Self::Store as Store>::Model, String) + 'static,
+        f: impl Fn(&mut <Self::Store as Store>::Model, String) + 'static,
     ) -> Callback<Event> {
-        self.reduce_callback_once_with(f).reform(|e: Event| {
+        self.reduce_callback_with(f).reform(|e: Event| {
             let input: HtmlInputElement = e.target_unchecked_into();
             input.value()
         })
