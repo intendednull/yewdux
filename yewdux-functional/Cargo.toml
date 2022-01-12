@@ -10,5 +10,5 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-yew = {git = "https://github.com/yewstack/yew.git"}
+yew = { git = "https://github.com/yewstack/yew.git", rev="8a16d4fc3d9b96a3aab7c98b3ab61b55deac9d3c" }
 yewdux = {path = "../yewdux", version = "0.6"}
