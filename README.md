@@ -230,7 +230,7 @@ use yewdux::prelude::*;
 use yewdux_functional::*;
 
 
-#[derive(function_component(MyComponent))]
+#[function_component(MyComponent)]
 fn my_component() -> Html {
     let store = use_store::<BasicStore<MyState>>();
     let onclick = store.dispatch().reduce_callback(|s| s.count += 1);
