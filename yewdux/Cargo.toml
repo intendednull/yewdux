@@ -1,11 +1,11 @@
 [package]
 name = "yewdux"
-version = "0.6.1"
+version = "0.7.0"
 authors = ["Noah <noah@coronasoftware.net>"]
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/yewdux/yewdux"
-readme = "README.md"
+readme = "../README.md"
 description = "Ergonomic state management for Yew applications"
 keywords = ["yew", "state", "redux", "shared", "container"]
 categories = ["wasm", "web-programming", "rust-patterns"]
@@ -15,6 +15,6 @@ categories = ["wasm", "web-programming", "rust-patterns"]
 serde = { version = "1.0.114", features = ["rc"] }
 serde_json = "1.0.64"
 web-sys = "0.3.51"
-yew = { git = "https://github.com/yewstack/yew.git", rev="8a16d4fc3d9b96a3aab7c98b3ab61b55deac9d3c" }
-yew-agent = { git = "https://github.com/yewstack/yew.git", rev="8a16d4fc3d9b96a3aab7c98b3ab61b55deac9d3c" }
+yew = "0.19"
+yew-agent = "0.1"
 

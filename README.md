@@ -2,16 +2,13 @@
 
 Simple state management for [Yew](https://yew.rs/docs/en/) applications.
 
-This is the development branch. Latest stable release may be found
-[here](https://github.com/intendednull/yewdux/tree/0.6.2).
-
 # Install
 
 Add Yewdux to your project's `Cargo.toml`:
 
 ```toml
 [dependencies]
-yewdux = { git = "https://github.com/intendednull/yewdux.git" }
+yewdux = "0.7"
 ```
 
 # Usage
