@@ -1,8 +1,12 @@
-use std::{cell::RefCell, ops::DerefMut, rc::Rc};
+use std::{
+    cell::RefCell,
+    ops::{Deref, DerefMut},
+    rc::Rc,
+};
 
 use yew::Callback;
 
-pub(crate) struct Shared<T>(pub(crate) Rc<RefCell<T>>);
+pub(crate) struct Shared<T>(Rc<RefCell<T>>);
 
 impl<T: 'static> Shared<T> {
     pub(crate) fn new(value: T) -> Self {
@@ -12,6 +16,10 @@ impl<T: 'static> Shared<T> {
     pub(crate) fn with_mut<R>(&mut self, f: impl FnOnce(&mut T) -> R) -> R {
         let mut this = self.0.as_ref().borrow_mut();
         f(this.deref_mut())
+    }
+
+    pub(crate) fn borrow<'a>(&'a self) -> impl Deref<Target = T> + 'a {
+        self.0.borrow()
     }
 }
 

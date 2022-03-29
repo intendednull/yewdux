@@ -118,7 +118,7 @@ pub fn reduce<S: Store, F: FnOnce(&mut S)>(f: F) {
         context.reduce(f);
     });
 
-    context.0.borrow().notify_subscribers();
+    context.borrow().notify_subscribers();
 }
 
 pub fn set<S: Store>(value: S) {
@@ -130,7 +130,7 @@ pub fn send<S: Store>(msg: S::Message) {
 }
 
 pub fn get<S: Store>() -> Rc<S> {
-    Rc::clone(&context::get_or_init::<S>().0.borrow().store)
+    Rc::clone(&context::get_or_init::<S>().borrow().store)
 }
 
 fn subscribe<S: Store, N: Callable<S>>(subscriber: N) -> usize {
@@ -200,7 +200,7 @@ mod tests {
 
         reduce::<TestState, _>(|_| {});
 
-        assert!(*flag.0.borrow());
+        assert!(*flag.borrow());
     }
 
     #[test]
@@ -214,14 +214,14 @@ mod tests {
     fn dispatch_unsubscribes_when_dropped() {
         let context = context::get_or_init::<TestState>();
 
-        assert!(context.0.borrow().subscribers.is_empty());
+        assert!(context.borrow().subscribers.is_empty());
 
         let dispatch = Dispatch::<TestState>::subscribe(|_| {});
 
-        assert!(!context.0.borrow().subscribers.is_empty());
+        assert!(!context.borrow().subscribers.is_empty());
 
         drop(dispatch);
 
-        assert!(context.0.borrow().subscribers.is_empty());
+        assert!(context.borrow().subscribers.is_empty());
     }
 }

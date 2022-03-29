@@ -88,32 +88,32 @@ mod tests {
 
         context.with_mut(|context| context.reduce(|_| {}));
 
-        assert!(context.0.borrow().store.0 == 1);
+        assert!(context.borrow().store.0 == 1);
     }
 
     #[test]
     fn subscribe_adds_to_list() {
         let mut context = get_or_init::<TestState>();
 
-        assert!(context.0.borrow().subscribers.is_empty());
+        assert!(context.borrow().subscribers.is_empty());
 
         context.with_mut(|x| x.subscribe(|_| {}));
 
-        assert!(!context.0.borrow().subscribers.is_empty());
+        assert!(!context.borrow().subscribers.is_empty());
     }
 
     #[test]
     fn unsubscribe_removes_from_list() {
         let mut context = get_or_init::<TestState>();
 
-        assert!(context.0.borrow().subscribers.is_empty());
+        assert!(context.borrow().subscribers.is_empty());
 
         let key = context.with_mut(|x| x.subscribe(|_| {}));
 
-        assert!(!context.0.borrow().subscribers.is_empty());
+        assert!(!context.borrow().subscribers.is_empty());
 
         context.with_mut(|x| x.unsubscribe(key));
 
-        assert!(context.0.borrow().subscribers.is_empty());
+        assert!(context.borrow().subscribers.is_empty());
     }
 }
