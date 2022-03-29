@@ -1,6 +1,6 @@
 //!  This module defines how you can interact with your [`Store`].
 //!
-//!  ```
+//!  ```ignore
 //!  use yewdux::prelude::*;
 //!
 //!  #[derive(Default, Clone, Store)]
@@ -22,7 +22,11 @@ use std::{marker::PhantomData, rc::Rc};
 
 use yew::Callback;
 
-use crate::{context, store::Store, util::Callable};
+use crate::{
+    context,
+    store::{Message, Store},
+    util::Callable,
+};
 
 /// The primary interface to a [`Store`].
 #[derive(Debug, Default)]
@@ -56,8 +60,8 @@ impl<S: Store> Dispatch<S> {
     }
 
     /// Send a message to the store.
-    pub fn send(&self, msg: impl Into<S::Message>) {
-        send::<S>(msg.into());
+    pub fn send<M: Message<S>>(&self, msg: M) {
+        send(msg);
     }
 
     /// Callback for sending a message to the store.
@@ -67,11 +71,11 @@ impl<S: Store> Dispatch<S> {
     /// ```
     pub fn callback<E, M>(&self, f: impl Fn(E) -> M + 'static) -> Callback<E>
     where
-        M: Into<S::Message>,
+        M: Message<S>,
     {
         Callback::from(move |e| {
             let msg = f(e);
-            send::<S>(msg.into());
+            send(msg);
         })
     }
 
@@ -154,8 +158,8 @@ pub fn set<S: Store>(value: S) {
 }
 
 /// Send a message to state.
-pub fn send<S: Store>(msg: S::Message) {
-    reduce(move |store: &mut S| store.update(msg));
+pub fn send<S: Store, M: Message<S>>(msg: M) {
+    reduce(move |state: &mut S| msg.update(state));
 }
 
 /// Get current state.
@@ -187,18 +191,19 @@ mod tests {
     #[derive(Clone, PartialEq)]
     struct TestState(u32);
     impl Store for TestState {
-        type Message = ();
-
         fn new() -> Self {
             Self(0)
         }
 
-        fn update(&mut self, _msg: Self::Message) {
-            self.0 += 1;
-        }
-
         fn changed(&mut self) {
             self.0 += 1;
+        }
+    }
+
+    struct Msg;
+    impl Message<TestState> for Msg {
+        fn update(&self, state: &mut TestState) {
+            state.0 += 1;
         }
     }
 
@@ -240,7 +245,7 @@ mod tests {
 
     #[test]
     fn store_update_is_called_on_send() {
-        send::<TestState>(());
+        send::<TestState, Msg>(Msg);
 
         assert!(get::<TestState>().0 == 2);
     }

@@ -8,8 +8,6 @@ struct State {
 }
 
 impl Store for State {
-    type Message = ();
-
     fn new() -> Self {
         Default::default()
     }

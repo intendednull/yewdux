@@ -67,14 +67,8 @@ mod tests {
     #[derive(Clone, PartialEq)]
     struct TestState(u32);
     impl Store for TestState {
-        type Message = ();
-
         fn new() -> Self {
             Self(0)
-        }
-
-        fn update(&mut self, _msg: Self::Message) {
-            self.0 += 1;
         }
 
         fn changed(&mut self) {
