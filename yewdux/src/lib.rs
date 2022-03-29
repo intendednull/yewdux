@@ -11,12 +11,10 @@
 #![allow(clippy::needless_doctest_main)]
 
 // pub mod component;
-// pub mod service;
-pub mod context;
+mod context;
 pub mod dispatch;
 pub mod store;
 mod util;
-// pub mod store;
 
 pub mod prelude {
     //! Everything you need to use Yewdux.
