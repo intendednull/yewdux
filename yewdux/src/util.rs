@@ -18,7 +18,7 @@ impl<T: 'static> Shared<T> {
         f(this.deref_mut())
     }
 
-    pub(crate) fn borrow<'a>(&'a self) -> impl Deref<Target = T> + 'a {
+    pub(crate) fn borrow(&self) -> impl Deref<Target = T> + '_ {
         self.0.borrow()
     }
 }
