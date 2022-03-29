@@ -10,4 +10,4 @@ edition = "2018"
 serde = { version = "1.0.114", features = ["rc"] }
 yewdux = { path = "../../yewdux" }
 yewdux-functional = { path = "../../yewdux-functional" }
-yew = { git = "https://github.com/yewstack/yew.git" }
+yew = { git = "https://github.com/yewstack/yew.git", features = ["csr"] }

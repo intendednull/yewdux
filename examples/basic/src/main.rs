@@ -8,10 +8,18 @@ struct State {
     count: u32,
 }
 
+impl Store for State {
+    type Message = ();
+
+    fn new() -> Self {
+        Default::default()
+    }
+}
+
 struct App {
     /// Our local version of state.
     state: Rc<State>,
-    dispatch: Dispatch<BasicStore<State>>,
+    dispatch: Dispatch<State>,
 }
 
 enum Msg {
@@ -25,7 +33,7 @@ impl Component for App {
 
     fn create(ctx: &Context<Self>) -> Self {
         Self {
-            dispatch: Dispatch::bridge_state(ctx.link().callback(Msg::State)),
+            dispatch: Dispatch::<State>::subscribe(ctx.link().callback(Msg::State)),
             state: Default::default(),
         }
     }
@@ -52,5 +60,5 @@ impl Component for App {
 }
 
 pub fn main() {
-    yew::start_app::<App>();
+    yew::Renderer::<App>::new().render();
 }

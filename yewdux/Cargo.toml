@@ -17,4 +17,6 @@ serde_json = "1.0.64"
 web-sys = "0.3.51"
 yew = { git = "https://github.com/yewstack/yew.git" }
 yew-agent = { git = "https://github.com/yewstack/yew.git" }
+anymap = "0.12.1"
+slab = "0.4"
 

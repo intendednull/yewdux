@@ -1,393 +1,227 @@
-//! Primary interface to a [Store](crate::store::Store)
-use std::rc::Rc;
-use std::{cell::RefCell, future::Future};
+use std::{marker::PhantomData, rc::Rc};
 
-use yew::{Callback, Properties};
+use yew::Callback;
 
-use crate::{
-    service::{ServiceBridge, ServiceOutput, ServiceRequest, ServiceResponse},
-    store::Store,
-};
+use crate::{context, store::Store, util::Callable};
 
-type Model<T> = <T as Store>::Model;
+#[derive(Debug, Default)]
+pub struct Dispatch<S: Store> {
+    subscriber_key: Option<usize>,
+    store_type: PhantomData<S>,
+}
 
-/// Primary interface to a [Store](crate::store::Store)
-pub trait Dispatcher {
-    type Store: Store;
-
-    #[doc(hidden)]
-    fn bridge(&self) -> Rc<RefCell<ServiceBridge<Self::Store>>>;
-
-    /// Send an input message.
-    ///
-    /// ```ignore
-    /// dispatch.send(StoreMsg::AddOne)
-    /// ```
-    fn send(&self, msg: impl Into<<Self::Store as Store>::Input>) {
-        self.bridge().borrow_mut().send_store(msg.into())
+impl<S: Store> Dispatch<S> {
+    /// Create a new dispatch.
+    pub fn new() -> Self {
+        Self {
+            subscriber_key: Default::default(),
+            store_type: Default::default(),
+        }
     }
 
-    /// Callback for sending input messages.
+    /// Create a dispatch, and subscribe to state changes.
+    pub fn subscribe<C: Callable<S>>(on_change: C) -> Self {
+        let key = subscribe(on_change);
+
+        Self {
+            subscriber_key: Some(key),
+            store_type: Default::default(),
+        }
+    }
+
+    /// Get the current state.
+    pub fn get() -> Rc<S> {
+        get::<S>()
+    }
+
+    /// Send a message to the store.
+    pub fn send(&self, msg: impl Into<S::Message>) {
+        send::<S>(msg.into());
+    }
+
+    /// Callback for sending a message to the store.
     ///
     /// ```ignore
     /// let onclick = dispatch.callback(|_| StoreMsg::AddOne);
-    /// html! { <button onclick=onclick>{"+1"}</button> }
     /// ```
-    fn callback<E, M>(&self, f: impl Fn(E) -> M + 'static) -> Callback<E>
+    pub fn callback<E, M>(&self, f: impl Fn(E) -> M + 'static) -> Callback<E>
     where
-        M: Into<<Self::Store as Store>::Input>,
+        M: Into<S::Message>,
     {
-        let bridge = self.bridge();
-        let f = Rc::new(f);
         Callback::from(move |e| {
             let msg = f(e);
-            bridge.borrow_mut().send_store(msg.into())
+            send::<S>(msg.into());
         })
     }
 
-    /// Send a message that applies given function to shared state. Changes are not immediate, and
-    /// [should be handled as needed](Dispatch::bridge_state).
+    /// Mutate state with given function.
     ///
     /// ```ignore
-    /// let onclick = dispatch.reduce(|_| StoreMsg::AddOne);
-    /// html! { <button onclick=onclick>{"+1"}</button> }
+    /// let onclick = dispatch.reduce(|state| state.count += 1);
     /// ```
-    fn reduce<F, R>(&self, f: F)
+    pub fn reduce<F, R>(&self, f: F)
     where
-        F: FnOnce(&mut Model<Self::Store>) -> R + 'static,
+        F: FnOnce(&mut S) -> R + 'static,
     {
-        self.bridge()
-            .borrow_mut()
-            .send_service(ServiceRequest::Reduce(Box::new(move |state| {
-                f(state);
-            })))
+        reduce(|x| {
+            f(x);
+        });
     }
 
     /// Like [reduce](Self::reduce) but from a callback.
     ///
     /// ```ignore
     /// let onclick = dispatch.reduce_callback(|s| s.count += 1);
-    /// html! { <button onclick=onclick>{"+1"}</button> }
     /// ```
-    fn reduce_callback<F, R, E>(&self, f: F) -> Callback<E>
+    pub fn reduce_callback<F, R, E>(&self, f: F) -> Callback<E>
     where
-        F: Fn(&mut Model<Self::Store>) -> R + 'static,
+        F: Fn(&mut S) -> R + 'static,
         E: 'static,
     {
-        let bridge = self.bridge();
-        let f = Rc::new(f);
         Callback::from(move |_| {
-            bridge.borrow_mut().send_service(ServiceRequest::Reduce({
-                let f = f.clone();
-                Box::new(move |state| {
-                    f(state);
-                })
-            }))
+            reduce(|x| {
+                f(x);
+            });
         })
     }
 
     /// Similar to [Self::reduce_callback] but also provides the fired event.
     ///
     /// ```ignore
-    /// let oninput = dispatch.reduce_callback(|s, i: InputData| s.user_name i.value);
-    /// html! { <input oninput=oninput>{"+1"}</input> }
+    /// let oninput = dispatch.reduce_callback_with(|state, name: String| state.name = name);
     /// ```
-    fn reduce_callback_with<F, R, E>(&self, f: F) -> Callback<E>
+    pub fn reduce_callback_with<F, R, E>(&self, f: F) -> Callback<E>
     where
-        F: Fn(&mut Model<Self::Store>, E) -> R + 'static,
+        F: Fn(&mut S, E) -> R + 'static,
         E: 'static,
     {
-        let bridge = self.bridge();
-        let f = Rc::new(f);
         Callback::from(move |e: E| {
-            let f = f.clone();
-            bridge.borrow_mut().send_service(ServiceRequest::Reduce({
-                Box::new(move |state| {
-                    f(state, e);
-                })
-            }))
-        })
-    }
-
-    fn future<F, FU, OUT>(&self, f: F)
-    where
-        F: FnOnce(Self) -> FU + 'static,
-        FU: Future<Output = OUT> + 'static,
-        OUT: 'static,
-        Self: Clone + 'static,
-    {
-        let this = self.clone();
-        self.bridge()
-            .borrow_mut()
-            .send_service(ServiceRequest::Future(Box::pin(async move {
-                f(this).await;
-            })))
-    }
-
-    fn future_callback<F, FU, OUT, E>(&self, f: F) -> Callback<E>
-    where
-        F: Fn(Self) -> FU + 'static,
-        FU: Future<Output = OUT>,
-        OUT: 'static,
-        Self: Clone + 'static,
-        E: 'static,
-    {
-        let this = self.clone();
-        let bridge = this.bridge();
-        let f = Rc::new(f);
-        Callback::from(move |_| {
-            let this = this.clone();
-            bridge
-                .borrow_mut()
-                .send_service(ServiceRequest::Future(Box::pin({
-                    let f = f.clone();
-                    async move {
-                        f(this).await;
-                    }
-                })))
-        })
-    }
-
-    fn future_callback_with<F, FU, OUT, E>(&self, f: F) -> Callback<E>
-    where
-        F: Fn(Self, E) -> FU + 'static,
-        FU: Future<Output = OUT>,
-        OUT: 'static,
-        Self: Clone + 'static,
-        E: 'static,
-    {
-        let this = self.clone();
-        let bridge = this.bridge();
-        let f = Rc::new(f);
-        Callback::from(move |e| {
-            let this = this.clone();
-            bridge
-                .borrow_mut()
-                .send_service(ServiceRequest::Future(Box::pin({
-                    let f = f.clone();
-                    async move {
-                        f(this, e).await;
-                    }
-                })))
+            reduce(|x| {
+                f(x, e);
+            });
         })
     }
 }
 
-/// A basic [Dispatcher].
-pub struct Dispatch<STORE: Store, SCOPE: 'static = STORE> {
-    pub(crate) bridge: Rc<RefCell<ServiceBridge<STORE, SCOPE>>>,
-}
-
-impl<STORE: Store, SCOPE: 'static> Dispatch<STORE, SCOPE> {
-    /// Dispatch without receiving capabilities. Able to send messages, though all state/output
-    /// responses are ignored.
-    pub fn new() -> Self {
-        Self {
-            bridge: Rc::new(RefCell::new(ServiceBridge::new(Callback::noop()))),
-        }
-    }
-
-    /// Dispatch with callbacks to receive new state and Store output messages.
-    pub fn bridge(
-        on_state: Callback<Rc<STORE::Model>>,
-        on_output: Callback<STORE::Output>,
-    ) -> Self {
-        let cb = Callback::from(move |msg| match msg {
-            ServiceOutput::Store(msg) => on_output.emit(msg),
-            ServiceOutput::Service(msg) => match msg {
-                ServiceResponse::State(state) => on_state.emit(state),
-            },
-        });
-        Self {
-            bridge: Rc::new(RefCell::new(ServiceBridge::new(cb))),
-        }
-    }
-
-    /// Dispatch with callback to receive new state.
-    pub fn bridge_state(on_state: Callback<Rc<STORE::Model>>) -> Self {
-        let cb = Callback::from(move |msg| match msg {
-            ServiceOutput::Store(_) => {}
-            ServiceOutput::Service(msg) => match msg {
-                ServiceResponse::State(state) => on_state.emit(state),
-            },
-        });
-        Self {
-            bridge: Rc::new(RefCell::new(ServiceBridge::new(cb))),
+impl<S: Store> Drop for Dispatch<S> {
+    fn drop(&mut self) {
+        if let Some(key) = self.subscriber_key {
+            unsubscribe::<S>(key);
         }
     }
 }
 
-impl<STORE: Store> Dispatcher for Dispatch<STORE> {
-    type Store = STORE;
+pub fn reduce<S: Store, F: FnOnce(&mut S)>(f: F) {
+    let mut context = context::get_or_init::<S>();
 
-    fn bridge(&self) -> Rc<RefCell<ServiceBridge<Self::Store>>> {
-        Rc::clone(&self.bridge)
-    }
+    context.with_mut(|context| {
+        context.reduce(f);
+    });
+
+    context.0.borrow().notify_subscribers();
 }
 
-impl<STORE: Store, SCOPE: 'static> Clone for Dispatch<STORE, SCOPE> {
-    fn clone(&self) -> Self {
-        Self {
-            bridge: self.bridge.clone(),
-        }
-    }
+pub fn set<S: Store>(value: S) {
+    reduce(move |store| *store = value);
 }
 
-impl<STORE: Store, SCOPE: 'static> PartialEq for Dispatch<STORE, SCOPE> {
-    fn eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.bridge, &other.bridge)
-    }
+pub fn send<S: Store>(msg: S::Message) {
+    reduce(move |store: &mut S| store.update(msg));
 }
 
-impl<STORE: Store, SCOPE: 'static> std::fmt::Debug for Dispatch<STORE, SCOPE> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Dispatch").finish()
-    }
+pub fn get<S: Store>() -> Rc<S> {
+    Rc::clone(&context::get_or_init::<S>().0.borrow().store)
 }
 
-impl<STORE: Store, SCOPE: 'static> Default for Dispatch<STORE, SCOPE> {
-    fn default() -> Self {
-        Self::new()
-    }
+fn subscribe<S: Store, N: Callable<S>>(subscriber: N) -> usize {
+    let mut context = context::get_or_init::<S>();
+    context.with_mut(|context| context.subscribe(subscriber))
 }
 
-/// Dispatch for component properties. Use with [WithDispatch](crate::prelude::WithDispatch) to
-/// automatically manage message passing.
-///
-/// # Panics
-/// Accessing methods from a component that isn't wrapped in `WithDispatch` will panic.
-#[derive(Properties)]
-pub struct DispatchProps<STORE: Store, SCOPE: 'static = STORE> {
-    #[prop_or_default]
-    pub(crate) state: RefCell<Option<Rc<Model<STORE>>>>,
-    #[prop_or_default]
-    pub(crate) dispatch: RefCell<Dispatch<STORE, SCOPE>>,
-}
-
-impl<STORE: Store, SCOPE: 'static> DispatchProps<STORE, SCOPE> {
-    #[allow(unused)]
-    pub(crate) fn new(on_state: Callback<Rc<STORE::Model>>) -> Self {
-        Self {
-            state: Default::default(),
-            dispatch: Dispatch::bridge_state(on_state).into(),
-        }
-    }
-
-    pub fn state(&self) -> Rc<Model<STORE>> {
-        Rc::clone(
-            self.state
-                .borrow()
-                .as_ref()
-                .expect("State accessed prematurely. Missing WithDispatch?"),
-        )
-    }
-}
-
-impl<STORE: Store> Dispatcher for DispatchProps<STORE> {
-    type Store = STORE;
-
-    fn bridge(&self) -> Rc<RefCell<ServiceBridge<Self::Store>>> {
-        self.dispatch.borrow().bridge()
-    }
-}
-
-impl<STORE: Store> WithDispatchProps for DispatchProps<STORE> {
-    type Store = STORE;
-
-    fn dispatch(&self) -> &DispatchProps<Self::Store> {
-        self
-    }
-}
-
-impl<STORE: Store, SCOPE: 'static> Default for DispatchProps<STORE, SCOPE> {
-    fn default() -> Self {
-        Self {
-            state: Default::default(),
-            dispatch: Default::default(),
-        }
-    }
-}
-
-impl<STORE: Store, SCOPE: 'static> Clone for DispatchProps<STORE, SCOPE> {
-    fn clone(&self) -> Self {
-        Self {
-            state: self.state.clone(),
-            dispatch: self.dispatch.clone(),
-        }
-    }
-}
-
-impl<STORE: Store, SCOPE: 'static> PartialEq for DispatchProps<STORE, SCOPE> {
-    fn eq(&self, other: &Self) -> bool {
-        self.dispatch == other.dispatch
-            && self
-                .state
-                .borrow()
-                .as_ref()
-                .zip(other.state.borrow().as_ref())
-                .map(|(a, b)| Rc::ptr_eq(a, b))
-                .unwrap_or(false)
-    }
-}
-
-impl<STORE: Store, SCOPE: 'static> std::fmt::Debug for DispatchProps<STORE, SCOPE>
-where
-    STORE::Model: std::fmt::Debug,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DispatchProps")
-            .field("state", &self.state)
-            .finish()
-    }
-}
-
-/// Allows any properties to work with [WithDispatch](crate::prelude::WithDispatch).
-///
-/// # Example
-///
-/// ```
-/// # #[derive(Clone, Default)]
-/// # struct MyState;
-/// # use yew::Properties;
-/// # use yewdux::prelude::*;
-///
-/// #[derive(Clone, PartialEq, Properties)]
-/// struct Props {
-///     dispatch: DispatchProps<BasicStore<MyState>>,
-/// }
-///
-/// impl WithDispatchProps for Props {
-///     type Store = BasicStore<MyState>;
-///
-///     fn dispatch(&self) -> &DispatchProps<Self::Store> {
-///         &self.dispatch
-///     }
-/// }
-pub trait WithDispatchProps {
-    type Store: Store;
-
-    fn dispatch(&self) -> &DispatchProps<Self::Store>;
+fn unsubscribe<S: Store>(key: usize) {
+    let mut context = context::get_or_init::<S>();
+    context.with_mut(|context| context.unsubscribe(key))
 }
 
 #[cfg(test)]
-pub mod tests {
-    use crate::prelude::BasicStore;
+mod tests {
+    use crate::util::Shared;
 
     use super::*;
 
-    #[test]
-    fn dispatch_impl_debug() {
-        #[derive(Debug)]
-        struct Foo {
-            dispatch: Dispatch<BasicStore<()>>,
+    #[derive(Clone, PartialEq)]
+    struct TestState(u32);
+    impl Store for TestState {
+        type Message = ();
+
+        fn new() -> Self {
+            Self(0)
+        }
+
+        fn update(&mut self, _msg: Self::Message) {
+            self.0 += 1;
+        }
+
+        fn changed(&mut self) {
+            self.0 += 1;
         }
     }
 
     #[test]
-    fn dispatch_props_impl_debug() {
-        #[derive(Debug)]
-        struct Foo {
-            dispatch: DispatchProps<BasicStore<()>>,
+    fn reduce_changes_value() {
+        let old = get::<TestState>();
+
+        reduce(|state| *state = TestState(1));
+
+        let new = get::<TestState>();
+
+        assert!(old != new);
+    }
+
+    #[test]
+    fn set_changes_value() {
+        let old = get::<TestState>();
+
+        set(TestState(1));
+
+        let new = get::<TestState>();
+
+        assert!(old != new);
+    }
+
+    #[test]
+    fn subscriber_is_notified() {
+        let flag = Shared::new(false);
+
+        {
+            let flag = flag.clone();
+            subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true));
         }
+
+        reduce::<TestState, _>(|_| {});
+
+        assert!(*flag.0.borrow());
+    }
+
+    #[test]
+    fn store_update_is_called_on_send() {
+        send::<TestState>(());
+
+        assert!(get::<TestState>().0 == 2);
+    }
+
+    #[test]
+    fn dispatch_unsubscribes_when_dropped() {
+        let context = context::get_or_init::<TestState>();
+
+        assert!(context.0.borrow().subscribers.is_empty());
+
+        let dispatch = Dispatch::<TestState>::subscribe(|_| {});
+
+        assert!(!context.0.borrow().subscribers.is_empty());
+
+        drop(dispatch);
+
+        assert!(context.0.borrow().subscribers.is_empty());
     }
 }
