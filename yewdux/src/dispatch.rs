@@ -1,9 +1,30 @@
+//!  This module defines how you can interact with your [`Store`].
+//!
+//!  ```
+//!  use yewdux::prelude::*;
+//!
+//!  #[derive(Default, Clone, Store)]
+//!  struct MyState {
+//!     count: usize,
+//!  }
+//!
+//!  # fn main() {
+//!  let dispatch = Dispatch::<MyState>::new();
+//!  dispatch.reduce(|state| state.count = 1);
+//!
+//!  let state = dispatch.get();
+//!
+//!  assert!(state.count == 1);
+//!  # }
+//!  ```
+//!
 use std::{marker::PhantomData, rc::Rc};
 
 use yew::Callback;
 
 use crate::{context, store::Store, util::Callable};
 
+/// The primary interface to a [`Store`].
 #[derive(Debug, Default)]
 pub struct Dispatch<S: Store> {
     subscriber_key: Option<usize>,
@@ -52,6 +73,11 @@ impl<S: Store> Dispatch<S> {
             let msg = f(e);
             send::<S>(msg.into());
         })
+    }
+
+    /// Set state to given value.
+    pub fn set(val: S) {
+        set(val);
     }
 
     /// Mutate state with given function.
@@ -111,6 +137,7 @@ impl<S: Store> Drop for Dispatch<S> {
     }
 }
 
+/// Change state using given function.
 pub fn reduce<S: Store, F: FnOnce(&mut S)>(f: F) {
     let mut context = context::get_or_init::<S>();
 
@@ -121,23 +148,31 @@ pub fn reduce<S: Store, F: FnOnce(&mut S)>(f: F) {
     context.borrow().notify_subscribers();
 }
 
+/// Set state to given value.
 pub fn set<S: Store>(value: S) {
     reduce(move |store| *store = value);
 }
 
+/// Send a message to state.
 pub fn send<S: Store>(msg: S::Message) {
     reduce(move |store: &mut S| store.update(msg));
 }
 
+/// Get current state.
 pub fn get<S: Store>() -> Rc<S> {
     Rc::clone(&context::get_or_init::<S>().borrow().store)
 }
 
+/// Subscribe to context. This should never be accessible to user code. See [`unsubscribe`].
 fn subscribe<S: Store, N: Callable<S>>(subscriber: N) -> usize {
     let mut context = context::get_or_init::<S>();
     context.with_mut(|context| context.subscribe(subscriber))
 }
 
+/// Unsubscribe from context. This should never be accessible to user code. Calling unsubscribe
+/// twice, in the best case scenario, will cause a panic. Worst case it incorrectly unsubscribes
+/// some other subscriber, causing all sorts of problems. It's very important we tightly control
+/// when exactly this is called.
 fn unsubscribe<S: Store>(key: usize) {
     let mut context = context::get_or_init::<S>();
     context.with_mut(|context| context.unsubscribe(key))
