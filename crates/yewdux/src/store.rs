@@ -12,5 +12,5 @@ pub trait Store: Clone + 'static {
 /// A message that can change state.
 pub trait Message<S> {
     /// Mutate state based on this message.
-    fn update(&self, state: &mut S);
+    fn apply(&self, state: &mut S);
 }

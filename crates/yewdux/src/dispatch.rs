@@ -159,7 +159,7 @@ pub fn set<S: Store>(value: S) {
 
 /// Send a message to state.
 pub fn send<S: Store, M: Message<S>>(msg: M) {
-    reduce(move |state: &mut S| msg.update(state));
+    reduce(move |state: &mut S| msg.apply(state));
 }
 
 /// Get current state.
@@ -202,7 +202,7 @@ mod tests {
 
     struct Msg;
     impl Message<TestState> for Msg {
-        fn update(&self, state: &mut TestState) {
+        fn apply(&self, state: &mut TestState) {
             state.0 += 1;
         }
     }

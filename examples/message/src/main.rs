@@ -11,7 +11,7 @@ enum Msg {
 }
 
 impl Message<State> for Msg {
-    fn update(&self, state: &mut State) {
+    fn apply(&self, state: &mut State) {
         match self {
             Msg::AddOne => state.count += 1,
         }
