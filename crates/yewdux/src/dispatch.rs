@@ -23,7 +23,7 @@ use std::{marker::PhantomData, rc::Rc};
 use yew::Callback;
 
 use crate::{
-    context,
+    context::{self, SubscriberId},
     store::{Message, Store},
     util::Callable,
 };
@@ -31,26 +31,26 @@ use crate::{
 /// The primary interface to a [`Store`].
 #[derive(Debug, Default)]
 pub struct Dispatch<S: Store> {
-    subscriber_key: Option<usize>,
-    store_type: PhantomData<S>,
+    _subscriber_id: Option<SubscriberId<S>>,
+    _store_type: PhantomData<S>,
 }
 
 impl<S: Store> Dispatch<S> {
     /// Create a new dispatch.
     pub fn new() -> Self {
         Self {
-            subscriber_key: Default::default(),
-            store_type: Default::default(),
+            _subscriber_id: Default::default(),
+            _store_type: Default::default(),
         }
     }
 
     /// Create a dispatch, and subscribe to state changes.
     pub fn subscribe<C: Callable<S>>(on_change: C) -> Self {
-        let key = subscribe(on_change);
+        let id = context::subscribe(on_change);
 
         Self {
-            subscriber_key: Some(key),
-            store_type: Default::default(),
+            _subscriber_id: Some(id),
+            _store_type: Default::default(),
         }
     }
 
@@ -133,14 +133,6 @@ impl<S: Store> Dispatch<S> {
     }
 }
 
-impl<S: Store> Drop for Dispatch<S> {
-    fn drop(&mut self) {
-        if let Some(key) = self.subscriber_key {
-            unsubscribe::<S>(key);
-        }
-    }
-}
-
 /// Change state using given function.
 pub fn reduce<S: Store, F: FnOnce(&mut S)>(f: F) {
     let mut context = context::get_or_init::<S>();
@@ -167,24 +159,9 @@ pub fn get<S: Store>() -> Rc<S> {
     Rc::clone(&context::get_or_init::<S>().borrow().store)
 }
 
-/// Subscribe to context. This should never be accessible to user code. See [`unsubscribe`].
-fn subscribe<S: Store, N: Callable<S>>(subscriber: N) -> usize {
-    let mut context = context::get_or_init::<S>();
-    context.with_mut(|context| context.subscribe(subscriber))
-}
-
-/// Unsubscribe from context. This should never be accessible to user code. Calling unsubscribe
-/// twice, in the best case scenario, will cause a panic. Worst case it incorrectly unsubscribes
-/// some other subscriber, causing all sorts of problems. It's very important we tightly control
-/// when exactly this is called.
-fn unsubscribe<S: Store>(key: usize) {
-    let mut context = context::get_or_init::<S>();
-    context.with_mut(|context| context.unsubscribe(key))
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::util::Shared;
+    
 
     use super::*;
 
@@ -230,38 +207,9 @@ mod tests {
     }
 
     #[test]
-    fn subscriber_is_notified() {
-        let flag = Shared::new(false);
-
-        {
-            let flag = flag.clone();
-            subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true));
-        }
-
-        reduce::<TestState, _>(|_| {});
-
-        assert!(*flag.borrow());
-    }
-
-    #[test]
     fn store_update_is_called_on_send() {
         send::<TestState, Msg>(Msg);
 
         assert!(get::<TestState>().0 == 2);
-    }
-
-    #[test]
-    fn dispatch_unsubscribes_when_dropped() {
-        let context = context::get_or_init::<TestState>();
-
-        assert!(context.borrow().subscribers.is_empty());
-
-        let dispatch = Dispatch::<TestState>::subscribe(|_| {});
-
-        assert!(!context.borrow().subscribers.is_empty());
-
-        drop(dispatch);
-
-        assert!(context.borrow().subscribers.is_empty());
     }
 }

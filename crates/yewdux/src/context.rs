@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{marker::PhantomData, rc::Rc};
 
 use anymap::AnyMap;
 use slab::Slab;
@@ -27,12 +27,16 @@ impl<S: Store> Context<S> {
         store.changed();
     }
 
-    pub(crate) fn subscribe(&mut self, on_change: impl Callable<S>) -> usize {
-        self.subscribers.insert(Box::new(on_change))
+    pub(crate) fn subscribe(&mut self, on_change: impl Callable<S>) -> SubscriberId<S> {
+        let key = self.subscribers.insert(Box::new(on_change));
+        SubscriberId {
+            key,
+            _store_type: Default::default(),
+        }
     }
 
-    pub(crate) fn unsubscribe(&mut self, key: usize) {
-        self.subscribers.remove(key);
+    pub(crate) fn unsubscribe(&mut self, id: usize) {
+        self.subscribers.remove(id);
     }
 
     pub(crate) fn notify_subscribers(&self) {
@@ -60,9 +64,33 @@ pub(crate) fn get_or_init<S: Store>() -> Shared<Context<S>> {
     })
 }
 
+pub(crate) fn subscribe<S: Store, N: Callable<S>>(subscriber: N) -> SubscriberId<S> {
+    let mut context = get_or_init::<S>();
+    context.with_mut(|context| context.subscribe(subscriber))
+}
+
+pub(crate) fn unsubscribe<S: Store>(id: usize) {
+    let mut context = get_or_init::<S>();
+    context.with_mut(|context| context.unsubscribe(id))
+}
+
+/// Points to a subscriber in context. That subscriber is removed when this is dropped.
+#[derive(Debug)]
+pub(crate) struct SubscriberId<S: Store> {
+    key: usize,
+    _store_type: PhantomData<S>,
+}
+
+impl<S: Store> Drop for SubscriberId<S> {
+    fn drop(&mut self) {
+        unsubscribe::<S>(self.key);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dispatch::*;
 
     #[derive(Clone, PartialEq)]
     struct TestState(u32);
@@ -91,7 +119,7 @@ mod tests {
 
         assert!(context.borrow().subscribers.is_empty());
 
-        context.with_mut(|x| x.subscribe(|_| {}));
+        let _id = context.with_mut(|x| x.subscribe(|_| {}));
 
         assert!(!context.borrow().subscribers.is_empty());
     }
@@ -102,11 +130,40 @@ mod tests {
 
         assert!(context.borrow().subscribers.is_empty());
 
-        let key = context.with_mut(|x| x.subscribe(|_| {}));
+        let id = context.with_mut(|x| x.subscribe(|_| {}));
 
         assert!(!context.borrow().subscribers.is_empty());
 
-        context.with_mut(|x| x.unsubscribe(key));
+        drop(id);
+
+        assert!(context.borrow().subscribers.is_empty());
+    }
+
+    #[test]
+    fn subscriber_is_notified() {
+        let flag = Shared::new(false);
+
+        let _id = {
+            let flag = flag.clone();
+            subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
+        };
+
+        reduce::<TestState, _>(|_| {});
+
+        assert!(*flag.borrow());
+    }
+
+    #[test]
+    fn dispatch_unsubscribes_when_dropped() {
+        let context = get_or_init::<TestState>();
+
+        assert!(context.borrow().subscribers.is_empty());
+
+        let dispatch = Dispatch::<TestState>::subscribe(|_| {});
+
+        assert!(!context.borrow().subscribers.is_empty());
+
+        drop(dispatch);
 
         assert!(context.borrow().subscribers.is_empty());
     }
