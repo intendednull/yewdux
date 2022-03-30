@@ -60,28 +60,40 @@ impl<S: Store> Dispatch<S> {
     }
 
     /// Send a message to the store.
-    pub fn send<M: Message<S>>(&self, msg: M) {
-        send(msg);
+    pub fn apply<M: Message<S>>(&self, msg: M) {
+        apply(msg);
     }
 
     /// Callback for sending a message to the store.
     ///
     /// ```ignore
-    /// let onclick = dispatch.callback(|_| StoreMsg::AddOne);
+    /// let onclick = dispatch.apply_callback(|_| StoreMsg::AddOne);
     /// ```
-    pub fn callback<E, M>(&self, f: impl Fn(E) -> M + 'static) -> Callback<E>
+    pub fn apply_callback<E, M, F>(&self, f: F) -> Callback<E>
     where
         M: Message<S>,
+        F: Fn(E) -> M + 'static,
     {
         Callback::from(move |e| {
             let msg = f(e);
-            send(msg);
+            apply(msg);
         })
     }
 
     /// Set state to given value.
     pub fn set(val: S) {
         set(val);
+    }
+
+    /// Set state using value from callback.
+    pub fn set_callback<E, F>(f: F) -> Callback<E>
+    where
+        F: Fn(E) -> S + 'static,
+    {
+        Callback::from(move |e| {
+            let val = f(e);
+            set(val);
+        })
     }
 
     /// Mutate state with given function.
@@ -150,7 +162,7 @@ pub fn set<S: Store>(value: S) {
 }
 
 /// Send a message to state.
-pub fn send<S: Store, M: Message<S>>(msg: M) {
+pub fn apply<S: Store, M: Message<S>>(msg: M) {
     reduce(move |state: &mut S| msg.apply(state));
 }
 
@@ -161,7 +173,6 @@ pub fn get<S: Store>() -> Rc<S> {
 
 #[cfg(test)]
 mod tests {
-    
 
     use super::*;
 
@@ -207,8 +218,8 @@ mod tests {
     }
 
     #[test]
-    fn store_update_is_called_on_send() {
-        send::<TestState, Msg>(Msg);
+    fn store_update_is_called_on_apply() {
+        apply::<TestState, Msg>(Msg);
 
         assert!(get::<TestState>().0 == 2);
     }

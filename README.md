@@ -111,10 +111,10 @@ impl Message<State> for Msg {
 }
 
 // Send message immediately
-dispatch.send(Msg::AddOne);
+dispatch.apply(Msg::AddOne);
 
 // Send message from a callback
-dispatch.callback(|_| Msg::AddOne);
+dispatch.apply_callback(|_| Msg::AddOne);
 ```
 
 ## Reading shared state

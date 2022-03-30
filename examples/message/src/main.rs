@@ -21,7 +21,7 @@ impl Message<State> for Msg {
 #[function_component]
 fn App() -> Html {
     let (state, dispatch) = use_store::<State>();
-    let onclick = dispatch.callback(|_| Msg::AddOne);
+    let onclick = dispatch.apply_callback(|_| Msg::AddOne);
 
     html! {
         <>
