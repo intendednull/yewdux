@@ -93,9 +93,9 @@ let cb = dispatch.reduce_callback_with(|state, incr: usize| state.count += incr)
 cb.emit(5);
 ```
 
-#### Predictable mutations
+#### Predictable mutation
 
-Yewux supports predictable mutation. Simply define your message and apply it.
+Yewdux supports predictable mutation. Simply define your message and apply it.
 
 ```rust
 struct Msg {
@@ -141,7 +141,8 @@ use yewdux::prelude::*;
 
 struct MyComponent {
     dispatch: Dispatch<State>,
-    state: Rc<MyState>,
+    state: Rc<State>,
+
 }
 
 enum Msg {
