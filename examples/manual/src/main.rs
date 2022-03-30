@@ -3,7 +3,7 @@ use std::rc::Rc;
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Store)]
 struct State {
     count: u32,
 }
@@ -11,7 +11,7 @@ struct State {
 struct App {
     /// Our local version of state.
     state: Rc<State>,
-    dispatch: Dispatch<BasicStore<State>>,
+    dispatch: Dispatch<State>,
 }
 
 enum Msg {
@@ -25,7 +25,7 @@ impl Component for App {
 
     fn create(ctx: &Context<Self>) -> Self {
         Self {
-            dispatch: Dispatch::bridge_state(ctx.link().callback(Msg::State)),
+            dispatch: Dispatch::<State>::subscribe(ctx.link().callback(Msg::State)),
             state: Default::default(),
         }
     }
@@ -41,9 +41,7 @@ impl Component for App {
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
         let count = self.state.count;
-        let onclick = self
-            .dispatch
-            .future_callback(|dispatch| async move { dispatch.reduce(|s| s.count += 1) });
+        let onclick = self.dispatch.reduce_callback(|s| s.count += 1);
         html! {
             <>
             <h1>{ count }</h1>
@@ -54,5 +52,5 @@ impl Component for App {
 }
 
 pub fn main() {
-    yew::start_app::<App>();
+    yew::Renderer::<App>::new().render();
 }
