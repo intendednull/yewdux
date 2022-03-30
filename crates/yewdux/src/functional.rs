@@ -1,8 +1,11 @@
 use std::{ops::Deref, rc::Rc};
 
 use yew::functional::*;
-use yewdux::dispatch::{self, Dispatch};
-use yewdux::store::Store;
+
+use crate::{
+    dispatch::{self, Dispatch},
+    store::Store,
+};
 
 /// This hook allows accessing the state of a store. When the store is modified, a re-render is automatically triggered.
 /// This hook also accepts a callback that is triggered for state output. To only receive state, use [`use_store_state`] instead.
