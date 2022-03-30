@@ -1,8 +1,12 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
+use proc_macro::TokenStream;
+use proc_macro_error::proc_macro_error;
+use syn::{parse_macro_input, DeriveInput};
+
+mod store;
+
+#[proc_macro_derive(Store)]
+#[proc_macro_error]
+pub fn store(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    store::macro_fn(input).into()
 }

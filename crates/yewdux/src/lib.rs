@@ -21,6 +21,6 @@ pub mod prelude {
 
     pub use crate::{
         dispatch::{self, Dispatch},
-        store::Store,
+        store::{Message, Store},
     };
 }

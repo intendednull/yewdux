@@ -3,17 +3,9 @@ use std::rc::Rc;
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Store)]
 struct State {
     count: u32,
-}
-
-impl Store for State {
-    type Message = ();
-
-    fn new() -> Self {
-        Default::default()
-    }
 }
 
 struct App {
@@ -38,7 +30,7 @@ impl Component for App {
         }
     }
 
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::State(state) => {
                 self.state = state;
@@ -47,7 +39,7 @@ impl Component for App {
         }
     }
 
-    fn view(&self, ctx: &Context<Self>) -> Html {
+    fn view(&self, _ctx: &Context<Self>) -> Html {
         let count = self.state.count;
         let onclick = self.dispatch.reduce_callback(|s| s.count += 1);
         html! {
