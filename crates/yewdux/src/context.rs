@@ -98,7 +98,6 @@ impl<S: Store> Drop for SubscriberId<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dispatch::*;
 
     #[derive(Clone, PartialEq)]
     struct TestState(u32);
@@ -157,16 +156,16 @@ mod tests {
     }
 
     #[test]
-    fn dispatch_unsubscribes_when_dropped() {
+    fn subscriber_id_unsubscribes_when_dropped() {
         let context = get_or_init::<TestState>();
 
         assert!(context.borrow().subscribers.is_empty());
 
-        let dispatch = Dispatch::<TestState>::subscribe(|_| {});
+        let id = subscribe::<TestState, _>(|_| {});
 
         assert!(!context.borrow().subscribers.is_empty());
 
-        drop(dispatch);
+        drop(id);
 
         assert!(context.borrow().subscribers.is_empty());
     }
