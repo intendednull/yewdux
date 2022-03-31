@@ -5,6 +5,7 @@
 mod context;
 pub mod dispatch;
 pub mod functional;
+pub mod storage;
 pub mod store;
 mod util;
 
@@ -14,6 +15,7 @@ pub mod prelude {
     pub use crate::{
         dispatch::{self, Dispatch},
         functional::use_store,
+        storage,
         store::{Message, Store},
     };
 }
