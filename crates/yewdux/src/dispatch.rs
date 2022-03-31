@@ -18,7 +18,7 @@
 //!  # }
 //!  ```
 //!
-use std::{marker::PhantomData, rc::Rc};
+use std::rc::Rc;
 
 use yew::Callback;
 
@@ -32,7 +32,6 @@ use crate::{
 #[derive(Debug, Default)]
 pub struct Dispatch<S: Store> {
     _subscriber_id: Option<SubscriberId<S>>,
-    _store_type: PhantomData<S>,
 }
 
 impl<S: Store> Dispatch<S> {
@@ -40,7 +39,6 @@ impl<S: Store> Dispatch<S> {
     pub fn new() -> Self {
         Self {
             _subscriber_id: Default::default(),
-            _store_type: Default::default(),
         }
     }
 
@@ -50,7 +48,6 @@ impl<S: Store> Dispatch<S> {
 
         Self {
             _subscriber_id: Some(id),
-            _store_type: Default::default(),
         }
     }
 
