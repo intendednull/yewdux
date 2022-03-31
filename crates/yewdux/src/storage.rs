@@ -1,3 +1,27 @@
+//! Store persistence through session or local storage
+//!
+//! ```
+//! use yewdux::prelude::*;
+//! use serde::{Serialize, Deserialize};
+//!
+//! #[derive(Clone, PartialEq, Serialize, Deserialize)]
+//! struct Counter {
+//!     count: u32,
+//! }
+//!
+//! impl Store for Counter {
+//!     fn new() -> Self {
+//!         storage::load(storage::Area::Local)
+//!             .expect("Unable to load state")
+//!             .unwrap_or_default()
+//!     }
+//!
+//!     fn changed(&mut self) {
+//!         storage::save(self, storage::Area::Local).expect("Unable to save state");
+//!     }
+//! }
+//! ```
+
 use std::any::type_name;
 
 use serde::{de::DeserializeOwned, Serialize};
@@ -34,6 +58,7 @@ fn get_storage(area: Area) -> Result<Storage, StorageError> {
         .ok_or(StorageError::StorageAccess(area))
 }
 
+/// Save state to session or local storage.
 pub fn save<T: Serialize>(state: &T, area: Area) -> Result<(), StorageError> {
     let storage = get_storage(area)?;
 
@@ -45,6 +70,7 @@ pub fn save<T: Serialize>(state: &T, area: Area) -> Result<(), StorageError> {
     Ok(())
 }
 
+/// Load state from session or local storage.
 pub fn load<T: DeserializeOwned>(area: Area) -> Result<Option<T>, StorageError> {
     let storage = get_storage(area)?;
 
