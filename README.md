@@ -21,7 +21,7 @@ yewdux = { git = "https://github.com/intendednull/yewdux.git" }
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-#[derive(Default, Clone, Store)]
+#[derive(Default, Clone, PartialEq, Store)]
 struct Counter {
     count: u32,
 }
@@ -49,17 +49,17 @@ fn main() {
 First, you'll need to implement `Store` for your state:
 
 ```rust
-#[derive(Default, Clone, Store)]
+#[derive(Default, Clone, PartialEq, Store)]
 struct Counter {
     count: u32,
 }
 ```
 
-`Clone` is required for all `Store`s, however `Default` is only needed for the macro. You can just
+`Clone` and `PartialEq` are required for all `Store`s, however `Default` is only needed for the macro. You can just
 as well define it manually.
 
 ```rust
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 struct Counter {
     count: u32,
 }

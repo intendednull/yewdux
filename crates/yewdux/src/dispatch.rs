@@ -148,12 +148,16 @@ impl<S: Store> Dispatch<S> {
 /// Change state using given function.
 pub fn reduce<S: Store, F: FnOnce(&mut S)>(f: F) {
     let mut context = context::get_or_init::<S>();
+    let previous_store = Rc::clone(&context.borrow().store);
 
     context.with_mut(|context| {
         context.reduce(f);
     });
 
-    context.borrow().notify_subscribers();
+    // Only notify subscribers if state has changed.
+    if previous_store.as_ref() != context.borrow().store.as_ref() {
+        context.borrow().notify_subscribers();
+    }
 }
 
 /// Set state to given value.
@@ -173,6 +177,8 @@ pub fn get<S: Store>() -> Rc<S> {
 
 #[cfg(test)]
 mod tests {
+
+    use crate::util::Shared;
 
     use super::*;
 
@@ -222,5 +228,23 @@ mod tests {
         apply::<TestState, Msg>(Msg);
 
         assert!(get::<TestState>().0 == 2);
+    }
+
+    #[test]
+    fn subscriber_is_not_notified_when_state_is_same() {
+        let flag = Shared::new(false);
+
+        // TestState(1)
+        reduce::<TestState, _>(|_| {});
+
+        let _id = {
+            let flag = flag.clone();
+            context::subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
+        };
+
+        // TestState(1)
+        reduce::<TestState, _>(|state| state.0 = 0);
+
+        assert!(!*flag.borrow());
     }
 }

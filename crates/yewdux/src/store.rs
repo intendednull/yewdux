@@ -2,7 +2,7 @@
 pub use yewdux_macros::Store;
 
 /// Globally shared state.
-pub trait Store: Clone + 'static {
+pub trait Store: Clone + PartialEq + 'static {
     /// Initialize this store.
     fn new() -> Self;
 
