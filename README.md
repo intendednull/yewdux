@@ -184,9 +184,14 @@ You may also subscribe manually, as shown below. At the cost of boilerplate, doi
 allows finer control over when exactly you'd like to re-render.
 
 ```rust
+use std::rc::Rc;
+
+use yew::prelude::*;
+use yewdux::prelude::*;
+
 struct MyComponent {
     dispatch: Dispatch<Counter>,
-    counter: std::rc::Rc<Counter>,
+    counter: Rc<Counter>,
 
 }
 
