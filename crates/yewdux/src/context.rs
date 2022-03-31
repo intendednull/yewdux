@@ -19,12 +19,20 @@ pub(crate) struct Context<S> {
 }
 
 impl<S: Store> Context<S> {
-    pub(crate) fn reduce(&mut self, f: impl FnOnce(&mut S)) {
+    /// Apply a function to state, returning if it has changed or not.
+    pub(crate) fn reduce(&mut self, f: impl FnOnce(&mut S)) -> bool {
+        let previous = Rc::clone(&self.store);
         let store = Rc::make_mut(&mut self.store);
 
         f(store);
 
-        store.changed();
+        let changed = previous.as_ref() != store;
+
+        if changed {
+            store.changed();
+        }
+
+        changed
     }
 
     pub(crate) fn subscribe(&mut self, on_change: impl Callable<S>) -> SubscriberId<S> {
@@ -108,9 +116,18 @@ mod tests {
     fn store_changed_is_called() {
         let mut context = get_or_init::<TestState>();
 
+        context.with_mut(|context| context.reduce(|state| state.0 += 1));
+
+        assert!(context.borrow().store.0 == 2);
+    }
+
+    #[test]
+    fn store_changed_is_not_called_when_state_is_same() {
+        let mut context = get_or_init::<TestState>();
+
         context.with_mut(|context| context.reduce(|_| {}));
 
-        assert!(context.borrow().store.0 == 1);
+        assert!(context.borrow().store.0 == 0);
     }
 
     #[test]
@@ -137,20 +154,6 @@ mod tests {
         drop(id);
 
         assert!(context.borrow().subscribers.is_empty());
-    }
-
-    #[test]
-    fn subscriber_is_notified() {
-        let flag = Shared::new(false);
-
-        let _id = {
-            let flag = flag.clone();
-            subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
-        };
-
-        reduce::<TestState, _>(|_| {});
-
-        assert!(*flag.borrow());
     }
 
     #[test]
