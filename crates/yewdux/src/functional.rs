@@ -1,3 +1,4 @@
+//! The functional interface for Yewdux
 use std::{ops::Deref, rc::Rc};
 
 use yew::functional::*;

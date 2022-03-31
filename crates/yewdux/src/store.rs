@@ -1,3 +1,4 @@
+//! Unique state shared application-wide
 pub use yewdux_macros::Store;
 
 /// Globally shared state.
@@ -11,6 +12,6 @@ pub trait Store: Clone + 'static {
 
 /// A message that can change state.
 pub trait Message<S> {
-    /// Mutate state based on this message.
+    /// Mutate state using this message.
     fn apply(&self, state: &mut S);
 }

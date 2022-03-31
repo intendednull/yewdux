@@ -11,29 +11,29 @@ Add Yewdux to your project's `Cargo.toml`:
 
 ```toml
 [dependencies]
+yew = { git = "https://github.com/yewstack/yew.git", features = ["csr"] }
 yewdux = { git = "https://github.com/intendednull/yewdux.git" }
 ```
 
 # Example
 
 ```rust
-
 use yew::prelude::*;
 use yewdux::prelude::*;
 
 #[derive(Default, Clone, Store)]
-struct State {
+struct Counter {
     count: u32,
 }
 
 #[function_component]
 fn App() -> Html {
-    let (state, dispatch) = use_store::<State>();
-    let onclick = dispatch.reduce_callback(|state| state.count += 1);
+    let (counter, dispatch) = use_store::<Counter>();
+    let onclick = dispatch.reduce_callback(|counter| counter.count += 1);
 
     html! {
         <>
-        <p>{ state.count }</p>
+        <p>{ counter.count }</p>
         <button {onclick}>{"+1"}</button>
         </>
     }
@@ -46,54 +46,91 @@ fn main() {
 
 # Usage
 
-`Dispatch` is the primary interface for Yewdux. It allows shared mutable access to global
-application state.
-
-## Writing to shared state
-
-If we look at the example above, we can see one method of getting a dispatch. This way also
-automatically subscribes to changes to state, which is important to know when to re-render the
-component.
-
-You can also create a dispatch (without a subscription) using `Dispatch::new`.
+First, you'll need to implement `Store` for your state:
 
 ```rust
-let dispatch = Dispatch::<State>::new();
+#[derive(Default, Clone, Store)]
+struct Counter {
+    count: u32,
+}
 ```
 
-### Dispatch methods
+`Clone` is required for all `Store`s, however `Default` is only needed for the macro. You can just
+as well define it manually.
+
+```rust
+#[derive(Clone)]
+struct Counter {
+    count: u32,
+}
+
+impl Store for Counter {
+    fn new() {
+        Self {
+            count: Default::default(),
+        }
+    }
+}
+```
+
+Now simply create a dispatch.
+
+```rust
+let dispatch = Dispatch::<Counter>::new();
+```
+
+## Mutating shared state
+
+`Dispatch` provides many options for mutating state.
 
 `set` will set shared state to a given value.
 
 ```rust
-dispatch.set(State { count: 1 });
+dispatch.set(Counter { count: 0 });
 ```
 
-`reduce` lets you mutate with a function. Here we immediately increment count by 1.
+`set_callback` generates a callback that does the same.
 
 ```rust
-dispatch.reduce(|state| state.count += 1);
-```
-
-We may also create callbacks that do the same. This button sends the message every time it is
-clicked.
-
-```rust
-let onclick = dispatch.reduce_callback(|state| state.count += 1);
+let onclick = dispatch.set_callback(|_| Counter { count: 0 });
 html! {
-    <button {onclick}>{"+1"}</button>
+    <button {onclick}>{"Reset counter"}</button>
 }
 ```
 
-If the callback parameter is needed, it may be accessed using the \*_with variant. The following
-creates a new callback, then immediately calls it, incrementing count by 5.
+`reduce` lets you mutate with a function.
 
 ```rust
-let cb = dispatch.reduce_callback_with(|state, incr: usize| state.count += incr);
-cb.emit(5);
+dispatch.reduce(|counter| counter.count += 1);
 ```
 
-#### Predictable mutation
+`reduce_callback`, as you might expect, generates a callback that does the same.
+
+```rust
+let onclick = dispatch.reduce_callback(|counter| counter.count += 1);
+html! {
+    <button {onclick}>{"Increment (+1)"}</button>
+}
+```
+
+`reduce_callback_with` is similar to `reduce_callback`, but also includes the fired event.
+
+```rust
+let onchange = dispatch.reduce_callback_with(|counter, e: Event| {
+    let input = e.target_unchecked_into::<HtmlInputElement>();
+
+    if let Ok(val) = input.value().parse() {
+        counter.count = val;
+    }
+});
+
+html! {
+    <input placeholder="Set counter" {onchange} />
+}
+
+```
+
+### Predictable mutation
 
 Yewdux supports predictable mutation. Simply define your message and apply it.
 
@@ -102,51 +139,59 @@ struct Msg {
     AddOne,
 }
 
-impl Message<State> for Msg {
-    fn apply(&self, state: &mut State) {
+impl Message<Counter> for Msg {
+    fn apply(&self, counter: &mut Counter) {
         match self {
-            Msg::AddOne => state.count += 1,
+            Msg::AddOne => counter.count += 1,
         }
     }
 }
+```
 
-// Send message immediately
+`apply` executes immediately.
+
+```rust
 dispatch.apply(Msg::AddOne);
+```
 
-// Send message from a callback
-dispatch.apply_callback(|_| Msg::AddOne);
+`apply_callback` does it (you guessed it) from a callback.
+
+```rust
+let onclick = dispatch.apply_callback(|_| Msg::AddOne);
+html! {
+    <button {onclick}>{"Increment (+1)"}</button>
+}
 ```
 
 ## Reading shared state
 
-`get` provides the current value of shared state.
+`get` provides the current state (with a minor lookup cost).
 
 ```rust
-let state = dispatch.get();
+let counter = dispatch.get();
 ```
 
-However this **does not** notify you when state changes. If we want to re-render when state
-changes, we need to subscribe first.
+However most components will also need to know when state changes so they can re-render. This can be
+done by subscribing to changes.
 
-The [example](#example) shows `use_store`, which automatically subscribes to state, and triggers a
-re-render when state changes.
-
-You may also subscribe manually, as shown below.
+`use_store` automatically subscribes, meaning the component will re-render every time `counter` changes (no additional setup required).
 
 ```rust
-use std::rc::Rc;
+let (counter, dispatch) = use_store::<Counter>();
+```
 
-use yew::prelude::*;
-use yewdux::prelude::*;
+You may also subscribe manually, as shown below. At the cost of boilerplate, doing it this way
+allows finer control over when exactly you'd like to re-render.
 
+```rust
 struct MyComponent {
-    dispatch: Dispatch<State>,
-    state: Rc<State>,
+    dispatch: Dispatch<Counter>,
+    counter: std::rc::Rc<Counter>,
 
 }
 
 enum Msg {
-    State(Rc<State>),
+    UpdateCounter(Rc<Counter>),
 }
 
 impl Component for MyComponent {
@@ -154,10 +199,14 @@ impl Component for MyComponent {
     type Message = Msg;
 
     fn create(ctx: &Context<Self>) -> Self {
-        // Subscribe to changes in state. New state is received in `update`.
-        let dispatch = Dispatch::<State>::subscribe(ctx.link().callback(Msg::State));
+        // The callback for receiving updates to state.
+        let callback = ctx.link().callback(Msg::UpdateCounter);
+        // Subscribe to changes in state. New state is received in `update`. Be sure to save this,
+        // dropping it will unsubscribe.
+        let dispatch = Dispatch::<Counter>::subscribe(callback);
         Self {
-            state: dispatch.get(),
+            // Get the current state.
+            counter: dispatch.get(),
             dispatch,
         }
     }
@@ -165,9 +214,15 @@ impl Component for MyComponent {
     fn update(&self, ctx: &Context<Self>, msg: Msg) -> bool {
         match msg {
             // Receive new state.
-            Msg::State(state) => {
-                self.state = Some(state);
-                true
+            Msg::UpdateCounter(counter) => {
+                self.counter = counter;
+
+                // Only re-render this component if count is greater that 0 (for example).
+                if self.counter.count > 0 {
+                    true
+                } else {
+                    false
+                }
             }
         }
     }
@@ -176,7 +231,10 @@ impl Component for MyComponent {
 }
 ```
 
-# Additional Examples
+*Because `Dispatch::get` comes with a minor lookup cost, it's marginally more efficient to use the
+value given to you by the subscription.*
+
+# Additional examples
 
 Complete working examples can be found
 [here](https://github.com/intendednull/yewdux/tree/master/examples).
