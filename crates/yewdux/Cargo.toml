@@ -12,7 +12,7 @@ categories = ["wasm", "web-programming", "rust-patterns"]
 
 [dependencies]
 anymap = "0.12.1"
-serde = { version = "1.0.114", features = ["rc"] }
+serde = { version = "1.0.114" }
 serde_json = "1.0.64"
 slab = "0.4"
 thiserror = "1.0"
