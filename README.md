@@ -239,6 +239,32 @@ impl Component for MyComponent {
 *Because `Dispatch::get` comes with a minor lookup cost, it's marginally more efficient to use the
 value given to you by the subscription.*
 
+# Persistence
+
+Yewdux provides an easy way to persist your state in either local or session storage.
+
+```rust
+use yewdux::prelude::*;
+use serde::{Serialize, Deserialize};
+
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+struct Counter {
+    count: u32,
+}
+
+impl Store for Counter {
+    fn new() -> Self {
+        storage::load(storage::Area::Local)
+            .expect("Unable to load state")
+            .unwrap_or_default()
+    }
+
+    fn changed(&mut self) {
+        storage::save(self, storage::Area::Local).expect("Unable to save state");
+    }
+}
+```
+
 # Additional examples
 
 Complete working examples can be found
