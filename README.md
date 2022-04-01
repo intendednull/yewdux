@@ -140,7 +140,7 @@ struct Msg {
 }
 
 impl Message<Counter> for Msg {
-    fn apply(&self, counter: &mut Counter) {
+    fn apply(&mut self, counter: &mut Counter) {
         match self {
             Msg::AddOne => counter.count += 1,
         }
@@ -216,7 +216,7 @@ impl Component for MyComponent {
         }
     }
 
-    fn update(&self, ctx: &Context<Self>, msg: Msg) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Msg) -> bool {
         match msg {
             // Receive new state.
             Msg::UpdateCounter(counter) => {
