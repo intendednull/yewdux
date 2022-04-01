@@ -230,6 +230,71 @@ mod tests {
     }
 
     #[test]
+    fn dispatch_new_works() {
+        let _dispatch = Dispatch::<TestState>::new();
+    }
+
+    #[test]
+    fn dispatch_set_works() {
+        let dispatch = Dispatch::<TestState>::new();
+        dispatch.set(TestState(1));
+
+        assert!(dispatch.get().0 == 2)
+    }
+
+    #[test]
+    fn dispatch_set_callback_works() {
+        let dispatch = Dispatch::<TestState>::new();
+        let cb = dispatch.set_callback(|_| TestState(1));
+        cb.emit(());
+
+        assert!(dispatch.get().0 == 2)
+    }
+
+    #[test]
+    fn dispatch_reduce_works() {
+        let dispatch = Dispatch::<TestState>::new();
+        dispatch.reduce(|state| state.0 += 1);
+
+        assert!(dispatch.get().0 == 2)
+    }
+
+    #[test]
+    fn dispatch_reduce_callback_works() {
+        let dispatch = Dispatch::<TestState>::new();
+        let cb = dispatch.reduce_callback(|state| state.0 += 1);
+        cb.emit(());
+
+        assert!(dispatch.get().0 == 2)
+    }
+
+    #[test]
+    fn dispatch_reduce_callback_with_works() {
+        let dispatch = Dispatch::<TestState>::new();
+        let cb = dispatch.reduce_callback_with(|state, val| state.0 += val);
+        cb.emit(1);
+
+        assert!(dispatch.get().0 == 2)
+    }
+
+    #[test]
+    fn dispatch_apply_works() {
+        let dispatch = Dispatch::<TestState>::new();
+        dispatch.apply(Msg);
+
+        assert!(dispatch.get().0 == 2)
+    }
+
+    #[test]
+    fn dispatch_apply_callback_works() {
+        let dispatch = Dispatch::<TestState>::new();
+        let cb = dispatch.apply_callback(|_| Msg);
+        cb.emit(());
+
+        assert!(dispatch.get().0 == 2)
+    }
+
+    #[test]
     fn subscriber_is_notified() {
         let mut flag = Mrc::new(false);
 
@@ -263,5 +328,20 @@ mod tests {
         reduce::<TestState, _>(|state| state.0 = 0);
 
         assert!(!*flag.borrow());
+    }
+
+    #[test]
+    fn dispatch_unsubscribes_when_dropped() {
+        let context = context::get_or_init::<TestState>();
+
+        assert!(context.borrow().subscribers.is_empty());
+
+        let dispatch = Dispatch::<TestState>::subscribe(|_| ());
+
+        assert!(!context.borrow().subscribers.is_empty());
+
+        drop(dispatch);
+
+        assert!(context.borrow().subscribers.is_empty());
     }
 }
