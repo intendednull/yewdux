@@ -42,7 +42,8 @@ impl<S: Store> Dispatch<S> {
         }
     }
 
-    /// Create a dispatch, and subscribe to state changes.
+    /// Create a dispatch, and subscribe to state changes. Will automatically unsubscribe when this
+    /// dispatch is dropped.
     pub fn subscribe<C: Callable<S>>(on_change: C) -> Self {
         let id = context::subscribe(on_change);
 
