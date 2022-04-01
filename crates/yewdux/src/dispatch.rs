@@ -231,12 +231,14 @@ mod tests {
 
     #[test]
     fn subscriber_is_notified() {
-        let flag = Mrc::new(false);
+        let mut flag = Mrc::new(false);
 
         let _id = {
             let flag = flag.clone();
             context::subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
+
+        *flag.borrow_mut() = false;
 
         reduce::<TestState, _>(|state| state.0 += 1);
 
@@ -245,7 +247,7 @@ mod tests {
 
     #[test]
     fn subscriber_is_not_notified_when_state_is_same() {
-        let flag = Mrc::new(false);
+        let mut flag = Mrc::new(false);
 
         // TestState(1)
         reduce::<TestState, _>(|_| {});
@@ -254,6 +256,8 @@ mod tests {
             let flag = flag.clone();
             context::subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
+
+        *flag.borrow_mut() = false;
 
         // TestState(1)
         reduce::<TestState, _>(|state| state.0 = 0);

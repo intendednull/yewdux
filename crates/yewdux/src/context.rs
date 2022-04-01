@@ -36,7 +36,11 @@ impl<S: Store> Context<S> {
     }
 
     pub(crate) fn subscribe(&mut self, on_change: impl Callable<S>) -> SubscriberId<S> {
+        // Notify subscriber with inital state.
+        on_change.call(Rc::clone(&self.store));
+
         let key = self.subscribers.insert(Box::new(on_change));
+
         SubscriberId {
             key,
             _store_type: Default::default(),
@@ -168,5 +172,17 @@ mod tests {
         drop(id);
 
         assert!(context.borrow().subscribers.is_empty());
+    }
+
+    #[test]
+    fn subscriber_is_notified_on_subscribe() {
+        let flag = Mrc::new(false);
+
+        let _id = {
+            let flag = flag.clone();
+            subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
+        };
+
+        assert!(*flag.borrow());
     }
 }
