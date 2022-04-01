@@ -294,7 +294,7 @@ however worst case scenario they could be doing a lot of extra work, with long r
 Compared to this, state cloning cost is insignificant (most of the time).
 
 What's best way to reduce rendering time? Simple. Don't render! Yewdux checks if state changed after
-a mutable borrow, and only notify subscribers when it has.
+a mutable borrow, and only notifies subscribers when it has.
 
 Here's real-world example where this is useful:
 
@@ -321,7 +321,7 @@ large array of non-trivial structs, with a single component in charge of renderi
 re-render per change). For these cases I suggest selective interior mutability.
 
 Yewdux provides a simple wrapper type to allow interior mutability: `Mrc`. This type also provides
-basic change detection (whether or not it has been accessed borrowed mut) so it can work with
+basic change detection (whether or not it has been accessed mutably) so it can work with
 Yewdux:
 
 ```rust
