@@ -5,12 +5,12 @@ use slab::Slab;
 
 use crate::{
     store::Store,
-    util::{Callable, Shared},
+    util::{Callable, Mrc},
 };
 
 thread_local! {
     /// Stores all shared state.
-    static CONTEXTS: Shared<AnyMap> = Shared::new(AnyMap::new());
+    static CONTEXTS: Mrc<AnyMap> = Mrc::new(AnyMap::new());
 }
 
 pub(crate) struct Context<S> {
@@ -54,16 +54,16 @@ impl<S: Store> Context<S> {
     }
 }
 
-pub(crate) fn get_or_init<S: Store>() -> Shared<Context<S>> {
+pub(crate) fn get_or_init<S: Store>() -> Mrc<Context<S>> {
     let mut contexts = CONTEXTS
         .try_with(|context| context.clone())
         .expect("Thread local key init failed");
 
     contexts.with_mut(|contexts| {
         contexts
-            .entry::<Shared<Context<S>>>()
+            .entry::<Mrc<Context<S>>>()
             .or_insert_with(|| {
-                Shared::new(Context {
+                Mrc::new(Context {
                     store: Rc::new(S::new()),
                     subscribers: Default::default(),
                 })

@@ -7,7 +7,7 @@ pub mod dispatch;
 pub mod functional;
 pub mod storage;
 pub mod store;
-mod util;
+pub mod util;
 
 pub mod prelude {
     //! Everything you need to use Yewdux.

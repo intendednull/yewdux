@@ -173,7 +173,7 @@ pub fn get<S: Store>() -> Rc<S> {
 #[cfg(test)]
 mod tests {
 
-    use crate::util::Shared;
+    use crate::util::Mrc;
 
     use super::*;
 
@@ -231,7 +231,7 @@ mod tests {
 
     #[test]
     fn subscriber_is_notified() {
-        let flag = Shared::new(false);
+        let flag = Mrc::new(false);
 
         let _id = {
             let flag = flag.clone();
@@ -245,7 +245,7 @@ mod tests {
 
     #[test]
     fn subscriber_is_not_notified_when_state_is_same() {
-        let flag = Shared::new(false);
+        let flag = Mrc::new(false);
 
         // TestState(1)
         reduce::<TestState, _>(|_| {});

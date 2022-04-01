@@ -275,3 +275,49 @@ To run an example you'll need to install [trunk](https://github.com/thedodd/trun
 
     trunk serve examples/[example]/index.html --open
 
+
+# Design decisions
+
+For the curious, here's my rationale for Yewdux design decisions.
+
+## Why does my state need to implement Clone and PartialEq?
+
+Yewdux uses a CoW (clone on write) state management strategy. This means state is cloned once every
+time a mutation occurs. You might be thinking: but wait, isn't that slow? Well, it's complicated.
+Compared to interior mutability, the actual mutation is slower because of the extra cloning step.
+However we must also consider how many components will consequentially re-render.
+
+When state changes, it is distributed to each registered subscriber, triggering a re-render. We have
+to assume the number of subscribers could be in the 10s or 100s (possibly 1000s), meaning a lot of
+potential re-renders per mutation. If we're lucky, these components are simply updating their
+relevant view, however worst case scenario could be components that are doing a lot of extra work
+(longer rendering times). Compared to this, state cloning cost is insignificant (most of the time).
+
+What's best way to reduce rendering time? Simple. Don't render! One optimization Yewdux makes is checking
+if state has changed after a mutable borrow. Then we only notify subscribers if state has
+actually changed.
+
+Here's real world example where this is useful:
+
+```rust
+let onchange = dispatch.reduce_callback_with(|counter: &mut Counter, e: Event| {
+    let input = e.target_unchecked_into::<HtmlInputElement>();
+
+    if let Ok(val) = input.value().parse() {
+        counter.count = val;
+    }
+});
+```
+
+This closure executes after we've already borrowed `counter` as mutable, however it only actually
+mutates `counter` when it successfully parses the input. If we were using interior mutability there
+would be no way to compare the past and present values, and we would have to notify subscribers even
+though it's possible nothing has changed. With Clone + PartialEq we can compare the past and present
+to make smarter rendering decisions.
+
+### But my state is large, and cloning every mutation isn't feasible!
+
+While rare, there are cases where cloning cost will outweigh rendering cost. One example could be
+large arrays of non-trivial structs, with a single component in charge of rendering those items (one
+re-render per change). For these cases I suggest selective interior mutability.
+
