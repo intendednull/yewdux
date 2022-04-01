@@ -318,10 +318,11 @@ can compare the past and present to make smarter rendering decisions.
 
 While rare, there are cases where cloning cost will outweigh rendering cost. One example could be a
 large array of non-trivial structs, with a single component in charge of rendering those items (one
-re-render per change). For these cases I suggest selective interior mutability. By wrapping your
-expensive field in `Rc<RefCell<T>>`, you'll avoid all the extra cost of Clone + PartialEq.
+re-render per change). For these cases I suggest selective interior mutability.
 
-Yewdux does provide a simple (and optional) wrapper type to make this a little more ergonomic `Mrc`:
+Yewdux provides a simple wrapper type to allow interior mutability: `Mrc`. This type also provides
+basic change detection (whether or not it has been accessed borrowed mut) so it can work with
+Yewdux:
 
 ```rust
 use yew::prelude::*;
@@ -338,7 +339,7 @@ struct State {
 }
 ```
 
-Mutating would be done normally:
+Mutating is done as expected:
 
 ```rust
 let onclick = dispatch.reduce_callback(|state| {
