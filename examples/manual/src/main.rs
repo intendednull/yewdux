@@ -24,9 +24,10 @@ impl Component for App {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
+        let dispatch = Dispatch::<State>::subscribe(ctx.link().callback(Msg::State));
         Self {
-            dispatch: Dispatch::<State>::subscribe(ctx.link().callback(Msg::State)),
-            state: Default::default(),
+            state: dispatch.get(),
+            dispatch,
         }
     }
 

@@ -53,7 +53,7 @@ impl<S: Store> Dispatch<S> {
     }
 
     /// Get the current state.
-    pub fn get() -> Rc<S> {
+    pub fn get(&self) -> Rc<S> {
         get::<S>()
     }
 
@@ -79,12 +79,12 @@ impl<S: Store> Dispatch<S> {
     }
 
     /// Set state to given value.
-    pub fn set(val: S) {
+    pub fn set(&self, val: S) {
         set(val);
     }
 
     /// Set state using value from callback.
-    pub fn set_callback<E, F>(f: F) -> Callback<E>
+    pub fn set_callback<E, F>(&self, f: F) -> Callback<E>
     where
         F: Fn(E) -> S + 'static,
     {
