@@ -8,11 +8,6 @@ use crate::{
     util::{Callable, Mrc},
 };
 
-thread_local! {
-    /// Stores all shared state.
-    static CONTEXTS: Mrc<AnyMap> = Mrc::new(AnyMap::new());
-}
-
 pub(crate) struct Context<S> {
     pub(crate) store: Rc<S>,
     pub(crate) subscribers: Slab<Box<dyn Callable<S>>>,
@@ -59,21 +54,25 @@ impl<S: Store> Context<S> {
 }
 
 pub(crate) fn get_or_init<S: Store>() -> Mrc<Context<S>> {
-    let mut contexts = CONTEXTS
-        .try_with(|context| context.clone())
-        .expect("Thread local key init failed");
+    thread_local! {
+        /// Stores all shared state.
+        static CONTEXTS: Mrc<AnyMap> = Mrc::new(AnyMap::new());
+    }
 
-    contexts.with_mut(|contexts| {
-        contexts
-            .entry::<Mrc<Context<S>>>()
-            .or_insert_with(|| {
-                Mrc::new(Context {
-                    store: Rc::new(S::new()),
-                    subscribers: Default::default(),
+    CONTEXTS
+        .try_with(|context| context.clone())
+        .expect("CONTEXTS thread local key init failed")
+        .with_mut(|contexts| {
+            contexts
+                .entry::<Mrc<Context<S>>>()
+                .or_insert_with(|| {
+                    Mrc::new(Context {
+                        store: Rc::new(S::new()),
+                        subscribers: Default::default(),
+                    })
                 })
-            })
-            .clone()
-    })
+                .clone()
+        })
 }
 
 pub(crate) fn subscribe<S: Store, N: Callable<S>>(subscriber: N) -> SubscriberId<S> {

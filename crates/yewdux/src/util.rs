@@ -16,7 +16,7 @@ fn nonce() -> u32 {
             nonce.set(nonce.get().wrapping_add(1));
             nonce.get()
         })
-        .expect("Thread local key init failed")
+        .expect("NONCE thread local key init failed")
 }
 
 /// A cloneable wrapper type that provides interior mutability.
