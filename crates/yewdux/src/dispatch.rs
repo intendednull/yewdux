@@ -29,9 +29,9 @@ use crate::{
 };
 
 /// The primary interface to a [`Store`].
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Dispatch<S: Store> {
-    _subscriber_id: Option<SubscriberId<S>>,
+    _subscriber_id: Option<Rc<SubscriberId<S>>>,
 }
 
 impl<S: Store> Dispatch<S> {
@@ -48,7 +48,7 @@ impl<S: Store> Dispatch<S> {
         let id = context::subscribe(on_change);
 
         Self {
-            _subscriber_id: Some(id),
+            _subscriber_id: Some(Rc::new(id)),
         }
     }
 
@@ -337,6 +337,42 @@ mod tests {
         assert!(context.borrow().subscribers.is_empty());
 
         let dispatch = Dispatch::<TestState>::subscribe(|_| ());
+
+        assert!(!context.borrow().subscribers.is_empty());
+
+        drop(dispatch);
+
+        assert!(context.borrow().subscribers.is_empty());
+    }
+
+    #[test]
+    fn dispatch_clone_does_not_unsubscribes_when_dropped() {
+        let context = context::get_or_init::<TestState>();
+
+        assert!(context.borrow().subscribers.is_empty());
+
+        let dispatch = Dispatch::<TestState>::subscribe(|_| ());
+        let dispatch_clone = dispatch.clone();
+
+        assert!(!context.borrow().subscribers.is_empty());
+
+        drop(dispatch_clone);
+
+        assert!(!context.borrow().subscribers.is_empty());
+    }
+
+    #[test]
+    fn dispatch_clone_and_original_unsubscribe_when_both_dropped() {
+        let context = context::get_or_init::<TestState>();
+
+        assert!(context.borrow().subscribers.is_empty());
+
+        let dispatch = Dispatch::<TestState>::subscribe(|_| ());
+        let dispatch_clone = dispatch.clone();
+
+        assert!(!context.borrow().subscribers.is_empty());
+
+        drop(dispatch_clone);
 
         assert!(!context.borrow().subscribers.is_empty());
 
