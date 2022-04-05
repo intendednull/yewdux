@@ -1,7 +1,14 @@
 [package]
-name = "yewdux-macros"
-version = "0.1.0"
-edition = "2021"
+name = "yewdux"
+version = "0.6.1"
+authors = ["Noah <noah@coronasoftware.net>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yewdux/yewdux"
+readme = "README.md"
+description = "Ergonomic state management for Yew applications"
+keywords = ["yew", "state", "redux", "shared", "container"]
+categories = ["wasm", "web-programming", "rust-patterns"]
 
 [lib]
 proc-macro = true
