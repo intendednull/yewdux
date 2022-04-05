@@ -1,6 +1,6 @@
 # Yewdux
 
-Simple state management for [Yew](https://yew.rs/docs/en/) applications.
+Simple state management for [Yew](https://yew.rs) applications.
 
 This is the development branch. Latest stable release may be found
 [here](https://github.com/intendednull/yewdux/tree/0.7.0).
@@ -275,6 +275,10 @@ To run an example you'll need to install [trunk](https://github.com/thedodd/trun
 
     trunk serve examples/[example]/index.html --open
 
+
+# Alternatives
+
+- [Bounce](https://github.com/futursolo/bounce) - The uncomplicated Yew State management library
 
 # Design decisions
 
