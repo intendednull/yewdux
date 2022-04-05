@@ -1,5 +1,5 @@
 [package]
-name = "yewdux"
+name = "yewdux-macros"
 version = "0.6.1"
 authors = ["Noah <noah@coronasoftware.net>"]
 edition = "2018"
