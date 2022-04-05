@@ -247,10 +247,17 @@ Yewdux provides an easy way to persist your state in either local or session sto
 use yewdux::prelude::*;
 use serde::{Serialize, Deserialize};
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Store)]
+#[store(storage = "local")]
 struct Counter {
     count: u32,
 }
+```
+
+Or you can implement it yourself.
+
+```rust
+use yewdux::{prelude::*, storage};
 
 impl Store for Counter {
     fn new() -> Self {

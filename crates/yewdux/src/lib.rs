@@ -10,6 +10,10 @@ pub mod storage;
 pub mod store;
 pub mod util;
 
+// Used by macro.
+#[doc(hidden)]
+pub use log;
+
 pub mod prelude {
     //! Default exports
 
