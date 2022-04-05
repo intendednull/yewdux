@@ -10,13 +10,13 @@ struct State {
 
 impl Store for State {
     fn new() -> Self {
-        yewdux::storage::load(storage::Area::Local)
+        storage::load(storage::Area::Local)
             .expect("Unable to load state")
             .unwrap_or_default()
     }
 
     fn changed(&mut self) {
-        yewdux::storage::save(self, storage::Area::Local).expect("Unable to save state");
+        storage::save(self, storage::Area::Local).expect("Unable to save state");
     }
 }
 
