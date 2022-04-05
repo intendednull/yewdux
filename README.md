@@ -140,7 +140,7 @@ struct Msg {
 }
 
 impl Message<Counter> for Msg {
-    fn apply(&mut self, counter: &mut Counter) {
+    fn apply(&self, counter: &mut Counter) {
         match self {
             Msg::AddOne => counter.count += 1,
         }
