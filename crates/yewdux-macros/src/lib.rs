@@ -4,9 +4,9 @@ use syn::{parse_macro_input, DeriveInput};
 
 mod store;
 
-#[proc_macro_derive(Store)]
+#[proc_macro_derive(Store, attributes(store))]
 #[proc_macro_error]
 pub fn store(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    store::macro_fn(input).into()
+    store::derive(input).into()
 }

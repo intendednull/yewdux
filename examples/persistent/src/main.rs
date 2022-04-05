@@ -1,23 +1,14 @@
 use yew::prelude::*;
-use yewdux::{prelude::*, storage};
+use yewdux::{
+    prelude::*,
+};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Default, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Default, Clone, PartialEq, Deserialize, Serialize, Store)]
+#[store(storage = "local")]
 struct State {
     count: u32,
-}
-
-impl Store for State {
-    fn new() -> Self {
-        storage::load(storage::Area::Local)
-            .expect("Unable to load state")
-            .unwrap_or_default()
-    }
-
-    fn changed(&mut self) {
-        storage::save(self, storage::Area::Local).expect("Unable to save state");
-    }
 }
 
 #[function_component]
