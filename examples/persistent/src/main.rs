@@ -1,5 +1,5 @@
 use yew::prelude::*;
-use yewdux::prelude::*;
+use yewdux::{prelude::*, storage};
 
 use serde::{Deserialize, Serialize};
 

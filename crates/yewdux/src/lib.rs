@@ -11,12 +11,11 @@ pub mod store;
 pub mod util;
 
 pub mod prelude {
-    //! Everything you need to use Yewdux.
+    //! Default exports
 
     pub use crate::{
-        dispatch::{self, Dispatch},
+        dispatch::Dispatch,
         functional::use_store,
-        storage,
         store::{Reducer, Store},
     };
 }
