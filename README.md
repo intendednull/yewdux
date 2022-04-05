@@ -326,7 +326,7 @@ Yewdux:
 
 ```rust
 use yew::prelude::*;
-use yewdux::{prelude::*, util::Mrc};
+use yewdux::{prelude::*, mrc::Mrc};
 
 // Notice we don't implement Clone or PartialEq.
 #[derive(Default)]

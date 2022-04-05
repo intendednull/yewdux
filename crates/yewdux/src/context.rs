@@ -3,10 +3,7 @@ use std::{marker::PhantomData, rc::Rc};
 use anymap::AnyMap;
 use slab::Slab;
 
-use crate::{
-    store::Store,
-    util::{Callable, Mrc},
-};
+use crate::{mrc::Mrc, store::Store, util::Callable};
 
 pub(crate) struct Context<S> {
     pub(crate) store: Rc<S>,

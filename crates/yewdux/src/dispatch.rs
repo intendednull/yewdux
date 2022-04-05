@@ -173,7 +173,7 @@ pub fn get<S: Store>() -> Rc<S> {
 #[cfg(test)]
 mod tests {
 
-    use crate::util::Mrc;
+    use crate::mrc::Mrc;
 
     use super::*;
 
@@ -343,22 +343,6 @@ mod tests {
         drop(dispatch);
 
         assert!(context.borrow().subscribers.is_empty());
-    }
-
-    #[test]
-    fn dispatch_clone_does_not_unsubscribes_when_dropped() {
-        let context = context::get_or_init::<TestState>();
-
-        assert!(context.borrow().subscribers.is_empty());
-
-        let dispatch = Dispatch::<TestState>::subscribe(|_| ());
-        let dispatch_clone = dispatch.clone();
-
-        assert!(!context.borrow().subscribers.is_empty());
-
-        drop(dispatch_clone);
-
-        assert!(!context.borrow().subscribers.is_empty());
     }
 
     #[test]

@@ -1,5 +1,5 @@
 use yew::prelude::*;
-use yewdux::{prelude::*, util::Mrc};
+use yewdux::{mrc::Mrc, prelude::*};
 
 // Notice we don't implement Clone or PartialEq.
 #[derive(Default)]
