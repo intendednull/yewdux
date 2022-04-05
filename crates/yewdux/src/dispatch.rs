@@ -24,7 +24,7 @@ use yew::Callback;
 
 use crate::{
     context::{self, SubscriberId},
-    store::{Message, Store},
+    store::{Reducer, Store},
     util::Callable,
 };
 
@@ -58,7 +58,7 @@ impl<S: Store> Dispatch<S> {
     }
 
     /// Send a message to the store.
-    pub fn apply<M: Message<S>>(&self, msg: M) {
+    pub fn apply<M: Reducer<S>>(&self, msg: M) {
         apply(msg);
     }
 
@@ -69,7 +69,7 @@ impl<S: Store> Dispatch<S> {
     /// ```
     pub fn apply_callback<E, M, F>(&self, f: F) -> Callback<E>
     where
-        M: Message<S>,
+        M: Reducer<S>,
         F: Fn(E) -> M + 'static,
     {
         Callback::from(move |e| {
@@ -161,7 +161,7 @@ pub fn set<S: Store>(value: S) {
 }
 
 /// Send a message to state.
-pub fn apply<S: Store, M: Message<S>>(msg: M) {
+pub fn apply<S: Store, M: Reducer<S>>(msg: M) {
     reduce(move |state: &mut S| msg.apply(state));
 }
 
@@ -190,7 +190,7 @@ mod tests {
     }
 
     struct Msg;
-    impl Message<TestState> for Msg {
+    impl Reducer<TestState> for Msg {
         fn apply(&self, state: &mut TestState) {
             state.0 += 1;
         }

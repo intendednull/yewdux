@@ -139,7 +139,7 @@ struct Msg {
     AddOne,
 }
 
-impl Message<Counter> for Msg {
+impl Reducer<Counter> for Msg {
     fn apply(&self, counter: &mut Counter) {
         match self {
             Msg::AddOne => counter.count += 1,

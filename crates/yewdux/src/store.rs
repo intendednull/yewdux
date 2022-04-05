@@ -10,8 +10,8 @@ pub trait Store: Clone + PartialEq + 'static {
     fn changed(&mut self) {}
 }
 
-/// A message that can change state.
-pub trait Message<S> {
-    /// Mutate state using this message.
+/// A type that can change state.
+pub trait Reducer<S> {
+    /// Mutate state.
     fn apply(&self, state: &mut S);
 }

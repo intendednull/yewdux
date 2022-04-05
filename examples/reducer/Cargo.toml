@@ -1,5 +1,5 @@
 [package]
-name = "message"
+name = "reducer"
 version = "0.1.0"
 authors = ["Noah <noah@coronasoftware.net>"]
 edition = "2018"

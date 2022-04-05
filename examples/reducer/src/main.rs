@@ -10,7 +10,7 @@ enum Msg {
     AddOne,
 }
 
-impl Message<State> for Msg {
+impl Reducer<State> for Msg {
     fn apply(&self, state: &mut State) {
         match self {
             Msg::AddOne => state.count += 1,

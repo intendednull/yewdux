@@ -17,6 +17,6 @@ pub mod prelude {
         dispatch::{self, Dispatch},
         functional::use_store,
         storage,
-        store::{Message, Store},
+        store::{Reducer, Store},
     };
 }
