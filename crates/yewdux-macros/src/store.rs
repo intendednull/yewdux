@@ -19,7 +19,10 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
             let area = match storage.as_ref() {
                 "local" => quote! { ::yewdux::storage::Area::Local },
                 "session" => quote! { ::yewdux::storage::Area::Session },
-                x => panic!("{} is not a valid option. Must be 'local' or 'session'", x),
+                x => panic!(
+                    "'{}' is not a valid option. Must be 'local' or 'session'.",
+                    x
+                ),
             };
 
             quote! {

@@ -1,7 +1,5 @@
 use yew::prelude::*;
-use yewdux::{
-    prelude::*,
-};
+use yewdux::prelude::*;
 
 use serde::{Deserialize, Serialize};
 
