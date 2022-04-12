@@ -33,6 +33,8 @@ use std::{
     rc::Rc,
 };
 
+use crate::store::Store;
+
 fn nonce() -> u32 {
     thread_local! {
         static NONCE: Cell<u32> = Default::default();
@@ -83,6 +85,16 @@ impl<T> Mrc<T> {
     }
 }
 
+impl<T: Store> Store for Mrc<T> {
+    fn new() -> Self {
+        T::new().into()
+    }
+
+    fn changed(&mut self) {
+        self.borrow_mut().changed();
+    }
+}
+
 impl<T: Default> Default for Mrc<T> {
     fn default() -> Self {
         Self::new(Default::default())
@@ -95,6 +107,12 @@ impl<T> Clone for Mrc<T> {
             inner: Rc::clone(&self.inner),
             nonce: self.nonce,
         }
+    }
+}
+
+impl<T> From<T> for Mrc<T> {
+    fn from(value: T) -> Self {
+        Self::new(value)
     }
 }
 
@@ -116,6 +134,17 @@ mod tests {
     impl Store for TestState {
         fn new() -> Self {
             Self(Mrc::new(0))
+        }
+
+        fn changed(&mut self) {
+            *self.0.borrow_mut() += 1;
+        }
+    }
+
+    struct CanImplStoreForMrcDirectly;
+    impl Store for Mrc<CanImplStoreForMrcDirectly> {
+        fn new() -> Self {
+            CanImplStoreForMrcDirectly.into()
         }
     }
 
@@ -151,5 +180,19 @@ mod tests {
         dispatch.reduce(|state| state.0.with_mut(|_| ()));
 
         assert!(*flag.borrow());
+    }
+
+    #[test]
+    fn can_wrap_store_with_mrc() {
+        let dispatch = Dispatch::<Mrc<TestState>>::new();
+        assert!(*dispatch.get().borrow().0.borrow() == 0)
+    }
+
+    #[test]
+    fn wrapped_store_with_mrc_calls_changed() {
+        let dispatch = Dispatch::<Mrc<TestState>>::new();
+        dispatch.reduce(|s| *s.borrow_mut().0.borrow_mut() += 1);
+
+        assert!(*dispatch.get().borrow().0.borrow() == 2)
     }
 }
