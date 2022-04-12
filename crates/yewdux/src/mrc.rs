@@ -52,13 +52,13 @@ fn nonce() -> u32 {
 /// detection (so it works with Yewdux). Whenever this type borrows mutably, it is marked as
 /// changed. Because there is no way to detect whether it has actually changed or not, it is up to
 /// the user to prevent unecessary re-renders.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Mrc<T> {
     inner: Rc<RefCell<T>>,
     nonce: u32,
 }
 
-impl<T: 'static> Mrc<T> {
+impl<T> Mrc<T> {
     pub fn new(value: T) -> Self {
         Self {
             inner: Rc::new(RefCell::new(value)),
@@ -80,6 +80,12 @@ impl<T: 'static> Mrc<T> {
         // Mark as changed.
         self.nonce = nonce();
         self.inner.borrow_mut()
+    }
+}
+
+impl<T: Default> Default for Mrc<T> {
+    fn default() -> Self {
+        Self::new(Default::default())
     }
 }
 
