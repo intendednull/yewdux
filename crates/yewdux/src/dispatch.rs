@@ -23,9 +23,9 @@ use std::rc::Rc;
 use yew::Callback;
 
 use crate::{
-    context::{self, SubscriberId},
+    context,
     store::{Reducer, Store},
-    util::Callable,
+    subscriber::{subscribe, Callable, SubscriberId},
 };
 
 /// The primary interface to a [`Store`].
@@ -45,7 +45,7 @@ impl<S: Store> Dispatch<S> {
     /// Create a dispatch, and subscribe to state changes. Will automatically unsubscribe when this
     /// dispatch is dropped.
     pub fn subscribe<C: Callable<S>>(on_change: C) -> Self {
-        let id = context::subscribe(on_change);
+        let id = subscribe(on_change);
 
         Self {
             _subscriber_id: Some(Rc::new(id)),
@@ -300,7 +300,7 @@ mod tests {
 
         let _id = {
             let flag = flag.clone();
-            context::subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
+            subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
 
         *flag.borrow_mut() = false;
@@ -319,7 +319,7 @@ mod tests {
 
         let _id = {
             let flag = flag.clone();
-            context::subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
+            subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
 
         *flag.borrow_mut() = false;

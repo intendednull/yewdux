@@ -1,9 +1,13 @@
-use std::{marker::PhantomData, rc::Rc};
+use std::rc::Rc;
 
 use anymap::AnyMap;
 use slab::Slab;
 
-use crate::{mrc::Mrc, store::Store, util::Callable};
+use crate::{
+    mrc::Mrc,
+    store::Store,
+    subscriber::{Callable, SubscriberId},
+};
 
 pub(crate) struct Context<S> {
     pub(crate) store: Rc<S>,
@@ -72,29 +76,6 @@ pub(crate) fn get_or_init<S: Store>() -> Mrc<Context<S>> {
         })
 }
 
-pub(crate) fn subscribe<S: Store, N: Callable<S>>(subscriber: N) -> SubscriberId<S> {
-    let mut context = get_or_init::<S>();
-    context.with_mut(|context| context.subscribe(subscriber))
-}
-
-pub(crate) fn unsubscribe<S: Store>(id: usize) {
-    let mut context = get_or_init::<S>();
-    context.with_mut(|context| context.unsubscribe(id))
-}
-
-/// Points to a subscriber in context. That subscriber is removed when this is dropped.
-#[derive(Debug)]
-pub(crate) struct SubscriberId<S: Store> {
-    key: usize,
-    _store_type: PhantomData<S>,
-}
-
-impl<S: Store> Drop for SubscriberId<S> {
-    fn drop(&mut self) {
-        unsubscribe::<S>(self.key);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -127,58 +108,5 @@ mod tests {
         context.with_mut(|context| context.reduce(|_| {}));
 
         assert!(context.borrow().store.0 == 0);
-    }
-
-    #[test]
-    fn subscribe_adds_to_list() {
-        let mut context = get_or_init::<TestState>();
-
-        assert!(context.borrow().subscribers.is_empty());
-
-        let _id = context.with_mut(|x| x.subscribe(|_| {}));
-
-        assert!(!context.borrow().subscribers.is_empty());
-    }
-
-    #[test]
-    fn unsubscribe_removes_from_list() {
-        let mut context = get_or_init::<TestState>();
-
-        assert!(context.borrow().subscribers.is_empty());
-
-        let id = context.with_mut(|x| x.subscribe(|_| {}));
-
-        assert!(!context.borrow().subscribers.is_empty());
-
-        drop(id);
-
-        assert!(context.borrow().subscribers.is_empty());
-    }
-
-    #[test]
-    fn subscriber_id_unsubscribes_when_dropped() {
-        let context = get_or_init::<TestState>();
-
-        assert!(context.borrow().subscribers.is_empty());
-
-        let id = subscribe::<TestState, _>(|_| {});
-
-        assert!(!context.borrow().subscribers.is_empty());
-
-        drop(id);
-
-        assert!(context.borrow().subscribers.is_empty());
-    }
-
-    #[test]
-    fn subscriber_is_notified_on_subscribe() {
-        let flag = Mrc::new(false);
-
-        let _id = {
-            let flag = flag.clone();
-            subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
-        };
-
-        assert!(*flag.borrow());
     }
 }

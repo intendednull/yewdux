@@ -8,7 +8,7 @@ pub mod functional;
 pub mod mrc;
 pub mod storage;
 pub mod store;
-pub mod util;
+mod subscriber;
 
 // Used by macro.
 #[doc(hidden)]
