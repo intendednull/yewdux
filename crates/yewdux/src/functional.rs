@@ -115,6 +115,12 @@ where
 #[derive(Debug, PartialEq, Clone)]
 pub struct RefHandle<T>(UseStateHandle<T>);
 
+impl<T: std::fmt::Display> std::fmt::Display for RefHandle<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 impl<T> AsRef<T> for RefHandle<T> {
     fn as_ref(&self) -> &T {
         self.0.deref()
