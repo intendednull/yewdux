@@ -8,16 +8,26 @@ use state::{Entry, Filter, State};
 
 #[function_component]
 fn App() -> Html {
+    let hidden = use_selector(|s: &State| s.entries.is_empty());
+    let hidden_class = if *hidden { "hidden" } else { "" };
+
     html! {
         <div class="todomvc-wrapper">
             <section class="todoapp">
                 <Header />
-                <Main />
-                <Footer />
+                <section class={classes!("main", hidden_class)} >
+                    <ToggleAll />
+                    <ListEntries />
+                </section>
+                <footer class={classes!("footer", hidden_class)}>
+                    <Footer />
+                </footer>
             </section>
             <footer class="info">
                 <p>{ "Double-click to edit a todo" }</p>
-                <p>{ "Written by " }<a href="https://github.com/intendednull" target="_blank">{ "Noah Corona" }</a></p>
+                <p>{ "Written by " }<a href="https://github.com/intendednull" target="_blank">
+                    { "Noah Corona" }
+                </a></p>
                 <p>{ "Part of " }<a href="http://todomvc.com/" target="_blank">{ "TodoMVC" }</a></p>
             </footer>
         </div>
@@ -26,75 +36,46 @@ fn App() -> Html {
 
 #[function_component]
 fn Header() -> Html {
-    let input = {
-        let onkeypress = Dispatch::<State>::new().reduce_callback_with(|s, e: KeyboardEvent| {
-            if e.key() == "Enter" {
-                let input: HtmlInputElement = e.target_unchecked_into();
-                let value = input.value();
-                input.set_value("");
-                if !value.is_empty() {
-                    let entry = Entry {
-                        description: value.trim().to_string(),
-                        completed: false,
-                        editing: false,
-                    };
-                    s.entries.push(entry);
-                }
+    let onkeypress = Dispatch::<State>::new().reduce_callback_with(|s, e: KeyboardEvent| {
+        if e.key() == "Enter" {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            let value = input.value();
+            input.set_value("");
+            if !value.is_empty() {
+                let entry = Entry {
+                    description: value.trim().to_string(),
+                    completed: false,
+                    editing: false,
+                };
+                s.entries.push(entry);
             }
-        });
+        }
+    });
 
-        html! {
+    html! {
+        <header class="header">
+            <h1>{ "todos" }</h1>
             <input
                 class="new-todo"
                 placeholder="What needs to be done?"
                 {onkeypress}
                 />
-        }
-    };
-
-    html! {
-        <header class="header">
-            <h1>{ "todos" }</h1>
-            { input }
         </header>
     }
 }
 
 #[function_component]
-fn Main() -> Html {
-    let (state, _dispatch) = use_store::<State>();
-
-    let hidden_class = if state.entries.is_empty() {
-        "hidden"
-    } else {
-        ""
-    };
-
-    html! {
-        <section class={classes!("main", hidden_class)} >
-            <ToggleAll />
-            <ListEntries />
-        </section>
-    }
-}
-
-#[function_component]
 fn Footer() -> Html {
-    let (state, dispatch) = use_store::<State>();
-    let hidden_class = if state.entries.is_empty() {
-        "hidden"
-    } else {
-        ""
-    };
+    let active_filter = use_selector(|s: &State| s.filter);
 
     let filters = {
         let view_filter = |filter: Filter| {
-            let cls = if state.filter == filter {
+            let cls = if *active_filter == filter {
                 "selected"
             } else {
                 "not-selected"
             };
-            let onclick = dispatch.reduce_callback(move |s| s.filter = filter);
+            let onclick = Dispatch::<State>::new().reduce_callback(move |s| s.filter = filter);
             html! {
                 <li>
                     <a class={cls} href={filter.as_href()} {onclick}>
@@ -118,11 +99,11 @@ fn Footer() -> Html {
     };
 
     html! {
-        <footer class={classes!("footer", hidden_class)}>
-            <TodoCount />
-            { filters }
-            <BtnClearCompleted />
-        </footer>
+        <>
+        <TodoCount />
+        { filters }
+        <BtnClearCompleted />
+        </>
     }
 }
 
@@ -170,7 +151,7 @@ fn ToggleAll() -> Html {
 fn ListEntries() -> Html {
     let focus_ref = use_node_ref();
     let (state, dispatch) = use_store::<State>();
-    let view_entry = |(idx, entry): (usize, &Entry), dispatch: &Dispatch<State>| {
+    let view_entry = |(idx, entry): (usize, &Entry)| {
         let mut class = Classes::from("todo");
         if entry.editing {
             class.push(" editing");
@@ -261,7 +242,7 @@ fn ListEntries() -> Html {
         .iter()
         .filter(|e| state.filter.fits(e))
         .enumerate()
-        .map(|e| view_entry(e, &dispatch))
+        .map(view_entry)
         .collect::<Html>();
 
     html! {
