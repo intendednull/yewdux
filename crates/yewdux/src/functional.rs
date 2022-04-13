@@ -46,6 +46,19 @@ pub fn use_store<S: Store>() -> (RefHandle<Rc<S>>, RefHandle<Dispatch<S>>) {
     (RefHandle(state), RefHandle(dispatch))
 }
 
+/// Simliar to ['use_store'], but only provides the state.
+#[hook]
+pub fn use_store_value<S: Store>() -> RefHandle<Rc<S>> {
+    let state = use_state(|| dispatch::get::<S>());
+
+    let _dispatch = {
+        let state = state.clone();
+        use_state(move || Dispatch::<S>::subscribe(move |val| state.set(val)))
+    };
+
+    RefHandle(state)
+}
+
 /// This hook provides access to a portion of state. The equality function tests whether the next
 /// selection is equal to previous, and re-renders when true.
 ///
