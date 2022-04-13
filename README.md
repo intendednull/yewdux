@@ -5,6 +5,24 @@ Simple state management for [Yew](https://yew.rs) applications.
 This is the development branch. Latest stable release may be found
 [here](https://github.com/intendednull/yewdux/tree/0.7.0).
 
+## About 
+
+Yewdux uses a CoW (clone on write) management strategy. This means state is cloned once every
+mutation. Doing it this way allows us to succinctly express precise mutation without any additional
+boilerplate, and employ change detection to prevent needless re-renders.
+
+This is a slight deviation from the typical reducer: `|state: Rc<T>| -> Rc<T>` (which
+does not require `Clone` to implement). However in practice state is usually cloned anyway, it's
+just up to the user to handle it.
+
+For cases where cloning is particularly expensive, [Mrc](./examples/no_copy/src/main.rs) provides a
+Yewdux-compatible interface for interior mutability. However keep in mind Yewdux will no longer be
+able to detect changes properly, and cannot prevent needless re-rendering when done this way.
+
+## Alternatives
+
+- [Bounce](https://github.com/futursolo/bounce) - The uncomplicated Yew State management library
+
 # Setup
 
 Add Yewdux to your project's `Cargo.toml`:
@@ -44,9 +62,24 @@ fn main() {
 }
 ```
 
+## Additional examples
+
+Complete working examples can be found in the
+[examples](https://github.com/intendednull/yewdux/tree/master/examples) folder of this project.
+
+To run an example you'll need to install [trunk](https://github.com/thedodd/trunk), then run the
+following command (replacing [example] with your desired example name):
+
+    trunk serve examples/[example]/index.html --open
+
 # Usage
 
-First, you'll need to implement `Store` for your state:
+## Store
+
+`Store` represents state that is shared application-wide. It is initialized the first time it is
+accessed, and lives for application lifetime. 
+
+Implement `Store` for your state using the macro.
 
 ```rust
 #[derive(Default, Clone, PartialEq, Store)]
@@ -55,8 +88,7 @@ struct Counter {
 }
 ```
 
-`Clone` and `PartialEq` are required for all `Store`s, however `Default` is only needed for the macro. You can just
-as well define it manually.
+Or do it manually. 
 
 ```rust
 #[derive(Clone, PartialEq)]
@@ -73,17 +105,25 @@ impl Store for Counter {
 }
 ```
 
-Now simply create a dispatch.
+*Note `Clone` and `PartialEq` are required to implement `Store`, however `Default` is only needed
+for the macro.*
+
+## Dispatch
+
+`Dispatch` provides an interface to your `Store`. To create one you need only provide the store
+type. 
 
 ```rust
 let dispatch = Dispatch::<Counter>::new();
 ```
 
-## Mutating shared state
+*`Dispatch::new` has no cost, so feel free create this way as needed.*
 
-`Dispatch` provides many options for mutating state.
+### Mutation
 
-`set` will set shared state to a given value.
+`Dispatch` provides many options for mutating a `Store`.
+
+`set` will assign to a given value.
 
 ```rust
 dispatch.set(Counter { count: 0 });
@@ -130,7 +170,7 @@ html! {
 
 ```
 
-### Predictable mutation
+#### Predictable mutation
 
 Yewdux supports predictable mutation. Simply define your message and apply it.
 
@@ -154,7 +194,7 @@ impl Reducer<Counter> for Msg {
 dispatch.apply(Msg::AddOne);
 ```
 
-`apply_callback` does it (you guessed it) from a callback.
+`apply_callback` generates (you guessed it) a callback.
 
 ```rust
 let onclick = dispatch.apply_callback(|_| Msg::AddOne);
@@ -163,25 +203,19 @@ html! {
 }
 ```
 
-## Reading shared state
+### Subscribing to changes
 
-`get` provides the current state (with a minor lookup cost).
+Components need to know when to re-render for changes. To do this they can subscribe to a store.
 
-```rust
-let counter = dispatch.get();
-```
-
-However most components will also need to know when state changes so they can re-render. This can be
-done by subscribing to changes.
-
-`use_store` automatically subscribes, meaning the component will re-render every time `counter` changes (no additional setup required).
+Functional hooks like `use_store` will subscribe automatically.
 
 ```rust
+// `counter` is automatically updated when global state changes.
 let (counter, dispatch) = use_store::<Counter>();
 ```
 
 You may also subscribe manually, as shown below. At the cost of boilerplate, doing it this way
-allows finer control over when exactly you'd like to re-render.
+allows much finer control.
 
 ```rust
 use std::rc::Rc;
@@ -236,25 +270,88 @@ impl Component for MyComponent {
 }
 ```
 
+It is also possible to retrieve the current state of a store without subscribing to changes. This is
+useful when you don't really care when/if state has changed, just what the current value is.
+
+```rust
+let state = dispatch.get();
+```
+
 *Because `Dispatch::get` comes with a minor lookup cost, it's marginally more efficient to use the
 value given to you by the subscription.*
 
+#### Selectors
+
+Sometimes a component will only care about a particular part of state, and only needs to re-render
+when that part changes. For this we have the `use_selector` hook.
+
+Consider the following example.
+
+```rust
+#[derive(Default, Clone, PartialEq, Store)]
+struct Counter {
+    count_1: u32,
+    count_2: u32,
+}
+
+#[function_component]
+fn CountOne() -> Html {
+    // Only re-render when `Counter::count_1` changes.
+    let count = use_selector(|state: &Counter| state.count_1);
+
+    html! {
+        <p>{ count }</p>
+    }
+}
+
+#[function_component]
+fn CountTwo() -> Html {
+    // Only re-render when `Counter::count_2` changes.
+    let count = use_selector(|state: &Counter| state.count_2);
+
+    html! {
+        <p>{ count }</p>
+    }
+}
+
+
+#[function_component]
+fn App() -> Html {
+    let dispatch = Dispatch::<Counter>::new();
+    let incr_one = dispatch.reduce_callback(|counter| counter.count_1 += 1);
+    let incr_two = dispatch.reduce_callback(|counter| counter.count_2 += 1);
+
+    html! {
+        <>
+        <CountOne />
+        <button onclick={incr_one}>{"Incr One"}</button>
+        <CountTwo />
+        <button onclick={incr_two}>{"Incr Two"}</button>
+        </>
+    }
+}
+```
+
+Here we have two components accessing the same store, but each only cares about one field of that
+store. They only re-render when the field they have selected has changed, and won't needlessly
+re-render if it hasn't.
+
 # Persistence
 
-Yewdux provides an easy way to persist your state in either local or session storage.
+Yewdux provides a macro to easily persist your state in either local or session storage.
 
 ```rust
 use yewdux::prelude::*;
 use serde::{Serialize, Deserialize};
 
-#[derive(Clone, PartialEq, Serialize, Deserialize, Store)]
-#[store(storage = "local")]
+#[derive(Default, Clone, PartialEq, Serialize, Deserialize, Store)]
+#[store(storage = "local")] // can also be "session"
 struct Counter {
     count: u32,
 }
 ```
 
-Or you can implement it yourself.
+You can also implement it yourself.
 
 ```rust
 use yewdux::{prelude::*, storage};
@@ -272,100 +369,3 @@ impl Store for Counter {
 }
 ```
 
-# Additional examples
-
-Complete working examples can be found
-[here](https://github.com/intendednull/yewdux/tree/master/examples).
-
-To run an example you'll need to install [trunk](https://github.com/thedodd/trunk), then run
-(replacing [example] with your desired example name):
-
-    trunk serve examples/[example]/index.html --open
-
-
-# Alternatives
-
-- [Bounce](https://github.com/futursolo/bounce) - The uncomplicated Yew State management library
-
-# Design decisions
-
-For the curious, here's my rationale for Yewdux design decisions.
-
-## Why does my state need to implement Clone and PartialEq?
-
-Yewdux uses a CoW (clone on write) state management strategy. This means state is cloned once every
-time a mutation occurs. You might be thinking: but wait, isn't that slow? Well, it's complicated.
-Compared to interior mutability, the actual mutation is slower because of the extra cloning step.
-However we must also consider how many components will consequentially re-render.
-
-When state changes, each subscriber is notified and a re-render is triggered. We have to assume the
-number of subscribers could be in the 10s or 100s (possibly 1000s), meaning a lot of potential
-re-renders per mutation. If we're lucky, these components are simply updating their relevant view,
-however worst case scenario they could be doing a lot of extra work, with long rendering times.
-Compared to this, state cloning cost is insignificant (most of the time).
-
-What's best way to reduce rendering time? Simple. Don't render! Yewdux checks if state changed after
-a mutable borrow, and only notifies subscribers when it has.
-
-Here's real-world example where this is useful:
-
-```rust
-let onchange = dispatch.reduce_callback_with(|counter: &mut Counter, e: Event| {
-    let input = e.target_unchecked_into::<HtmlInputElement>();
-
-    if let Ok(val) = input.value().parse() {
-        counter.count = val;
-    }
-});
-```
-
-This closure executes after we've already borrowed `counter` as mutable, however it only actually
-mutates `counter` when it successfully parses the input. If we were using interior mutability there
-would be no way to compare the past value with the present, because there would be no past. We would
-have to notify subscribers even though it's possible nothing has changed. With Clone + PartialEq we
-can compare the past and present to make smarter rendering decisions.
-
-### But my state is large, and cloning every mutation isn't feasible!
-
-While rare, there are cases where cloning cost will outweigh rendering cost. One example could be a
-large array of non-trivial structs, with a single component in charge of rendering those items (one
-re-render per change). For these cases I suggest selective interior mutability.
-
-Yewdux provides a simple wrapper type to allow interior mutability: `Mrc`. This type also provides
-basic change detection (whether or not it has been accessed mutably) so it can work with
-Yewdux:
-
-```rust
-use yew::prelude::*;
-use yewdux::{prelude::*, mrc::Mrc};
-
-// Notice we don't implement Clone or PartialEq.
-#[derive(Default)]
-struct MyLargeData(u32);
-
-#[derive(Default, Clone, PartialEq, Store)]
-struct State {
-    // Your expensive-clone field here.
-    data: Mrc<MyLargeData>,
-}
-```
-
-Mutating is done as expected:
-
-```rust
-let onclick = dispatch.reduce_callback(|state| {
-    let mut data = state.data.borrow_mut();
-
-    data.0 += 1;
-});
-```
-
-
-The full example may be found in [examples/no_copy](./examples/no_copy/src/main.rs).
-
-
-## I've read dispatch.rs and I know your secrets! 
-
-Shh! Keep your voice down. Yes `Dispatch` is not required to interact with state. You could just as
-well do `yewdux::dispatch::reduce::<Counter>(..)`. `Dispatch` is merely a ergonomic abstraction over
-functional side-effects. Basically making callbacks a little nicer to work with.
