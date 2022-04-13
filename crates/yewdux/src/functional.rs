@@ -71,7 +71,7 @@ pub fn use_store<S: Store>() -> (RefHandle<Rc<S>>, RefHandle<Dispatch<S>>) {
 /// }
 /// ```
 #[hook]
-pub fn use_selector_eq<S, F, R, E>(selector: F, eq: E) -> RefHandle<Rc<R>>
+pub fn use_selector_eq<S, F, R, E>(selector: F, eq: E) -> RcHandle<R>
 where
     S: Store,
     R: 'static,
@@ -109,13 +109,13 @@ where
         })
     };
 
-    RefHandle(selected)
+    RcHandle(selected)
 }
 
 /// This hook provides access to a portion of state. Similar to [`use_selector_eq`], with a default
 /// equality function of `|a, b| a == b`.
 #[hook]
-pub fn use_selector<S, F, R>(selector: F) -> RefHandle<Rc<R>>
+pub fn use_selector<S, F, R>(selector: F) -> RcHandle<R>
 where
     S: Store,
     R: PartialEq + 'static,
@@ -124,6 +124,8 @@ where
     use_selector_eq(selector, |a, b| a == b)
 }
 
+/// Helper type for wrapping hook handles. Ensures the inner handle is only accessible to library
+/// code.
 #[derive(Debug, PartialEq, Clone)]
 pub struct RefHandle<T>(UseStateHandle<T>);
 
@@ -144,5 +146,30 @@ impl<T> Deref for RefHandle<T> {
 
     fn deref(&self) -> &Self::Target {
         self.as_ref()
+    }
+}
+
+/// Simlar to [`RefHandle`]. Used when the handle has in inner `Rc`, and we'd like to deref it
+/// directly.
+#[derive(Debug, PartialEq, Clone)]
+pub struct RcHandle<T>(UseStateHandle<Rc<T>>);
+
+impl<T: std::fmt::Display> std::fmt::Display for RcHandle<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl<T> AsRef<T> for RcHandle<T> {
+    fn as_ref(&self) -> &T {
+        self.deref()
+    }
+}
+
+impl<T> Deref for RcHandle<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.deref().deref()
     }
 }
