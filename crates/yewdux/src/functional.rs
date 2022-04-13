@@ -71,18 +71,25 @@ pub fn use_store<S: Store>() -> (RefHandle<Rc<S>>, RefHandle<Dispatch<S>>) {
 /// }
 /// ```
 #[hook]
-pub fn use_selector_eq<S, F, R, E>(selector: F, eq: E) -> RefHandle<R>
+pub fn use_selector_eq<S, F, R, E>(selector: F, eq: E) -> RefHandle<Rc<R>>
 where
     S: Store,
     R: 'static,
     F: Fn(&S) -> R + 'static,
     E: Fn(&R, &R) -> bool + 'static,
 {
+    // Given to user, this is what we update to force a re-render.
     let selected = {
         let state = dispatch::get::<S>();
         let value = selector(&state);
 
-        use_state(|| value)
+        use_state(|| Rc::new(value))
+    };
+    // This is required to track the current state. `selected` does not update in our subscription
+    // function.
+    let current = {
+        let selected = Rc::clone(&selected);
+        use_mut_ref(|| selected)
     };
 
     let _dispatch = {
@@ -90,8 +97,13 @@ where
         use_state(move || {
             Dispatch::subscribe(move |val: Rc<S>| {
                 let value = selector(&val);
-                if !eq(&*selected, &value) {
-                    selected.set(value);
+
+                if !eq(&current.borrow(), &value) {
+                    let value = Rc::new(value);
+                    // Update value for user.
+                    selected.set(Rc::clone(&value));
+                    // Make sure to update our tracking value too.
+                    *current.borrow_mut() = Rc::clone(&value);
                 }
             })
         })
@@ -103,7 +115,7 @@ where
 /// This hook provides access to a portion of state. Similar to [`use_selector_eq`], with a default
 /// equality function of `|a, b| a == b`.
 #[hook]
-pub fn use_selector<S, F, R>(selector: F) -> RefHandle<R>
+pub fn use_selector<S, F, R>(selector: F) -> RefHandle<Rc<R>>
 where
     S: Store,
     R: PartialEq + 'static,
