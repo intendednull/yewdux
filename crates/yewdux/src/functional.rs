@@ -8,10 +8,8 @@ use crate::{
     store::Store,
 };
 
-/// This hook allows accessing the state of a store. When the store is modified, a re-render is automatically triggered.
-/// This hook also accepts a callback that is triggered for state output. To only receive state, use [`use_store_state`] instead.
-///
-/// This function returns the state of the store.
+/// This hook allows accessing the state of a store. When the store is modified, a re-render is
+/// automatically triggered.
 ///
 /// # Example
 /// ```ignore
@@ -48,6 +46,73 @@ pub fn use_store<S: Store>() -> (RefHandle<Rc<S>>, RefHandle<Dispatch<S>>) {
     (RefHandle(state), RefHandle(dispatch))
 }
 
+/// This hook provides access to a portion of state. The equality function tests whether the next
+/// selection is equal to previous, and re-renders when true.
+///
+/// # Example
+/// ```ignore
+/// #[derive(Default, Clone, PartialEq, Store)]
+/// struct State {
+///     count: u32,
+/// }
+///
+/// #[function_component]
+/// fn App() -> Html {
+///     let count = use_selector_eq(|state: &State| state.count, |a, b| a == b);
+///     let dispatch = Dispatch::<State>::new();
+///     let onclick = dispatch.reduce_callback(|state| state.count += 1);
+///
+///     html! {
+///         <>
+///         <p>{ *count }</p>
+///         <button {onclick}>{"+1"}</button>
+///         </>
+///     }
+/// }
+/// ```
+#[hook]
+pub fn use_selector_eq<S, F, R, E>(selector: F, eq: E) -> RefHandle<R>
+where
+    S: Store,
+    R: 'static,
+    F: Fn(&S) -> R + 'static,
+    E: Fn(&R, &R) -> bool + 'static,
+{
+    let selected = {
+        let state = dispatch::get::<S>();
+        let value = selector(&state);
+
+        use_state(|| value)
+    };
+
+    let _dispatch = {
+        let selected = selected.clone();
+        use_state(move || {
+            Dispatch::subscribe(move |val: Rc<S>| {
+                let value = selector(&val);
+                if !eq(&*selected, &value) {
+                    selected.set(value);
+                }
+            })
+        })
+    };
+
+    RefHandle(selected)
+}
+
+/// This hook provides access to a portion of state. Similar to [`use_selector_eq`], with a default
+/// equality function of `|a, b| a == b`.
+#[hook]
+pub fn use_selector<S, F, R>(selector: F) -> RefHandle<R>
+where
+    S: Store,
+    R: PartialEq + 'static,
+    F: Fn(&S) -> R + 'static,
+{
+    use_selector_eq(selector, |a, b| a == b)
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct RefHandle<T>(UseStateHandle<T>);
 
 impl<T> AsRef<T> for RefHandle<T> {
