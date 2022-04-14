@@ -23,7 +23,6 @@ impl<S: Store> Context<S> {
         f(store);
 
         let changed = previous.as_ref() != store;
-
         if changed {
             store.changed();
             self.notify_subscribers();
@@ -37,7 +36,6 @@ impl<S: Store> Context<S> {
         on_change.call(Rc::clone(&self.store));
 
         let key = self.subscribers.insert(Box::new(on_change));
-
         SubscriberId {
             key,
             _store_type: Default::default(),
@@ -62,7 +60,7 @@ pub(crate) fn get_or_init<S: Store>() -> Mrc<Context<S>> {
     }
 
     CONTEXTS
-        .try_with(|context| context.clone())
+        .try_with(|contexts| contexts.clone())
         .expect("CONTEXTS thread local key init failed")
         .with_mut(|contexts| {
             contexts

@@ -158,7 +158,7 @@ impl<T> Deref for RefHandle<T> {
     }
 }
 
-/// Simlar to [`RefHandle`]. Used when the handle has in inner `Rc`, and we'd like to deref it
+/// Similar to [`RefHandle`]. Used when the handle has an inner `Rc`, and we'd like to deref it
 /// directly.
 #[derive(Debug, PartialEq, Clone)]
 pub struct RcHandle<T>(UseStateHandle<Rc<T>>);
