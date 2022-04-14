@@ -1,6 +1,6 @@
 [package]
 name = "yewdux-macros"
-version = "0.6.1"
+version = "0.8.0"
 authors = ["Noah <noah@coronasoftware.net>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
