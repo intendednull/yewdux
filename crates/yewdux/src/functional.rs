@@ -98,25 +98,21 @@ where
 
         use_state(|| Rc::new(value))
     };
-    // This is required to track the current state. `selected` does not update in our subscription
-    // function.
-    let current = {
-        let selected = Rc::clone(&selected);
-        use_mut_ref(|| selected)
-    };
 
     let _dispatch = {
         let selected = selected.clone();
+        // Local var for tracking value (`selected` is not updated in the scope below).
+        let mut current = Rc::clone(&selected);
         use_state(move || {
             Dispatch::subscribe(move |val: Rc<S>| {
                 let value = selector(&val);
 
-                if !eq(&current.borrow(), &value) {
+                if !eq(&current, &value) {
                     let value = Rc::new(value);
                     // Update value for user.
                     selected.set(Rc::clone(&value));
                     // Make sure to update our tracking value too.
-                    *current.borrow_mut() = Rc::clone(&value);
+                    current = Rc::clone(&value);
                 }
             })
         })

@@ -146,13 +146,7 @@ impl<S: Store> Dispatch<S> {
 /// Change state using given function.
 pub fn reduce<S: Store, F: FnOnce(&mut S)>(f: F) {
     let mut context = context::get_or_init::<S>();
-
-    let changed = context.with_mut(|context| context.reduce(f));
-
-    // Only notify subscribers if state has changed.
-    if changed {
-        context.borrow().notify_subscribers();
-    }
+    context.with_mut(|context| context.reduce(f));
 }
 
 /// Set state to given value.

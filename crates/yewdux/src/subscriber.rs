@@ -5,9 +5,9 @@ use yew::Callback;
 
 use crate::{context, store::Store};
 
-pub(crate) fn subscribe<S: Store, N: Callable<S>>(subscriber: N) -> SubscriberId<S> {
+pub(crate) fn subscribe<S: Store, N: Callable<S>>(on_change: N) -> SubscriberId<S> {
     let mut context = context::get_or_init::<S>();
-    context.with_mut(|context| context.subscribe(subscriber))
+    context.with_mut(|context| context.subscribe(on_change))
 }
 
 pub(crate) fn unsubscribe<S: Store>(id: usize) {
@@ -29,17 +29,17 @@ impl<S: Store> Drop for SubscriberId<S> {
 }
 
 pub trait Callable<S>: 'static {
-    fn call(&self, value: Rc<S>);
+    fn call(&mut self, value: Rc<S>);
 }
 
-impl<S, F: Fn(Rc<S>) + 'static> Callable<S> for F {
-    fn call(&self, value: Rc<S>) {
+impl<S, F: FnMut(Rc<S>) + 'static> Callable<S> for F {
+    fn call(&mut self, value: Rc<S>) {
         self(value)
     }
 }
 
 impl<S: 'static> Callable<S> for Callback<Rc<S>> {
-    fn call(&self, value: Rc<S>) {
+    fn call(&mut self, value: Rc<S>) {
         self.emit(value)
     }
 }

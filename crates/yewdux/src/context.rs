@@ -26,12 +26,13 @@ impl<S: Store> Context<S> {
 
         if changed {
             store.changed();
+            self.notify_subscribers();
         }
 
         changed
     }
 
-    pub(crate) fn subscribe(&mut self, on_change: impl Callable<S>) -> SubscriberId<S> {
+    pub(crate) fn subscribe(&mut self, mut on_change: impl Callable<S>) -> SubscriberId<S> {
         // Notify subscriber with inital state.
         on_change.call(Rc::clone(&self.store));
 
@@ -47,8 +48,8 @@ impl<S: Store> Context<S> {
         self.subscribers.remove(id);
     }
 
-    pub(crate) fn notify_subscribers(&self) {
-        for (_, subscriber) in &self.subscribers {
+    pub(crate) fn notify_subscribers(&mut self) {
+        for (_, subscriber) in &mut self.subscribers {
             subscriber.call(Rc::clone(&self.store));
         }
     }
