@@ -35,7 +35,7 @@ use crate::{
 /// }
 /// ```
 #[hook]
-pub fn use_store<S: Store>() -> (RefHandle<Rc<S>>, RefHandle<Dispatch<S>>) {
+pub fn use_store<S: Store>() -> (Rc<S>, Dispatch<S>) {
     let state = use_state(|| dispatch::get::<S>());
 
     let dispatch = {
@@ -43,12 +43,12 @@ pub fn use_store<S: Store>() -> (RefHandle<Rc<S>>, RefHandle<Dispatch<S>>) {
         use_state(move || Dispatch::<S>::subscribe(move |val| state.set(val)))
     };
 
-    (RefHandle(state), RefHandle(dispatch))
+    (Rc::clone(&state), dispatch.deref().clone())
 }
 
 /// Simliar to ['use_store'], but only provides the state.
 #[hook]
-pub fn use_store_value<S: Store>() -> RefHandle<Rc<S>> {
+pub fn use_store_value<S: Store>() -> Rc<S> {
     let state = use_state(|| dispatch::get::<S>());
 
     let _dispatch = {
@@ -56,7 +56,7 @@ pub fn use_store_value<S: Store>() -> RefHandle<Rc<S>> {
         use_state(move || Dispatch::<S>::subscribe(move |val| state.set(val)))
     };
 
-    RefHandle(state)
+    Rc::clone(&state)
 }
 
 /// This hook provides access to a portion of state. The equality function tests whether the next
@@ -84,7 +84,7 @@ pub fn use_store_value<S: Store>() -> RefHandle<Rc<S>> {
 /// }
 /// ```
 #[hook]
-pub fn use_selector_eq<S, F, R, E>(selector: F, eq: E) -> RcHandle<R>
+pub fn use_selector_eq<S, F, R, E>(selector: F, eq: E) -> Rc<R>
 where
     S: Store,
     R: 'static,
@@ -118,67 +118,17 @@ where
         })
     };
 
-    RcHandle(selected)
+    Rc::clone(&selected)
 }
 
 /// This hook provides access to a portion of state. Similar to [`use_selector_eq`], with a default
 /// equality function of `|a, b| a == b`.
 #[hook]
-pub fn use_selector<S, F, R>(selector: F) -> RcHandle<R>
+pub fn use_selector<S, F, R>(selector: F) -> Rc<R>
 where
     S: Store,
     R: PartialEq + 'static,
     F: Fn(&S) -> R + 'static,
 {
     use_selector_eq(selector, |a, b| a == b)
-}
-
-/// Helper type for wrapping hook handles. Ensures the inner handle is only accessible to library
-/// code.
-#[derive(Debug, PartialEq, Clone)]
-pub struct RefHandle<T>(UseStateHandle<T>);
-
-impl<T: std::fmt::Display> std::fmt::Display for RefHandle<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl<T> AsRef<T> for RefHandle<T> {
-    fn as_ref(&self) -> &T {
-        self.0.deref()
-    }
-}
-
-impl<T> Deref for RefHandle<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        self.as_ref()
-    }
-}
-
-/// Similar to [`RefHandle`]. Used when the handle has an inner `Rc`, and we'd like to deref it
-/// directly.
-#[derive(Debug, PartialEq, Clone)]
-pub struct RcHandle<T>(UseStateHandle<Rc<T>>);
-
-impl<T: std::fmt::Display> std::fmt::Display for RcHandle<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl<T> AsRef<T> for RcHandle<T> {
-    fn as_ref(&self) -> &T {
-        self.deref()
-    }
-}
-
-impl<T> Deref for RcHandle<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        self.0.deref().deref()
-    }
 }
