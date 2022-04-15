@@ -143,6 +143,15 @@ impl<S: Store> Dispatch<S> {
     }
 }
 
+impl<S: Store> PartialEq for Dispatch<S> {
+    fn eq(&self, other: &Self) -> bool {
+        match (&self._subscriber_id, &other._subscriber_id) {
+            (Some(a), Some(b)) => Rc::ptr_eq(a, b),
+            _ => false,
+        }
+    }
+}
+
 /// Change state using given function.
 pub fn reduce<S: Store, F: FnOnce(&mut S)>(f: F) {
     let mut context = context::get_or_init::<S>();
