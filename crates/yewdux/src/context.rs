@@ -59,6 +59,9 @@ pub(crate) fn get_or_init<S: Store>() -> Mrc<Context<S>> {
         static CONTEXTS: Mrc<AnyMap> = Mrc::new(AnyMap::new());
     }
 
+    // Init store outside of context borrow. This allows `Store::new` to access other stores if
+    // needed.
+    let store = Rc::new(S::new());
     CONTEXTS
         .try_with(|contexts| contexts.clone())
         .expect("CONTEXTS thread local key init failed")
@@ -67,7 +70,7 @@ pub(crate) fn get_or_init<S: Store>() -> Mrc<Context<S>> {
                 .entry::<Mrc<Context<S>>>()
                 .or_insert_with(|| {
                     Mrc::new(Context {
-                        store: Rc::new(S::new()),
+                        store,
                         subscribers: Default::default(),
                     })
                 })
@@ -83,6 +86,19 @@ mod tests {
     struct TestState(u32);
     impl Store for TestState {
         fn new() -> Self {
+            Self(0)
+        }
+
+        fn changed(&mut self) {
+            self.0 += 1;
+        }
+    }
+
+    #[derive(Clone, PartialEq)]
+    struct TestState2(u32);
+    impl Store for TestState2 {
+        fn new() -> Self {
+            get_or_init::<TestState>();
             Self(0)
         }
 
@@ -107,5 +123,10 @@ mod tests {
         context.with_mut(|context| context.reduce(|_| {}));
 
         assert!(context.borrow().store.0 == 0);
+    }
+
+    #[test]
+    fn can_access_other_store_for_new_of_current_store() {
+        let _context = get_or_init::<TestState2>();
     }
 }
