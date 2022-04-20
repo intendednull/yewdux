@@ -51,7 +51,7 @@ pub fn use_store<S: Store>() -> (Rc<S>, Dispatch<S>) {
 pub fn use_store_value<S: Store>() -> Rc<S> {
     let (state, _dispatch) = use_store();
 
-    Rc::clone(&state)
+    state
 }
 
 /// This hook provides access to a portion of state. The equality function tests whether the next
@@ -86,7 +86,7 @@ where
     F: Fn(&S) -> R + 'static,
     E: Fn(&R, &R) -> bool + 'static,
 {
-    use_selector_eq_with_deps(move |state, _| selector(state), (), eq)
+    use_selector_eq_with_deps(move |state, _| selector(state), eq, ())
 }
 
 /// This hook provides access to a portion of state. Similar to [`use_selector_eq`], with a default
@@ -101,7 +101,7 @@ where
 ///
 /// #[function_component]
 /// fn App() -> Html {
-///     let count = use_selector_eq(|state: &State| state.count);
+///     let count = use_selector(|state: &State| state.count);
 ///     let dispatch = Dispatch::<State>::new();
 ///     let onclick = dispatch.reduce_callback(|state| state.count += 1);
 ///
@@ -124,6 +124,36 @@ where
 }
 
 /// Hook for selecting a value with dependencies.
+///
+/// # Example
+/// ```ignore
+/// #[derive(Default, Clone, PartialEq, Store)]
+/// struct State {
+///     count: u32,
+/// }
+///
+/// #[function_component]
+/// fn App() -> Html {
+///     let multiplier = use_state(|| 1);
+///     let count = use_selector_with_deps(
+///        |state: &State, multiplier| *multiplier * state.count,
+///        *multiplier,
+///     );
+///     let incr = Dispatch::<State>::new().reduce_callback(|state| state.count += 1);
+///     let incr_multiplier = {
+///         let multiplier = multiplier.clone();
+///         Callback::from(|_| multiplier.set(*multiplier + 1))
+///     );
+///
+///     html! {
+///         <>
+///         <p>{ *count }</p>
+///         <button onclick={incr}>{"+1"}</button>
+///         <button onclick={incr_multiplier}>{"+1 mult"}</button>
+///         </>
+///     }
+/// }
+/// ```
 #[hook]
 pub fn use_selector_with_deps<S, F, R, D>(selector: F, deps: D) -> Rc<R>
 where
@@ -132,12 +162,12 @@ where
     D: Clone + PartialEq + 'static,
     F: Fn(&S, &D) -> R + 'static,
 {
-    use_selector_eq_with_deps(selector, deps, |a, b| a == b)
+    use_selector_eq_with_deps(selector, |a, b| a == b, deps)
 }
 
 /// Hook for selecting a value with dependencies.
 #[hook]
-pub fn use_selector_eq_with_deps<S, F, R, D, E>(selector: F, deps: D, eq: E) -> Rc<R>
+pub fn use_selector_eq_with_deps<S, F, R, D, E>(selector: F, eq: E, deps: D) -> Rc<R>
 where
     S: Store,
     R: 'static,
