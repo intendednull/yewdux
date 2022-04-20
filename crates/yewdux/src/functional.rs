@@ -5,7 +5,6 @@ use yew::functional::*;
 
 use crate::{
     dispatch::{self, Dispatch},
-    mrc::Mrc,
     store::Store,
 };
 
@@ -50,12 +49,7 @@ pub fn use_store<S: Store>() -> (Rc<S>, Dispatch<S>) {
 /// Simliar to ['use_store'], but only provides the state.
 #[hook]
 pub fn use_store_value<S: Store>() -> Rc<S> {
-    let state = use_state(|| dispatch::get::<S>());
-
-    let _dispatch = {
-        let state = state.clone();
-        use_state(move || Dispatch::<S>::subscribe(move |val| state.set(val)))
-    };
+    let (state, _dispatch) = use_store();
 
     Rc::clone(&state)
 }
@@ -92,38 +86,33 @@ where
     F: Fn(&S) -> R + 'static,
     E: Fn(&R, &R) -> bool + 'static,
 {
-    // Given to user, this is what we update to force a re-render.
-    let selected = {
-        let state = dispatch::get::<S>();
-        let value = selector(&state);
-
-        use_state(|| Rc::new(value))
-    };
-
-    let _dispatch = {
-        let selected = selected.clone();
-        // Local var for tracking value (`selected` is not updated in the scope below).
-        let mut current = Rc::clone(&selected);
-        use_state(move || {
-            Dispatch::subscribe(move |val: Rc<S>| {
-                let value = selector(&val);
-
-                if !eq(&current, &value) {
-                    let value = Rc::new(value);
-                    // Update value for user.
-                    selected.set(Rc::clone(&value));
-                    // Make sure to update our tracking value too.
-                    current = Rc::clone(&value);
-                }
-            })
-        })
-    };
-
-    Rc::clone(&selected)
+    use_selector_eq_with_deps(move |state, _| selector(state), (), eq)
 }
 
 /// This hook provides access to a portion of state. Similar to [`use_selector_eq`], with a default
 /// equality function of `|a, b| a == b`.
+///
+/// # Example
+/// ```ignore
+/// #[derive(Default, Clone, PartialEq, Store)]
+/// struct State {
+///     count: u32,
+/// }
+///
+/// #[function_component]
+/// fn App() -> Html {
+///     let count = use_selector_eq(|state: &State| state.count);
+///     let dispatch = Dispatch::<State>::new();
+///     let onclick = dispatch.reduce_callback(|state| state.count += 1);
+///
+///     html! {
+///         <>
+///         <p>{ *count }</p>
+///         <button {onclick}>{"+1"}</button>
+///         </>
+///     }
+/// }
+/// ```
 #[hook]
 pub fn use_selector<S, F, R>(selector: F) -> Rc<R>
 where
@@ -136,7 +125,19 @@ where
 
 /// Hook for selecting a value with dependencies.
 #[hook]
-pub fn use_selector_with_deps_eq<S, F, R, D, E>(selector: F, deps: D, eq: E) -> Rc<R>
+pub fn use_selector_with_deps<S, F, R, D>(selector: F, deps: D) -> Rc<R>
+where
+    S: Store,
+    R: PartialEq + 'static,
+    D: PartialEq + 'static,
+    F: Fn(&S, &D) -> R + 'static,
+{
+    use_selector_eq_with_deps(selector, deps, |a, b| a == b)
+}
+
+/// Hook for selecting a value with dependencies.
+#[hook]
+pub fn use_selector_eq_with_deps<S, F, R, D, E>(selector: F, deps: D, eq: E) -> Rc<R>
 where
     S: Store,
     R: 'static,
@@ -144,18 +145,10 @@ where
     F: Fn(&S, &D) -> R + 'static,
     E: Fn(&R, &R) -> bool + 'static,
 {
-    let selector = use_memo(
-        move |deps| {
-            let deps = Rc::clone(&deps);
-            Mrc::new(move |state: Rc<S>| selector(&state, &deps))
-        },
-        Rc::new(deps),
-    );
-
     // Given to user, this is what we update to force a re-render.
     let selected = {
         let state = dispatch::get::<S>();
-        let value = selector.borrow()(state);
+        let value = selector(&state, &deps);
 
         use_state(|| Rc::new(value))
     };
@@ -165,11 +158,10 @@ where
         // Local var for tracking value (`selected` is not updated in the scope below).
         let mut current = Rc::clone(&selected);
         use_memo(
-            move |selector| {
-                let selector = selector.clone();
+            move |deps| {
+                let deps = deps.clone();
                 Dispatch::subscribe(move |val: Rc<S>| {
-                    let selector = selector.borrow();
-                    let value = selector(val);
+                    let value = selector(&val, &deps);
 
                     if !eq(&current, &value) {
                         let value = Rc::new(value);
@@ -180,21 +172,9 @@ where
                     }
                 })
             },
-            selector.clone(),
+            Rc::new(deps),
         )
     };
 
     Rc::clone(&selected)
-}
-
-/// Hook for selecting a value with dependencies.
-#[hook]
-pub fn use_selector_with_deps<S, F, R, D>(selector: F, deps: D) -> Rc<R>
-where
-    S: Store,
-    R: PartialEq + 'static,
-    D: PartialEq + 'static,
-    F: Fn(&S, &D) -> R + 'static,
-{
-    use_selector_with_deps_eq(selector, deps, |a, b| a == b)
 }
