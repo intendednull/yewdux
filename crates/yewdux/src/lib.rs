@@ -19,7 +19,10 @@ pub mod prelude {
 
     pub use crate::{
         dispatch::Dispatch,
-        functional::{use_selector, use_selector_eq, use_store, use_store_value},
+        functional::{
+            use_selector, use_selector_eq, use_selector_with_deps, use_selector_with_deps_eq,
+            use_store, use_store_value,
+        },
         store::{Reducer, Store},
     };
 }

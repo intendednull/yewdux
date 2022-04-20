@@ -5,6 +5,7 @@ use yew::functional::*;
 
 use crate::{
     dispatch::{self, Dispatch},
+    mrc::Mrc,
     store::Store,
 };
 
@@ -131,4 +132,69 @@ where
     F: Fn(&S) -> R + 'static,
 {
     use_selector_eq(selector, |a, b| a == b)
+}
+
+/// Hook for selecting a value with dependencies.
+#[hook]
+pub fn use_selector_with_deps_eq<S, F, R, D, E>(selector: F, deps: D, eq: E) -> Rc<R>
+where
+    S: Store,
+    R: 'static,
+    D: PartialEq + 'static,
+    F: Fn(&S, &D) -> R + 'static,
+    E: Fn(&R, &R) -> bool + 'static,
+{
+    let selector = use_memo(
+        move |deps| {
+            let deps = Rc::clone(&deps);
+            Mrc::new(move |state: Rc<S>| selector(&state, &deps))
+        },
+        Rc::new(deps),
+    );
+
+    // Given to user, this is what we update to force a re-render.
+    let selected = {
+        let state = dispatch::get::<S>();
+        let value = selector.borrow()(state);
+
+        use_state(|| Rc::new(value))
+    };
+
+    let _dispatch = {
+        let selected = selected.clone();
+        // Local var for tracking value (`selected` is not updated in the scope below).
+        let mut current = Rc::clone(&selected);
+        use_memo(
+            move |selector| {
+                let selector = selector.clone();
+                Dispatch::subscribe(move |val: Rc<S>| {
+                    let selector = selector.borrow();
+                    let value = selector(val);
+
+                    if !eq(&current, &value) {
+                        let value = Rc::new(value);
+                        // Update value for user.
+                        selected.set(Rc::clone(&value));
+                        // Make sure to update our tracking value too.
+                        current = Rc::clone(&value);
+                    }
+                })
+            },
+            selector.clone(),
+        )
+    };
+
+    Rc::clone(&selected)
+}
+
+/// Hook for selecting a value with dependencies.
+#[hook]
+pub fn use_selector_with_deps<S, F, R, D>(selector: F, deps: D) -> Rc<R>
+where
+    S: Store,
+    R: PartialEq + 'static,
+    D: PartialEq + 'static,
+    F: Fn(&S, &D) -> R + 'static,
+{
+    use_selector_with_deps_eq(selector, deps, |a, b| a == b)
 }
