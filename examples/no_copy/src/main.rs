@@ -14,7 +14,7 @@ struct State {
 #[function_component]
 fn App() -> Html {
     let (state, dispatch) = use_store::<State>();
-    let onclick = dispatch.reduce_callback(|state| {
+    let onclick = dispatch.reduce_mut_callback(|state| {
         let mut data = state.data.borrow_mut();
 
         data.0 += 1;

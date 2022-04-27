@@ -36,7 +36,7 @@ fn App() -> Html {
 
 #[function_component]
 fn Header() -> Html {
-    let onkeypress = Dispatch::<State>::new().reduce_callback_with(|s, e: KeyboardEvent| {
+    let onkeypress = Dispatch::<State>::new().reduce_mut_callback_with(|s, e: KeyboardEvent| {
         if e.key() == "Enter" {
             let input: HtmlInputElement = e.target_unchecked_into();
             let value = input.value();
@@ -75,7 +75,7 @@ fn Footer() -> Html {
             } else {
                 "not-selected"
             };
-            let onclick = Dispatch::<State>::new().reduce_callback(move |s| s.filter = filter);
+            let onclick = Dispatch::<State>::new().reduce_mut_callback(move |s| s.filter = filter);
             html! {
                 <li>
                     <a class={cls} href={filter.as_href()} {onclick}>
@@ -110,7 +110,7 @@ fn Footer() -> Html {
 #[function_component]
 fn BtnClearCompleted() -> Html {
     let total_completed = use_selector(|state: &State| state.total_completed());
-    let onclick = Dispatch::<State>::new().reduce_callback(|s| s.clear_completed());
+    let onclick = Dispatch::<State>::new().reduce_mut_callback(|s| s.clear_completed());
 
     html! {
         <button class="clear-completed" {onclick} >
@@ -134,7 +134,7 @@ fn TodoCount() -> Html {
 #[function_component]
 fn ToggleAll() -> Html {
     let checked = use_selector(|state: &State| state.is_all_completed());
-    let onclick = Dispatch::new().reduce_callback(|s: &mut State| {
+    let onclick = Dispatch::new().reduce_mut_callback(|s: &mut State| {
         let status = !s.is_all_completed();
         s.toggle_all(status);
     });
@@ -161,7 +161,7 @@ fn ListEntries() -> Html {
         }
 
         let toggle = {
-            let onclick = dispatch.reduce_callback(move |s| s.toggle(idx));
+            let onclick = dispatch.reduce_mut_callback(move |s| s.toggle(idx));
             html! {
                 <input
                     type="checkbox"
@@ -172,12 +172,12 @@ fn ListEntries() -> Html {
             }
         };
         let view = {
-            let ondblclick = dispatch.reduce_callback(move |s| {
+            let ondblclick = dispatch.reduce_mut_callback(move |s| {
                 s.edit_value = s.entries[idx].description.clone();
                 s.clear_all_edit();
                 s.toggle_edit(idx);
             });
-            let onclick = dispatch.reduce_callback(move |s| s.remove(idx));
+            let onclick = dispatch.reduce_mut_callback(move |s| s.remove(idx));
             html! {
                 <>
                 <label {ondblclick}>{ &entry.description }</label>
@@ -193,8 +193,9 @@ fn ListEntries() -> Html {
                 state.complete_edit(idx, value.trim().to_string());
                 state.edit_value = "".to_string();
             };
-            let onblur = dispatch
-                .reduce_callback_with(move |s, e: FocusEvent| edit(e.target_unchecked_into(), s));
+            let onblur = dispatch.reduce_mut_callback_with(move |s, e: FocusEvent| {
+                edit(e.target_unchecked_into(), s)
+            });
             let onmouseover = {
                 let focus_ref = focus_ref.clone();
                 Callback::from(move |_| {
@@ -203,7 +204,7 @@ fn ListEntries() -> Html {
                     }
                 })
             };
-            let onkeypress = dispatch.reduce_callback_with(move |s, e: KeyboardEvent| {
+            let onkeypress = dispatch.reduce_mut_callback_with(move |s, e: KeyboardEvent| {
                 if e.key() == "Enter" {
                     edit(e.target_unchecked_into(), s)
                 }

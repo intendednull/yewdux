@@ -29,7 +29,7 @@ use crate::{
 };
 
 /// The primary interface to a [`Store`].
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default)]
 pub struct Dispatch<S: Store> {
     _subscriber_id: Option<Rc<SubscriberId<S>>>,
 }
@@ -101,11 +101,10 @@ impl<S: Store> Dispatch<S> {
     /// ```
     pub fn reduce<F, R>(&self, f: F)
     where
-        F: FnOnce(&mut S) -> R + 'static,
+        R: Into<Rc<S>>,
+        F: FnOnce(Rc<S>) -> R + 'static,
     {
-        reduce(|x| {
-            f(x);
-        });
+        reduce(f);
     }
 
     /// Like [reduce](Self::reduce) but from a callback.
@@ -115,13 +114,12 @@ impl<S: Store> Dispatch<S> {
     /// ```
     pub fn reduce_callback<F, R, E>(&self, f: F) -> Callback<E>
     where
-        F: Fn(&mut S) -> R + 'static,
+        R: Into<Rc<S>>,
+        F: Fn(Rc<S>) -> R + 'static,
         E: 'static,
     {
         Callback::from(move |_| {
-            reduce(|x| {
-                f(x);
-            });
+            reduce(&f);
         })
     }
 
@@ -132,14 +130,72 @@ impl<S: Store> Dispatch<S> {
     /// ```
     pub fn reduce_callback_with<F, R, E>(&self, f: F) -> Callback<E>
     where
+        R: Into<Rc<S>>,
+        F: Fn(Rc<S>, E) -> R + 'static,
+        E: 'static,
+    {
+        Callback::from(move |e: E| {
+            reduce(|x| f(x, e));
+        })
+    }
+
+    /// Mutate state with given function.
+    ///
+    /// ```ignore
+    /// let onclick = dispatch.reduce(|state| state.count += 1);
+    /// ```
+    pub fn reduce_mut<F, R>(&self, f: F)
+    where
+        S: Clone,
+        F: FnOnce(&mut S) -> R + 'static,
+    {
+        reduce_mut(|x| {
+            f(x);
+        });
+    }
+
+    /// Like [reduce](Self::reduce) but from a callback.
+    ///
+    /// ```ignore
+    /// let onclick = dispatch.reduce_callback(|s| s.count += 1);
+    /// ```
+    pub fn reduce_mut_callback<F, R, E>(&self, f: F) -> Callback<E>
+    where
+        S: Clone,
+        F: Fn(&mut S) -> R + 'static,
+        E: 'static,
+    {
+        Callback::from(move |_| {
+            reduce_mut(|x| {
+                f(x);
+            });
+        })
+    }
+
+    /// Similar to [Self::reduce_callback] but also provides the fired event.
+    ///
+    /// ```ignore
+    /// let oninput = dispatch.reduce_callback_with(|state, name: String| state.name = name);
+    /// ```
+    pub fn reduce_mut_callback_with<F, R, E>(&self, f: F) -> Callback<E>
+    where
+        S: Clone,
         F: Fn(&mut S, E) -> R + 'static,
         E: 'static,
     {
         Callback::from(move |e: E| {
-            reduce(|x| {
+            reduce_mut(|x| {
                 f(x, e);
             });
         })
+    }
+}
+
+impl<S: Store> Clone for Dispatch<S> {
+    fn clone(&self) -> Self {
+        Self {
+            _subscriber_id: self._subscriber_id.clone(),
+        }
     }
 }
 
@@ -152,20 +208,28 @@ impl<S: Store> PartialEq for Dispatch<S> {
     }
 }
 
-/// Change state using given function.
-pub fn reduce<S: Store, F: FnOnce(&mut S)>(f: F) {
+/// Change state from a function.
+pub fn reduce<S: Store, R: Into<Rc<S>>, F: FnOnce(Rc<S>) -> R>(f: F) {
     let mut context = context::get_or_init::<S>();
-    context.with_mut(|context| context.reduce(f));
+    context.with_mut(|context| context.reduce(|s| f(s).into()));
+}
+
+/// Change state using a mutable reference from a function.
+pub fn reduce_mut<S: Store + Clone, F: FnOnce(&mut S)>(f: F) {
+    reduce(|mut state| {
+        f(Rc::make_mut(&mut state));
+        state
+    });
 }
 
 /// Set state to given value.
 pub fn set<S: Store>(value: S) {
-    reduce(move |store| *store = value);
+    reduce(move |_| value);
 }
 
 /// Send a message to state.
 pub fn apply<S: Store, M: Reducer<S>>(msg: M) {
-    reduce(move |state: &mut S| msg.apply(state));
+    reduce(move |state| msg.apply(state));
 }
 
 /// Get current state.
@@ -257,7 +321,7 @@ mod tests {
     #[test]
     fn dispatch_reduce_works() {
         let dispatch = Dispatch::<TestState>::new();
-        dispatch.reduce(|state| state.0 += 1);
+        dispatch.reduce_mut(|state| state.0 += 1);
 
         assert!(dispatch.get().0 == 2)
     }
@@ -265,7 +329,7 @@ mod tests {
     #[test]
     fn dispatch_reduce_callback_works() {
         let dispatch = Dispatch::<TestState>::new();
-        let cb = dispatch.reduce_callback(|state| state.0 += 1);
+        let cb = dispatch.reduce_mut_callback(|state| state.0 += 1);
         cb.emit(());
 
         assert!(dispatch.get().0 == 2)

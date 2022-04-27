@@ -42,7 +42,7 @@ impl Component for App {
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
         let count = self.state.count;
-        let onclick = self.dispatch.reduce_callback(|s| s.count += 1);
+        let onclick = self.dispatch.reduce_mut_callback(|s| s.count += 1);
         html! {
             <>
             <h1>{ count }</h1>

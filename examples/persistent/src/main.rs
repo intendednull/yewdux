@@ -12,7 +12,7 @@ struct State {
 #[function_component]
 fn App() -> Html {
     let (state, dispatch) = use_store::<State>();
-    let onclick = dispatch.reduce_callback(|state| state.count += 1);
+    let onclick = dispatch.reduce_mut_callback(|state| state.count += 1);
 
     html! {
         <>
