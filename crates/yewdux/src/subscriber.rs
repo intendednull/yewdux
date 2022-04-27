@@ -1,28 +1,30 @@
-use std::marker::PhantomData;
 use std::rc::Rc;
+use std::{any::Any, marker::PhantomData};
 
 use slab::Slab;
 use yew::Callback;
 
+use crate::mrc::Mrc;
 use crate::{context, store::Store};
 
 pub(crate) struct Subscribers<S>(pub(crate) Slab<Box<dyn Callable<S>>>);
 
-impl<S: Store> Subscribers<S> {
-    pub(crate) fn subscribe<C: Callable<S>>(&mut self, on_change: C) -> SubscriberId<S> {
-        let key = self.0.insert(Box::new(on_change));
+impl<S: Store> Mrc<Subscribers<S>> {
+    pub(crate) fn subscribe<C: Callable<S>>(&self, on_change: C) -> SubscriberId<S> {
+        let key = self.borrow_mut().0.insert(Box::new(on_change));
         SubscriberId {
+            subscribers_ref: self.clone(),
             key,
             _store_type: Default::default(),
         }
     }
 
     pub(crate) fn unsubscribe(&mut self, key: usize) {
-        self.0.remove(key);
+        self.borrow_mut().0.remove(key);
     }
 
     pub(crate) fn notify(&self, state: Rc<S>) {
-        for (_, subscriber) in &self.0 {
+        for (_, subscriber) in &self.borrow().0 {
             subscriber.call(Rc::clone(&state));
         }
     }
@@ -34,22 +36,30 @@ impl<S> Default for Subscribers<S> {
     }
 }
 
-pub(crate) fn unsubscribe<S: Store>(key: usize) {
-    context::get_or_init::<S>()
-        .subscribers
-        .with_mut(|subscribers| subscribers.unsubscribe(key))
-}
-
 /// Points to a subscriber in context. That subscriber is removed when this is dropped.
-#[derive(Debug)]
 pub struct SubscriberId<S: Store> {
+    subscribers_ref: Mrc<Subscribers<S>>,
     pub(crate) key: usize,
     pub(crate) _store_type: PhantomData<S>,
 }
 
+impl<S: Store> SubscriberId<S> {
+    /// Leak this subscription, so it is never dropped.
+    pub fn leak(self) {
+        thread_local! {
+            static LEAKED: Mrc<Vec<Box<dyn Any>>> = Default::default();
+        }
+
+        LEAKED
+            .try_with(|leaked| leaked.clone())
+            .expect("LEAKED thread local key init failed")
+            .with_mut(|leaked| leaked.push(Box::new(self)));
+    }
+}
+
 impl<S: Store> Drop for SubscriberId<S> {
     fn drop(&mut self) {
-        unsubscribe::<S>(self.key);
+        self.subscribers_ref.unsubscribe(self.key)
     }
 }
 
@@ -133,6 +143,24 @@ mod tests {
             let flag = flag.clone();
             dispatch::subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
+
+        assert!(*flag.borrow());
+    }
+
+    #[test]
+    fn subscriber_is_notified_after_leak() {
+        let flag = Mrc::new(false);
+
+        let id = {
+            let flag = flag.clone();
+            dispatch::subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
+        };
+
+        *flag.borrow_mut() = false;
+
+        id.leak();
+
+        dispatch::reduce_mut(|state: &mut TestState| state.0 += 1);
 
         assert!(*flag.borrow());
     }
