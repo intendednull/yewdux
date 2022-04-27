@@ -7,9 +7,6 @@ pub use yewdux_macros::Store;
 pub trait Store: PartialEq + 'static {
     /// Initialize this store.
     fn new() -> Self;
-
-    /// Called after state has changed.
-    fn changed(&mut self) {}
 }
 
 /// A type that can change state.
