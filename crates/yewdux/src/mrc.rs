@@ -57,18 +57,18 @@ fn nonce() -> u32 {
 #[derive(Debug)]
 pub struct Mrc<T> {
     inner: Rc<RefCell<T>>,
-    nonce: u32,
+    nonce: Cell<u32>,
 }
 
 impl<T> Mrc<T> {
     pub fn new(value: T) -> Self {
         Self {
             inner: Rc::new(RefCell::new(value)),
-            nonce: nonce(),
+            nonce: Cell::new(nonce()),
         }
     }
 
-    pub fn with_mut<R>(&mut self, f: impl FnOnce(&mut T) -> R) -> R {
+    pub fn with_mut<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
         let mut this = self.borrow_mut();
         f(this.deref_mut())
     }
@@ -78,9 +78,9 @@ impl<T> Mrc<T> {
     }
 
     /// Provide a mutable reference to inner value.
-    pub fn borrow_mut(&mut self) -> impl DerefMut<Target = T> + '_ {
+    pub fn borrow_mut(&self) -> impl DerefMut<Target = T> + '_ {
         // Mark as changed.
-        self.nonce = nonce();
+        self.nonce.set(nonce());
         self.inner.borrow_mut()
     }
 }
@@ -88,10 +88,6 @@ impl<T> Mrc<T> {
 impl<T: Store> Store for Mrc<T> {
     fn new() -> Self {
         T::new().into()
-    }
-
-    fn changed(&mut self) {
-        self.borrow_mut().changed();
     }
 }
 
@@ -105,7 +101,7 @@ impl<T> Clone for Mrc<T> {
     fn clone(&self) -> Self {
         Self {
             inner: Rc::clone(&self.inner),
-            nonce: self.nonce,
+            nonce: self.nonce.clone(),
         }
     }
 }
@@ -135,10 +131,6 @@ mod tests {
         fn new() -> Self {
             Self(Mrc::new(0))
         }
-
-        fn changed(&mut self) {
-            *self.0.borrow_mut() += 1;
-        }
     }
 
     struct CanImplStoreForMrcDirectly;
@@ -150,7 +142,7 @@ mod tests {
 
     #[test]
     fn subscriber_is_notified_on_borrow_mut() {
-        let mut flag = Mrc::new(false);
+        let flag = Mrc::new(false);
 
         let dispatch = {
             let flag = flag.clone();
@@ -168,7 +160,7 @@ mod tests {
 
     #[test]
     fn subscriber_is_notified_on_with_mut() {
-        let mut flag = Mrc::new(false);
+        let flag = Mrc::new(false);
 
         let dispatch = {
             let flag = flag.clone();
@@ -186,13 +178,5 @@ mod tests {
     fn can_wrap_store_with_mrc() {
         let dispatch = Dispatch::<Mrc<TestState>>::new();
         assert!(*dispatch.get().borrow().0.borrow() == 0)
-    }
-
-    #[test]
-    fn wrapped_store_with_mrc_calls_changed() {
-        let dispatch = Dispatch::<Mrc<TestState>>::new();
-        dispatch.reduce_mut(|s| *s.borrow_mut().0.borrow_mut() += 1);
-
-        assert!(*dispatch.get().borrow().0.borrow() == 2)
     }
 }

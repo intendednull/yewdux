@@ -37,11 +37,11 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                     }
                 }
 
-                fn changed(&mut self) {
-                    if let Err(err) = ::yewdux::storage::save(self, #area) {
-                        ::yewdux::log::error!("Error saving state to storage: {:?}", err);
-                    }
-                }
+                // fn changed(&mut self) {
+                    // if let Err(err) = ::yewdux::storage::save(self, #area) {
+                        // ::yewdux::log::error!("Error saving state to storage: {:?}", err);
+                    // }
+                // }
             }
         }
         None => quote! {

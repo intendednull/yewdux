@@ -25,7 +25,7 @@ use yew::Callback;
 use crate::{
     context,
     store::{Reducer, Store},
-    subscriber::{subscribe, Callable, SubscriberId},
+    subscriber::{Callable, SubscriberId},
 };
 
 /// The primary interface to a [`Store`].
@@ -210,8 +210,13 @@ impl<S: Store> PartialEq for Dispatch<S> {
 
 /// Change state from a function.
 pub fn reduce<S: Store, R: Into<Rc<S>>, F: FnOnce(Rc<S>) -> R>(f: F) {
-    let mut context = context::get_or_init::<S>();
-    context.with_mut(|context| context.reduce(|s| f(s).into()));
+    let context = context::get_or_init::<S>();
+    let changed = context.reduce(|s| f(s).into());
+
+    if changed {
+        let state = Rc::clone(&context.state.borrow());
+        notify_subscribers(state)
+    }
 }
 
 /// Change state using a mutable reference from a function.
@@ -234,7 +239,27 @@ pub fn apply<S: Store, M: Reducer<S>>(msg: M) {
 
 /// Get current state.
 pub fn get<S: Store>() -> Rc<S> {
-    Rc::clone(&context::get_or_init::<S>().borrow().store)
+    Rc::clone(&context::get_or_init::<S>().state.borrow())
+}
+
+pub fn notify_subscribers<S: Store>(state: Rc<S>) {
+    let context = context::get_or_init::<S>();
+    context.subscribers.borrow().notify(state);
+}
+
+pub fn subscribe<S: Store, N: Callable<S>>(on_change: N) -> SubscriberId<S> {
+    // Notify subscriber with inital state.
+    on_change.call(get::<S>());
+
+    context::get_or_init::<S>()
+        .subscribers
+        .with_mut(|subscribers| subscribers.subscribe(on_change))
+}
+
+pub(crate) fn unsubscribe<S: Store>(key: usize) {
+    context::get_or_init::<S>()
+        .subscribers
+        .with_mut(|subscribers| subscribers.unsubscribe(key))
 }
 
 #[cfg(test)]
@@ -416,7 +441,7 @@ mod tests {
 
     #[test]
     fn subscriber_is_notified() {
-        let mut flag = Mrc::new(false);
+        let flag = Mrc::new(false);
 
         let _id = {
             let flag = flag.clone();
@@ -432,7 +457,7 @@ mod tests {
 
     #[test]
     fn subscriber_is_not_notified_when_state_is_same() {
-        let mut flag = Mrc::new(false);
+        let flag = Mrc::new(false);
 
         // TestState(1)
         reduce_mut::<TestState, _>(|_| {});
@@ -454,34 +479,34 @@ mod tests {
     fn dispatch_unsubscribes_when_dropped() {
         let context = context::get_or_init::<TestState>();
 
-        assert!(context.borrow().subscribers.is_empty());
+        assert!(context.subscribers.borrow().0.is_empty());
 
         let dispatch = Dispatch::<TestState>::subscribe(|_| ());
 
-        assert!(!context.borrow().subscribers.is_empty());
+        assert!(!context.subscribers.borrow().0.is_empty());
 
         drop(dispatch);
 
-        assert!(context.borrow().subscribers.is_empty());
+        assert!(context.subscribers.borrow().0.is_empty());
     }
 
     #[test]
     fn dispatch_clone_and_original_unsubscribe_when_both_dropped() {
         let context = context::get_or_init::<TestState>();
 
-        assert!(context.borrow().subscribers.is_empty());
+        assert!(context.subscribers.borrow().0.is_empty());
 
         let dispatch = Dispatch::<TestState>::subscribe(|_| ());
         let dispatch_clone = dispatch.clone();
 
-        assert!(!context.borrow().subscribers.is_empty());
+        assert!(!context.subscribers.borrow().0.is_empty());
 
         drop(dispatch_clone);
 
-        assert!(!context.borrow().subscribers.is_empty());
+        assert!(!context.subscribers.borrow().0.is_empty());
 
         drop(dispatch);
 
-        assert!(context.borrow().subscribers.is_empty());
+        assert!(context.subscribers.borrow().0.is_empty());
     }
 }
