@@ -250,16 +250,12 @@ mod tests {
         fn new() -> Self {
             Self(0)
         }
-
-        fn changed(&mut self) {
-            self.0 += 1;
-        }
     }
 
     struct Msg;
     impl Reducer<TestState> for Msg {
-        fn apply(&self, state: &mut TestState) {
-            state.0 += 1;
+        fn apply(&self, state: Rc<TestState>) -> Rc<TestState> {
+            TestState(state.0 + 1).into()
         }
     }
 
@@ -267,7 +263,18 @@ mod tests {
     fn reduce_changes_value() {
         let old = get::<TestState>();
 
-        reduce(|state| *state = TestState(1));
+        reduce(|_| TestState(1));
+
+        let new = get::<TestState>();
+
+        assert!(old != new);
+    }
+
+    #[test]
+    fn reduce_mut_changes_value() {
+        let old = get::<TestState>();
+
+        reduce_mut(|state| *state = TestState(1));
 
         let new = get::<TestState>();
 
@@ -304,61 +311,107 @@ mod tests {
     #[test]
     fn dispatch_set_works() {
         let dispatch = Dispatch::<TestState>::new();
+        let old = dispatch.get();
+
         dispatch.set(TestState(1));
 
-        assert!(dispatch.get().0 == 2)
+        assert!(dispatch.get() != old)
     }
 
     #[test]
     fn dispatch_set_callback_works() {
         let dispatch = Dispatch::<TestState>::new();
+        let old = dispatch.get();
+
         let cb = dispatch.set_callback(|_| TestState(1));
         cb.emit(());
 
-        assert!(dispatch.get().0 == 2)
+        assert!(dispatch.get() != old)
+    }
+
+    #[test]
+    fn dispatch_reduce_mut_works() {
+        let dispatch = Dispatch::<TestState>::new();
+        let old = dispatch.get();
+
+        dispatch.reduce_mut(|state| state.0 += 1);
+
+        assert!(dispatch.get() != old)
     }
 
     #[test]
     fn dispatch_reduce_works() {
         let dispatch = Dispatch::<TestState>::new();
-        dispatch.reduce_mut(|state| state.0 += 1);
+        let old = dispatch.get();
 
-        assert!(dispatch.get().0 == 2)
+        dispatch.reduce(|_| TestState(1));
+
+        assert!(dispatch.get() != old)
     }
 
     #[test]
     fn dispatch_reduce_callback_works() {
         let dispatch = Dispatch::<TestState>::new();
+        let old = dispatch.get();
+
+        let cb = dispatch.reduce_callback(|_| TestState(1));
+        cb.emit(());
+
+        assert!(dispatch.get() != old)
+    }
+
+    #[test]
+    fn dispatch_reduce_mut_callback_works() {
+        let dispatch = Dispatch::<TestState>::new();
+        let old = dispatch.get();
+
         let cb = dispatch.reduce_mut_callback(|state| state.0 += 1);
         cb.emit(());
 
-        assert!(dispatch.get().0 == 2)
+        assert!(dispatch.get() != old)
     }
 
     #[test]
     fn dispatch_reduce_callback_with_works() {
         let dispatch = Dispatch::<TestState>::new();
-        let cb = dispatch.reduce_callback_with(|state, val| state.0 += val);
+        let old = dispatch.get();
+
+        let cb = dispatch.reduce_callback_with(|_, _| TestState(1));
         cb.emit(1);
 
-        assert!(dispatch.get().0 == 2)
+        assert!(dispatch.get() != old)
+    }
+
+    #[test]
+    fn dispatch_reduce_mut_callback_with_works() {
+        let dispatch = Dispatch::<TestState>::new();
+        let old = dispatch.get();
+
+        let cb = dispatch.reduce_mut_callback_with(|state, val| state.0 += val);
+        cb.emit(1);
+
+        assert!(dispatch.get() != old)
     }
 
     #[test]
     fn dispatch_apply_works() {
         let dispatch = Dispatch::<TestState>::new();
+        let old = dispatch.get();
+
         dispatch.apply(Msg);
 
-        assert!(dispatch.get().0 == 2)
+        assert!(dispatch.get() != old)
     }
 
     #[test]
     fn dispatch_apply_callback_works() {
         let dispatch = Dispatch::<TestState>::new();
+        let old = dispatch.get();
+
         let cb = dispatch.apply_callback(|_| Msg);
         cb.emit(());
 
-        assert!(dispatch.get().0 == 2)
+        assert!(dispatch.get() != old)
     }
 
     #[test]
@@ -372,7 +425,7 @@ mod tests {
 
         *flag.borrow_mut() = false;
 
-        reduce::<TestState, _>(|state| state.0 += 1);
+        reduce_mut::<TestState, _>(|state| state.0 += 1);
 
         assert!(*flag.borrow());
     }
@@ -382,7 +435,7 @@ mod tests {
         let mut flag = Mrc::new(false);
 
         // TestState(1)
-        reduce::<TestState, _>(|_| {});
+        reduce_mut::<TestState, _>(|_| {});
 
         let _id = {
             let flag = flag.clone();
@@ -392,7 +445,7 @@ mod tests {
         *flag.borrow_mut() = false;
 
         // TestState(1)
-        reduce::<TestState, _>(|state| state.0 = 0);
+        reduce_mut::<TestState, _>(|state| state.0 = 0);
 
         assert!(!*flag.borrow());
     }

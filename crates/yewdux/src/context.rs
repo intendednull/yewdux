@@ -18,9 +18,9 @@ impl<S: Store> Context<S> {
     /// Apply a function to state, returning if it has changed or not.
     pub(crate) fn reduce(&mut self, f: impl FnOnce(Rc<S>) -> Rc<S>) -> bool {
         let old = Rc::clone(&self.store);
-        let new = f(Rc::clone(&old));
+        self.store = f(Rc::clone(&old));
 
-        let changed = old != new;
+        let changed = old != self.store;
         if changed {
             self.notify_subscribers();
         }
@@ -108,7 +108,7 @@ mod tests {
     fn store_changed_is_called() {
         let mut context = get_or_init::<TestState>();
 
-        context.with_mut(|context| context.reduce(|state| state.0 += 1));
+        context.with_mut(|context| context.reduce(|state| TestState(state.0 + 1).into()));
 
         assert!(context.borrow().store.0 == 2);
     }
@@ -117,7 +117,7 @@ mod tests {
     fn store_changed_is_not_called_when_state_is_same() {
         let mut context = get_or_init::<TestState>();
 
-        context.with_mut(|context| context.reduce(|_| {}));
+        context.with_mut(|context| context.reduce(|x| x));
 
         assert!(context.borrow().store.0 == 0);
     }
