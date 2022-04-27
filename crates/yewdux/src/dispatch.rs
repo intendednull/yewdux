@@ -29,7 +29,6 @@ use crate::{
 };
 
 /// The primary interface to a [`Store`].
-#[derive(Debug, Default)]
 pub struct Dispatch<S: Store> {
     _subscriber_id: Option<Rc<SubscriberId<S>>>,
 }
@@ -191,6 +190,12 @@ impl<S: Store> Dispatch<S> {
     }
 }
 
+impl<S: Store> Default for Dispatch<S> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<S: Store> Clone for Dispatch<S> {
     fn clone(&self) -> Self {
         Self {
@@ -244,22 +249,14 @@ pub fn get<S: Store>() -> Rc<S> {
 
 pub fn notify_subscribers<S: Store>(state: Rc<S>) {
     let context = context::get_or_init::<S>();
-    context.subscribers.borrow().notify(state);
+    context.subscribers.notify(state);
 }
 
 pub fn subscribe<S: Store, N: Callable<S>>(on_change: N) -> SubscriberId<S> {
     // Notify subscriber with inital state.
     on_change.call(get::<S>());
 
-    context::get_or_init::<S>()
-        .subscribers
-        .with_mut(|subscribers| subscribers.subscribe(on_change))
-}
-
-pub(crate) fn unsubscribe<S: Store>(key: usize) {
-    context::get_or_init::<S>()
-        .subscribers
-        .with_mut(|subscribers| subscribers.unsubscribe(key))
+    context::get_or_init::<S>().subscribers.subscribe(on_change)
 }
 
 #[cfg(test)]
@@ -276,12 +273,24 @@ mod tests {
             Self(0)
         }
     }
+    #[derive(PartialEq)]
+    struct TestStateNoClone(u32);
+    impl Store for TestStateNoClone {
+        fn new() -> Self {
+            Self(0)
+        }
+    }
 
     struct Msg;
     impl Reducer<TestState> for Msg {
         fn apply(&self, state: Rc<TestState>) -> Rc<TestState> {
             TestState(state.0 + 1).into()
         }
+    }
+
+    #[test]
+    fn apply_no_clone() {
+        reduce(|_| TestStateNoClone(1));
     }
 
     #[test]
