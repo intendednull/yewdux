@@ -16,15 +16,12 @@ pub(crate) struct Context<S> {
 
 impl<S: Store> Context<S> {
     /// Apply a function to state, returning if it has changed or not.
-    pub(crate) fn reduce(&mut self, f: impl FnOnce(&mut S)) -> bool {
-        let previous = Rc::clone(&self.store);
-        let store = Rc::make_mut(&mut self.store);
+    pub(crate) fn reduce(&mut self, f: impl FnOnce(Rc<S>) -> Rc<S>) -> bool {
+        let old = Rc::clone(&self.store);
+        let new = f(Rc::clone(&old));
 
-        f(store);
-
-        let changed = previous.as_ref() != store;
+        let changed = old != new;
         if changed {
-            store.changed();
             self.notify_subscribers();
         }
 

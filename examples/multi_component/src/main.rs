@@ -18,7 +18,7 @@ fn ViewCount() -> Html {
 #[function_component]
 fn IncrementCount() -> Html {
     let (_, dispatch) = use_store::<State>();
-    let onclick = dispatch.reduce_callback(|state| state.count += 1);
+    let onclick = dispatch.reduce_mut_callback(|state| state.count += 1);
 
     html! {
         <button {onclick}>{"+1"}</button>

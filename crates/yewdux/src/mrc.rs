@@ -159,7 +159,7 @@ mod tests {
 
         *flag.borrow_mut() = false;
 
-        dispatch.reduce(|state| {
+        dispatch.reduce_mut(|state| {
             state.0.borrow_mut();
         });
 
@@ -177,7 +177,7 @@ mod tests {
 
         *flag.borrow_mut() = false;
 
-        dispatch.reduce(|state| state.0.with_mut(|_| ()));
+        dispatch.reduce_mut(|state| state.0.with_mut(|_| ()));
 
         assert!(*flag.borrow());
     }
@@ -191,7 +191,7 @@ mod tests {
     #[test]
     fn wrapped_store_with_mrc_calls_changed() {
         let dispatch = Dispatch::<Mrc<TestState>>::new();
-        dispatch.reduce(|s| *s.borrow_mut().0.borrow_mut() += 1);
+        dispatch.reduce_mut(|s| *s.borrow_mut().0.borrow_mut() += 1);
 
         assert!(*dispatch.get().borrow().0.borrow() == 2)
     }

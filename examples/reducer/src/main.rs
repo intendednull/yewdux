@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use yew::prelude::*;
 use yewdux::prelude::*;
 
@@ -11,9 +13,12 @@ enum Msg {
 }
 
 impl Reducer<State> for Msg {
-    fn apply(&self, state: &mut State) {
+    fn apply(&self, state: Rc<State>) -> Rc<State> {
         match self {
-            Msg::AddOne => state.count += 1,
+            Msg::AddOne => State {
+                count: state.count + 1,
+            }
+            .into(),
         }
     }
 }
