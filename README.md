@@ -77,7 +77,7 @@ struct Counter {
 Or do it manually. 
 
 ```rust
-#[derive(Clone, PartialEq)]
+#[derive(PartialEq)]
 struct Counter {
     count: u32,
 }
@@ -200,9 +200,9 @@ struct Msg {
 }
 
 impl Reducer<Counter> for Msg {
-    fn apply(&self, counter: &mut Counter) {
+    fn apply(&self, counter: Rc<Counter>) -> Rc<Counter> {
         match self {
-            Msg::AddOne => counter.count += 1,
+            Msg::AddOne => Counter { count: counter.count + 1 },
         }
     }
 }
@@ -364,7 +364,7 @@ Yewdux provides a macro to easily persist your state in either local or session 
 use yewdux::prelude::*;
 use serde::{Serialize, Deserialize};
 
-#[derive(Default, Clone, PartialEq, Serialize, Deserialize, Store)]
+#[derive(Default, PartialEq, Serialize, Deserialize, Store)]
 #[store(storage = "local")] // can also be "session"
 struct Counter {
     count: u32,
@@ -378,13 +378,11 @@ use yewdux::{prelude::*, storage};
 
 impl Store for Counter {
     fn new() -> Self {
+        init_listener(storage::StorageListener::<Self>::new(storage::Area::Local));
+
         storage::load(storage::Area::Local)
             .expect("Unable to load state")
             .unwrap_or_default()
-    }
-
-    fn changed(&mut self) {
-        storage::save(self, storage::Area::Local).expect("Unable to save state");
     }
 }
 ```
