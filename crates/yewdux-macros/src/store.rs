@@ -27,6 +27,10 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
 
             quote! {
                 fn new() -> Self {
+                    ::yewdux::listener::init_listener(
+                        ::yewdux::storage::StorageListener::<Self>::new(#area)
+                    );
+
                     match ::yewdux::storage::load(#area) {
                         Ok(val) => val.unwrap_or_default(),
                         Err(err) => {
@@ -36,12 +40,6 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                         }
                     }
                 }
-
-                // fn changed(&mut self) {
-                    // if let Err(err) = ::yewdux::storage::save(self, #area) {
-                        // ::yewdux::log::error!("Error saving state to storage: {:?}", err);
-                    // }
-                // }
             }
         }
         None => quote! {

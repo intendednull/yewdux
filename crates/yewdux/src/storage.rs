@@ -22,11 +22,13 @@
 //! }
 //! ```
 
-use std::any::type_name;
+use std::{any::type_name, rc::Rc};
 
 use serde::{de::DeserializeOwned, Serialize};
 use wasm_bindgen::JsValue;
 use web_sys::Storage;
+
+use crate::{listener::Listener, store::Store};
 
 #[derive(Debug, thiserror::Error)]
 pub enum StorageError {
@@ -44,6 +46,34 @@ pub enum StorageError {
 pub enum Area {
     Local,
     Session,
+}
+
+/// A [Listener] that will save state to browser storage whenever state has changed.
+pub struct StorageListener<T> {
+    area: Area,
+    _marker: std::marker::PhantomData<T>,
+}
+
+impl<T> StorageListener<T> {
+    pub fn new(area: Area) -> Self {
+        Self {
+            area,
+            _marker: Default::default(),
+        }
+    }
+}
+
+impl<T> Listener for StorageListener<T>
+where
+    T: Store + Serialize,
+{
+    type Store = T;
+
+    fn on_change(&mut self, state: Rc<Self::Store>) {
+        if let Err(err) = save(state.as_ref(), self.area) {
+            crate::log::error!("Error saving state to storage: {:?}", err);
+        }
+    }
 }
 
 fn get_storage(area: Area) -> Result<Storage, StorageError> {

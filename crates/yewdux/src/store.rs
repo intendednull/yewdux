@@ -5,7 +5,7 @@ pub use yewdux_macros::Store;
 
 /// Globally shared state.
 pub trait Store: PartialEq + 'static {
-    /// Initialize this store.
+    /// Create this store.
     fn new() -> Self;
 }
 

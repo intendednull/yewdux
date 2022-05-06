@@ -24,8 +24,9 @@ use yew::Callback;
 
 use crate::{
     context,
+    mrc::Mrc,
     store::{Reducer, Store},
-    subscriber::{Callable, SubscriberId},
+    subscriber::{Callable, SubscriberId, Subscribers},
 };
 
 /// The primary interface to a [`Store`].
@@ -248,15 +249,27 @@ pub fn get<S: Store>() -> Rc<S> {
 }
 
 pub fn notify_subscribers<S: Store>(state: Rc<S>) {
-    let context = context::get_or_init::<S>();
-    context.subscribers.notify(state);
+    let context = context::get_or_init::<Mrc<Subscribers<S>>>();
+    context.state.borrow().notify(state);
 }
 
+/// Subscribe to a store. `on_change` is called immediately, then every  time state changes.
 pub fn subscribe<S: Store, N: Callable<S>>(on_change: N) -> SubscriberId<S> {
     // Notify subscriber with inital state.
     on_change.call(get::<S>());
 
-    context::get_or_init::<S>().subscribers.subscribe(on_change)
+    context::get_or_init::<Mrc<Subscribers<S>>>()
+        .state
+        .borrow()
+        .subscribe(on_change)
+}
+
+/// Similar to [subscribe], however state is not called immediately.
+pub fn subscribe_silent<S: Store, N: Callable<S>>(on_change: N) -> SubscriberId<S> {
+    context::get_or_init::<Mrc<Subscribers<S>>>()
+        .state
+        .borrow()
+        .subscribe(on_change)
 }
 
 #[cfg(test)]
@@ -486,36 +499,36 @@ mod tests {
 
     #[test]
     fn dispatch_unsubscribes_when_dropped() {
-        let context = context::get_or_init::<TestState>();
+        let context = context::get_or_init::<Mrc<Subscribers<TestState>>>();
 
-        assert!(context.subscribers.borrow().0.is_empty());
+        assert!(context.state.borrow().borrow().0.is_empty());
 
         let dispatch = Dispatch::<TestState>::subscribe(|_| ());
 
-        assert!(!context.subscribers.borrow().0.is_empty());
+        assert!(!context.state.borrow().borrow().0.is_empty());
 
         drop(dispatch);
 
-        assert!(context.subscribers.borrow().0.is_empty());
+        assert!(context.state.borrow().borrow().0.is_empty());
     }
 
     #[test]
     fn dispatch_clone_and_original_unsubscribe_when_both_dropped() {
-        let context = context::get_or_init::<TestState>();
+        let context = context::get_or_init::<Mrc<Subscribers<TestState>>>();
 
-        assert!(context.subscribers.borrow().0.is_empty());
+        assert!(context.state.borrow().borrow().0.is_empty());
 
         let dispatch = Dispatch::<TestState>::subscribe(|_| ());
         let dispatch_clone = dispatch.clone();
 
-        assert!(!context.subscribers.borrow().0.is_empty());
+        assert!(!context.state.borrow().borrow().0.is_empty());
 
         drop(dispatch_clone);
 
-        assert!(!context.subscribers.borrow().0.is_empty());
+        assert!(!context.state.borrow().borrow().0.is_empty());
 
         drop(dispatch);
 
-        assert!(context.subscribers.borrow().0.is_empty());
+        assert!(context.state.borrow().borrow().0.is_empty());
     }
 }
