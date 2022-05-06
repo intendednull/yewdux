@@ -154,7 +154,7 @@ impl<S: Store> Dispatch<S> {
         });
     }
 
-    /// Like [reduce](Self::reduce) but from a callback.
+    /// Like [Self::reduce_mut] but from a callback.
     ///
     /// ```ignore
     /// let onclick = dispatch.reduce_callback(|s| s.count += 1);
@@ -172,7 +172,7 @@ impl<S: Store> Dispatch<S> {
         })
     }
 
-    /// Similar to [Self::reduce_callback] but also provides the fired event.
+    /// Similar to [Self::reduce_mut_callback] but also provides the fired event.
     ///
     /// ```ignore
     /// let oninput = dispatch.reduce_callback_with(|state, name: String| state.name = name);
