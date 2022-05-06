@@ -5,20 +5,6 @@ Simple state management for [Yew](https://yew.rs) applications.
 This is the development branch. Latest stable release may be found
 [here](https://github.com/intendednull/yewdux/tree/0.7.0).
 
-## About 
-
-Yewdux uses a CoW (clone on write) management strategy. This means state is cloned once every
-mutation. Doing it this way allows us to succinctly express precise mutation without any additional
-boilerplate, and employ change detection to prevent needless re-renders.
-
-This is a slight deviation from the typical reducer: `|state: Rc<T>| -> Rc<T>` (which
-does not require `Clone` to implement). However in practice state is usually cloned anyway, it's
-just up to the user to handle it.
-
-For cases where cloning is particularly expensive, [Mrc](./examples/no_copy/src/main.rs) provides a
-Yewdux-compatible interface for interior mutability. However keep in mind Yewdux will no longer be
-able to detect changes properly, and cannot prevent needless re-rendering when done this way.
-
 ## Alternatives
 
 - [Bounce](https://github.com/futursolo/bounce) - The uncomplicated Yew State management library
@@ -47,7 +33,7 @@ struct Counter {
 #[function_component]
 fn App() -> Html {
     let (counter, dispatch) = use_store::<Counter>();
-    let onclick = dispatch.reduce_callback(|counter| counter.count += 1);
+    let onclick = dispatch.reduce_mut_callback(|counter| counter.count += 1);
 
     html! {
         <>
@@ -82,7 +68,7 @@ accessed, and lives for application lifetime.
 Implement `Store` for your state using the macro.
 
 ```rust
-#[derive(Default, Clone, PartialEq, Store)]
+#[derive(Default, PartialEq, Store)]
 struct Counter {
     count: u32,
 }
@@ -105,8 +91,7 @@ impl Store for Counter {
 }
 ```
 
-*Note `Clone` and `PartialEq` are required to implement `Store`, however `Default` is only needed
-for the macro.*
+*Note `PartialEq` is required to implement `Store`, however `Default` is only needed for the macro.*
 
 ## Dispatch
 
@@ -117,11 +102,9 @@ type.
 let dispatch = Dispatch::<Counter>::new();
 ```
 
-*`Dispatch::new` has no cost, so feel free create this way as needed.*
+### Changing state
 
-### Mutation
-
-`Dispatch` provides many options for mutating a `Store`.
+`Dispatch` provides many options for changing state.
 
 `set` will assign to a given value.
 
@@ -138,16 +121,16 @@ html! {
 }
 ```
 
-`reduce` lets you mutate with a function.
+`reduce` lets you change state with a function.
 
 ```rust
-dispatch.reduce(|counter| counter.count += 1);
+dispatch.reduce(|counter| Counter { count: counter.count + 1});
 ```
 
 `reduce_callback`, as you might expect, generates a callback that does the same.
 
 ```rust
-let onclick = dispatch.reduce_callback(|counter| counter.count += 1);
+let onclick = dispatch.reduce_callback(|counter| Counter { count: counter.count + 1});
 html! {
     <button {onclick}>{"Increment (+1)"}</button>
 }
@@ -159,6 +142,44 @@ html! {
 let onchange = dispatch.reduce_callback_with(|counter, e: Event| {
     let input = e.target_unchecked_into::<HtmlInputElement>();
 
+    if let Ok(count) = input.value().parse() {
+        Counter { count }.into()
+    } else {
+        counter
+    }
+});
+
+html! {
+    <input placeholder="Set counter" {onchange} />
+}
+```
+
+#### Succinct mutations
+
+There are `_mut` variants to every reducer function. This way has less boilerplate, and requires
+your `Store` to implement `Clone`.
+
+`reduce_mut`
+
+```rust
+dispatch.reduce_mut(|counter| counter.count += 1);
+```
+
+`reduce_mut_callback`
+
+```rust
+let onclick = dispatch.reduce_mut_callback(|counter| counter.count += 1);
+html! {
+    <button {onclick}>{"Increment (+1)"}</button>
+}
+```
+
+`reduce_mut_callback_with`
+
+```rust
+let onchange = dispatch.reduce_mut_callback_with(|counter, e: Event| {
+    let input = e.target_unchecked_into::<HtmlInputElement>();
+
     if let Ok(val) = input.value().parse() {
         counter.count = val;
     }
@@ -167,7 +188,6 @@ let onchange = dispatch.reduce_callback_with(|counter, e: Event| {
 html! {
     <input placeholder="Set counter" {onchange} />
 }
-
 ```
 
 #### Predictable mutation
@@ -318,8 +338,8 @@ fn CountTwo() -> Html {
 #[function_component]
 fn App() -> Html {
     let dispatch = Dispatch::<Counter>::new();
-    let incr_one = dispatch.reduce_callback(|counter| counter.count_1 += 1);
-    let incr_two = dispatch.reduce_callback(|counter| counter.count_2 += 1);
+    let incr_one = dispatch.reduce_mut_callback(|counter| counter.count_1 += 1);
+    let incr_two = dispatch.reduce_mut_callback(|counter| counter.count_2 += 1);
 
     html! {
         <>
