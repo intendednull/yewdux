@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use crate::{dispatch, mrc::Mrc, store::Store, subscriber::SubscriberId};
 
+/// Listens to [Store](crate::store::Store) changes.
 pub trait Listener: 'static {
     type Store: Store;
 
@@ -15,10 +16,12 @@ impl<S: Store> Store for Mrc<ListenerStore<S>> {
     }
 }
 
+/// Initiate a [Listener]. If this listener has already been initiated, it is dropped and replaced
+/// with the new one.
 pub fn init_listener<L: Listener>(listener: L) {
     let id = {
         let listener = Mrc::new(listener);
-        dispatch::subscribe(move |state| listener.borrow_mut().on_change(state))
+        dispatch::subscribe_silent(move |state| listener.borrow_mut().on_change(state))
     };
 
     dispatch::reduce_mut(|state: &mut Mrc<ListenerStore<L::Store>>| {
@@ -51,6 +54,23 @@ mod tests {
         }
     }
 
+    #[derive(Clone, PartialEq)]
+    struct TestState2;
+    impl Store for TestState2 {
+        fn new() -> Self {
+            init_listener(TestListener2);
+            Self
+        }
+    }
+
+    #[derive(Clone)]
+    struct TestListener2;
+    impl Listener for TestListener2 {
+        type Store = TestState2;
+
+        fn on_change(&mut self, _state: Rc<Self::Store>) {}
+    }
+
     #[test]
     fn listener_is_called() {
         let listener = TestListener(Default::default());
@@ -79,5 +99,10 @@ mod tests {
 
         assert_eq!(listener1.0.get(), 1);
         assert_eq!(listener2.0.get(), 2);
+    }
+
+    #[test]
+    fn can_init_listener_from_store() {
+        dispatch::get::<TestState2>();
     }
 }

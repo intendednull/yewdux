@@ -2,18 +2,16 @@ use std::rc::Rc;
 
 use anymap::AnyMap;
 
-use crate::{mrc::Mrc, store::Store, subscriber::Subscribers};
+use crate::{mrc::Mrc, store::Store};
 
 pub(crate) struct Context<S> {
     pub(crate) state: Mrc<Rc<S>>,
-    pub(crate) subscribers: Mrc<Subscribers<S>>,
 }
 
 impl<S> Clone for Context<S> {
     fn clone(&self) -> Self {
         Self {
             state: self.state.clone(),
-            subscribers: self.subscribers.clone(),
         }
     }
 }
@@ -43,12 +41,7 @@ pub(crate) fn get_or_init<S: Store>() -> Context<S> {
         .with_mut(|contexts| {
             contexts
                 .entry::<Context<S>>()
-                .or_insert_with(|| {
-                    Context {
-                        state,
-                        subscribers: Default::default(),
-                    }
-                })
+                .or_insert_with(|| Context { state })
                 .clone()
         })
 }
