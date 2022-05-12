@@ -102,7 +102,7 @@ impl<S: Store> Dispatch<S> {
     pub fn reduce<F, R>(&self, f: F)
     where
         R: Into<Rc<S>>,
-        F: FnOnce(Rc<S>) -> R + 'static,
+        F: FnOnce(Rc<S>) -> R,
     {
         reduce(f);
     }
@@ -147,7 +147,7 @@ impl<S: Store> Dispatch<S> {
     pub fn reduce_mut<F, R>(&self, f: F)
     where
         S: Clone,
-        F: FnOnce(&mut S) -> R + 'static,
+        F: FnOnce(&mut S) -> R,
     {
         reduce_mut(|x| {
             f(x);
@@ -326,6 +326,18 @@ mod tests {
         let new = get::<TestState>();
 
         assert!(old != new);
+    }
+
+    #[test]
+    fn reduce_does_not_require_static() {
+        let val = "1".to_string();
+        reduce(|_| TestState(val.parse().unwrap()));
+    }
+
+    #[test]
+    fn reduce_mut_does_not_require_static() {
+        let val = "1".to_string();
+        reduce_mut(|state: &mut TestState| state.0 = val.parse().unwrap());
     }
 
     #[test]
