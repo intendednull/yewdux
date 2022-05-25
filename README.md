@@ -223,6 +223,22 @@ html! {
 }
 ```
 
+`Rc::make_mut` is handy if you prefer mutation:
+
+```rust
+impl Reducer<Counter> for Msg {
+    fn apply(&self, mut counter: Rc<Counter>) -> Rc<Counter> {
+        let state = Rc::make_mut(&mut counter);
+
+        match self {
+            Msg::AddOne => state.count += 1,
+        };
+
+        counter
+    }
+}
+```
+
 ### Subscribing to changes
 
 Components need to know when to re-render for changes. To do this they can subscribe to a store.

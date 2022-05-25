@@ -3,8 +3,8 @@ use std::rc::Rc;
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-#[derive(Default, Clone, PartialEq, Store)]
-struct State {
+#[derive(Default, Clone, PartialEq, Eq, Store)]
+struct Counter {
     count: u32,
 }
 
@@ -12,25 +12,25 @@ enum Msg {
     AddOne,
 }
 
-impl Reducer<State> for Msg {
-    fn apply(&self, state: Rc<State>) -> Rc<State> {
+impl Reducer<Counter> for Msg {
+    fn apply(&self, mut counter: Rc<Counter>) -> Rc<Counter> {
+        let state = Rc::make_mut(&mut counter);
         match self {
-            Msg::AddOne => State {
-                count: state.count + 1,
-            }
-            .into(),
-        }
+            Msg::AddOne => state.count += 1,
+        };
+
+        counter
     }
 }
 
 #[function_component]
 fn App() -> Html {
-    let (state, dispatch) = use_store::<State>();
+    let (counter, dispatch) = use_store::<Counter>();
     let onclick = dispatch.apply_callback(|_| Msg::AddOne);
 
     html! {
         <>
-        <p>{ state.count }</p>
+        <p>{ counter.count }</p>
         <button {onclick}>{"+1"}</button>
         </>
     }
