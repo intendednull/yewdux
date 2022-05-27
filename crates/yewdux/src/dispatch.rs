@@ -42,10 +42,21 @@ impl<S: Store> Dispatch<S> {
         }
     }
 
-    /// Create a dispatch, and subscribe to state changes. Will automatically unsubscribe when this
-    /// dispatch is dropped.
+    /// Create a dispatch that subscribes to changes in state. Latest state is sent immediately,
+    /// and on every subsequent change. Automatically unsubscribes when this dispatch is dropped.
     pub fn subscribe<C: Callable<S>>(on_change: C) -> Self {
         let id = subscribe(on_change);
+
+        Self {
+            _subscriber_id: Some(Rc::new(id)),
+        }
+    }
+
+    /// Create a dispatch that subscribes to changes in state. Similar to [Self::subscribe],
+    /// however state is **not** sent immediately. Automatically unsubscribes when this dispatch is
+    /// dropped.
+    pub fn subscribe_silent<C: Callable<S>>(on_change: C) -> Self {
+        let id = subscribe_silent(on_change);
 
         Self {
             _subscriber_id: Some(Rc::new(id)),
@@ -248,6 +259,7 @@ pub fn get<S: Store>() -> Rc<S> {
     Rc::clone(&context::get_or_init::<S>().state.borrow())
 }
 
+/// Send state to all subscribers.
 pub fn notify_subscribers<S: Store>(state: Rc<S>) {
     let context = context::get_or_init::<Mrc<Subscribers<S>>>();
     context.state.borrow().notify(state);

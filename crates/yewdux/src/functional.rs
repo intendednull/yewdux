@@ -40,7 +40,7 @@ pub fn use_store<S: Store>() -> (Rc<S>, Dispatch<S>) {
 
     let dispatch = {
         let state = state.clone();
-        use_state(move || Dispatch::<S>::subscribe(move |val| state.set(val)))
+        use_state(move || Dispatch::<S>::subscribe_silent(move |val| state.set(val)))
     };
 
     (Rc::clone(&state), dispatch.deref().clone())
