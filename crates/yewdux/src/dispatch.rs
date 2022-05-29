@@ -18,7 +18,10 @@
 //!  # }
 //!  ```
 //!
+
 use std::rc::Rc;
+#[cfg(feature = "future")]
+use std::{future::Future, pin::Pin};
 
 use yew::Callback;
 
@@ -108,7 +111,7 @@ impl<S: Store> Dispatch<S> {
     /// Mutate state with given function.
     ///
     /// ```ignore
-    /// let onclick = dispatch.reduce(|state| state.count += 1);
+    /// let onclick = dispatch.reduce(|state| State { count: state.count + 1 });
     /// ```
     pub fn reduce<F, R>(&self, f: F)
     where
@@ -118,10 +121,25 @@ impl<S: Store> Dispatch<S> {
         reduce(f);
     }
 
+    /// Mutate state with a given function, asynchronously.
+    ///
+    /// ```ignore
+    /// dispatch.reduce_future(|state| async move { ... }).await;
+    /// ```
+    #[cfg(feature = "future")]
+    pub async fn reduce_future<R, FUT, FUN>(&self, f: FUN)
+    where
+        R: Into<Rc<S>>,
+        FUT: Future<Output = R>,
+        FUN: FnOnce(Rc<S>) -> FUT,
+    {
+        reduce_future(f).await;
+    }
+
     /// Like [reduce](Self::reduce) but from a callback.
     ///
     /// ```ignore
-    /// let onclick = dispatch.reduce_callback(|s| s.count += 1);
+    /// let onclick = dispatch.reduce_callback(|s| State { count: s.count + 1 });
     /// ```
     pub fn reduce_callback<F, R, E>(&self, f: F) -> Callback<E>
     where
@@ -134,10 +152,37 @@ impl<S: Store> Dispatch<S> {
         })
     }
 
+    /// Create a callback to reduce state asynchronously.
+    ///
+    ///  ```ignore
+    /// let incr = dispatch.reduce_future_callback(|state| async move {
+    ///     State {
+    ///         count: state.count + 1,
+    ///     }
+    /// });
+    /// ```
+    ///
+    #[cfg(feature = "future")]
+    pub fn reduce_future_callback<R, FUT, FUN, E>(&self, f: FUN) -> Callback<E>
+    where
+        R: Into<Rc<S>>,
+        FUT: Future<Output = R>,
+        FUN: Fn(Rc<S>) -> FUT + 'static,
+        E: 'static,
+    {
+        let f = Rc::new(f);
+        Callback::from(move |_| {
+            let f = f.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                reduce_future(f.as_ref()).await;
+            })
+        })
+    }
+
     /// Similar to [Self::reduce_callback] but also provides the fired event.
     ///
     /// ```ignore
-    /// let oninput = dispatch.reduce_callback_with(|state, name: String| state.name = name);
+    /// let oninput = dispatch.reduce_callback_with(|state, count: u32| State { count });
     /// ```
     pub fn reduce_callback_with<F, R, E>(&self, f: F) -> Callback<E>
     where
@@ -150,10 +195,37 @@ impl<S: Store> Dispatch<S> {
         })
     }
 
+    /// Create a callback to reduce state asynchronously, with the fired event.
+    ///
+    /// ```ignore
+    /// let incr = dispatch.reduce_future_callback_with(|state, count| async move {
+    ///     State {
+    ///         count: state.count + count,
+    ///     }
+    /// });
+    /// ```
+    ///
+    #[cfg(feature = "future")]
+    pub fn reduce_future_callback_with<R, FUT, FUN, E>(&self, f: FUN) -> Callback<E>
+    where
+        R: Into<Rc<S>>,
+        FUT: Future<Output = R>,
+        FUN: Fn(Rc<S>, E) -> FUT + 'static,
+        E: 'static,
+    {
+        let f = Rc::new(f);
+        Callback::from(move |e: E| {
+            let f = f.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                reduce_future(move |s| f(s, e)).await;
+            })
+        })
+    }
+
     /// Mutate state with given function.
     ///
     /// ```ignore
-    /// let onclick = dispatch.reduce(|state| state.count += 1);
+    /// let onclick = dispatch.reduce_mut(|state| state.count += 1);
     /// ```
     pub fn reduce_mut<F, R>(&self, f: F)
     where
@@ -165,10 +237,24 @@ impl<S: Store> Dispatch<S> {
         });
     }
 
+    /// Mutate state with given function, in an async context.
+    ///
+    /// ```ignore
+    /// dispatch.reduce_mut_future(|state| Box::pin(async move { *state = ... })).await;
+    /// ```
+    #[cfg(feature = "future")]
+    pub async fn reduce_mut_future<R, F>(&self, f: F)
+    where
+        S: Clone,
+        F: FnOnce(&mut S) -> Pin<Box<dyn Future<Output = R> + '_>>,
+    {
+        reduce_mut_future(f).await;
+    }
+
     /// Like [Self::reduce_mut] but from a callback.
     ///
     /// ```ignore
-    /// let onclick = dispatch.reduce_callback(|s| s.count += 1);
+    /// let onclick = dispatch.reduce_mut_callback(|s| s.count += 1);
     /// ```
     pub fn reduce_mut_callback<F, R, E>(&self, f: F) -> Callback<E>
     where
@@ -183,10 +269,34 @@ impl<S: Store> Dispatch<S> {
         })
     }
 
+    /// Create a callback to asynchronously mutate state with given function.
+    ///
+    /// ```ignore
+    /// let incr = dispatch.reduce_mut_future_callback(|state| Box::pin(async move {
+    ///     state.count += 1;
+    /// }));
+    /// ```
+    ///
+    #[cfg(feature = "future")]
+    pub fn reduce_mut_future_callback<R, F, E>(&self, f: F) -> Callback<E>
+    where
+        S: Clone,
+        F: Fn(&mut S) -> Pin<Box<dyn Future<Output = R> + '_>> + 'static,
+        E: 'static,
+    {
+        let f = Rc::new(f);
+        Callback::from(move |_| {
+            let f = f.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                reduce_mut_future(f.as_ref()).await;
+            })
+        })
+    }
+
     /// Similar to [Self::reduce_mut_callback] but also provides the fired event.
     ///
     /// ```ignore
-    /// let oninput = dispatch.reduce_callback_with(|state, name: String| state.name = name);
+    /// let oninput = dispatch.reduce_mut_callback_with(|state, name: String| state.name = name);
     /// ```
     pub fn reduce_mut_callback_with<F, R, E>(&self, f: F) -> Callback<E>
     where
@@ -198,6 +308,31 @@ impl<S: Store> Dispatch<S> {
             reduce_mut(|x| {
                 f(x, e);
             });
+        })
+    }
+
+    /// Create a callback to asynchronously mutate state with given function, provided the fired
+    /// event.
+    ///
+    /// ```ignore
+    /// let incr = dispatch.reduce_mut_future_callback_with(|state, count| Box::pin(async move {
+    ///     state.count += count;
+    /// }));
+    /// ```
+    ///
+    #[cfg(feature = "future")]
+    pub fn reduce_mut_future_callback_with<R, F, E>(&self, f: F) -> Callback<E>
+    where
+        S: Clone,
+        F: Fn(&mut S, E) -> Pin<Box<dyn Future<Output = R> + '_>> + 'static,
+        E: 'static,
+    {
+        let f = Rc::new(f);
+        Callback::from(move |e: E| {
+            let f = f.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                reduce_mut_future(move |s| f(s, e)).await;
+            })
         })
     }
 }
@@ -236,12 +371,44 @@ pub fn reduce<S: Store, R: Into<Rc<S>>, F: FnOnce(Rc<S>) -> R>(f: F) {
     }
 }
 
+#[cfg(feature = "future")]
+pub async fn reduce_future<S, R, FUT, FUN>(f: FUN)
+where
+    S: Store,
+    R: Into<Rc<S>>,
+    FUT: Future<Output = R>,
+    FUN: FnOnce(Rc<S>) -> FUT,
+{
+    let context = context::get_or_init::<S>();
+    let changed = context
+        .reduce_future(|s| async move { f(s).await.into() })
+        .await;
+
+    if changed {
+        let state = Rc::clone(&context.state.borrow());
+        notify_subscribers(state)
+    }
+}
+
 /// Change state using a mutable reference from a function.
 pub fn reduce_mut<S: Store + Clone, F: FnOnce(&mut S)>(f: F) {
     reduce(|mut state| {
         f(Rc::make_mut(&mut state));
         state
     });
+}
+
+#[cfg(feature = "future")]
+pub async fn reduce_mut_future<S, R, F>(f: F)
+where
+    S: Store + Clone,
+    F: FnOnce(&mut S) -> Pin<Box<dyn Future<Output = R> + '_>>,
+{
+    reduce_future(|mut state| async move {
+        f(Rc::make_mut(&mut state)).await;
+        state
+    })
+    .await;
 }
 
 /// Set state to given value.
@@ -291,14 +458,14 @@ mod tests {
 
     use super::*;
 
-    #[derive(Clone, PartialEq)]
+    #[derive(Clone, PartialEq, Eq)]
     struct TestState(u32);
     impl Store for TestState {
         fn new() -> Self {
             Self(0)
         }
     }
-    #[derive(PartialEq)]
+    #[derive(PartialEq, Eq)]
     struct TestStateNoClone(u32);
     impl Store for TestStateNoClone {
         fn new() -> Self {
@@ -329,11 +496,35 @@ mod tests {
         assert!(old != new);
     }
 
+    #[cfg(feature = "future")]
+    #[async_std::test]
+    async fn reduce_future_changes_value() {
+        let old = get::<TestState>();
+
+        reduce_future(|state: Rc<TestState>| async move { TestState(state.0 + 1) }).await;
+
+        let new = get::<TestState>();
+
+        assert!(old != new);
+    }
+
     #[test]
     fn reduce_mut_changes_value() {
         let old = get::<TestState>();
 
         reduce_mut(|state| *state = TestState(1));
+
+        let new = get::<TestState>();
+
+        assert!(old != new);
+    }
+
+    #[cfg(feature = "future")]
+    #[async_std::test]
+    async fn reduce_mut_future_changes_value() {
+        let old = get::<TestState>();
+
+        reduce_mut_future(|state| Box::pin(async move { *state = TestState(1) })).await;
 
         let new = get::<TestState>();
 
@@ -410,12 +601,38 @@ mod tests {
         assert!(dispatch.get() != old)
     }
 
+    #[cfg(feature = "future")]
+    #[async_std::test]
+    async fn dispatch_reduce_mut_future_works() {
+        let dispatch = Dispatch::<TestState>::new();
+        let old = dispatch.get();
+
+        dispatch
+            .reduce_mut_future(|state| Box::pin(async move { state.0 += 1 }))
+            .await;
+
+        assert!(dispatch.get() != old)
+    }
+
     #[test]
     fn dispatch_reduce_works() {
         let dispatch = Dispatch::<TestState>::new();
         let old = dispatch.get();
 
         dispatch.reduce(|_| TestState(1));
+
+        assert!(dispatch.get() != old)
+    }
+
+    #[cfg(feature = "future")]
+    #[async_std::test]
+    async fn dispatch_reduce_future_works() {
+        let dispatch = Dispatch::<TestState>::new();
+        let old = dispatch.get();
+
+        dispatch
+            .reduce_future(|state| async move { TestState(state.0 + 1) })
+            .await;
 
         assert!(dispatch.get() != old)
     }
@@ -431,6 +648,15 @@ mod tests {
         assert!(dispatch.get() != old)
     }
 
+    #[cfg(feature = "future")]
+    #[async_std::test]
+    async fn dispatch_reduce_future_callback_compiles() {
+        let dispatch = Dispatch::<TestState>::new();
+
+        let _ = dispatch
+            .reduce_future_callback::<_, _, _, ()>(|state| async move { TestState(state.0 + 1) });
+    }
+
     #[test]
     fn dispatch_reduce_mut_callback_works() {
         let dispatch = Dispatch::<TestState>::new();
@@ -440,6 +666,27 @@ mod tests {
         cb.emit(());
 
         assert!(dispatch.get() != old)
+    }
+
+    #[cfg(feature = "future")]
+    #[async_std::test]
+    async fn dispatch_reduce_mut_future_callback_compiles() {
+        let dispatch = Dispatch::<TestState>::new();
+
+        let _ = dispatch.reduce_mut_future_callback::<_, _, ()>(|state| {
+            Box::pin(async move {
+                state.0 += 1;
+            })
+        });
+    }
+
+    #[cfg(feature = "future")]
+    #[async_std::test]
+    async fn dispatch_reduce_future_callback_with_compiles() {
+        let dispatch = Dispatch::<TestState>::new();
+
+        let _ = dispatch
+            .reduce_future_callback_with(|state, e: u32| async move { TestState(state.0 + e) });
     }
 
     #[test]
@@ -462,6 +709,18 @@ mod tests {
         cb.emit(1);
 
         assert!(dispatch.get() != old)
+    }
+
+    #[cfg(feature = "future")]
+    #[async_std::test]
+    async fn dispatch_reduce_mut_future_callback_with_compiles() {
+        let dispatch = Dispatch::<TestState>::new();
+
+        let _ = dispatch.reduce_mut_future_callback_with::<_, _, u32>(|state, e| {
+            Box::pin(async move {
+                state.0 += e;
+            })
+        });
     }
 
     #[test]

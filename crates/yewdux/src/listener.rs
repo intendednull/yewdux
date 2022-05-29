@@ -36,7 +36,7 @@ mod tests {
 
     use super::*;
 
-    #[derive(Clone, PartialEq)]
+    #[derive(Clone, PartialEq, Eq)]
     struct TestState(u32);
     impl Store for TestState {
         fn new() -> Self {
@@ -54,7 +54,7 @@ mod tests {
         }
     }
 
-    #[derive(Clone, PartialEq)]
+    #[derive(Clone, PartialEq, Eq)]
     struct TestState2;
     impl Store for TestState2 {
         fn new() -> Self {

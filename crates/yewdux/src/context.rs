@@ -1,3 +1,5 @@
+#[cfg(feature = "future")]
+use std::future::Future;
 use std::rc::Rc;
 
 use anymap::AnyMap;
@@ -21,6 +23,20 @@ impl<S: Store> Context<S> {
     pub(crate) fn reduce(&self, f: impl FnOnce(Rc<S>) -> Rc<S>) -> bool {
         let old = Rc::clone(&self.state.borrow());
         *self.state.borrow_mut() = f(Rc::clone(&old));
+
+        old.as_ref() != self.state.borrow().as_ref()
+    }
+
+    /// Apply a future reduction to state, returning if it has changed or not.
+    #[cfg(feature = "future")]
+    pub(crate) async fn reduce_future<FUN, FUT>(&self, f: FUN) -> bool
+    where
+        FUN: FnOnce(Rc<S>) -> FUT,
+        FUT: Future<Output = Rc<S>>,
+    {
+        let old = Rc::clone(&self.state.borrow());
+
+        *self.state.borrow_mut() = f(Rc::clone(&old)).await;
 
         old.as_ref() != self.state.borrow().as_ref()
     }
@@ -50,7 +66,7 @@ pub(crate) fn get_or_init<S: Store>() -> Context<S> {
 mod tests {
     use super::*;
 
-    #[derive(Clone, PartialEq)]
+    #[derive(Clone, PartialEq, Eq)]
     struct TestState(u32);
     impl Store for TestState {
         fn new() -> Self {
@@ -58,7 +74,7 @@ mod tests {
         }
     }
 
-    #[derive(Clone, PartialEq)]
+    #[derive(Clone, PartialEq, Eq)]
     struct TestState2(u32);
     impl Store for TestState2 {
         fn new() -> Self {

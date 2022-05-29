@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumIter};
 use yewdux::store::Store;
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Store)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Store)]
 #[store(storage = "local")]
 pub struct State {
     pub entries: Vec<Entry>,
@@ -112,14 +112,14 @@ impl State {
     }
 }
 
-#[derive(Default, Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Default, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Entry {
     pub description: String,
     pub completed: bool,
     pub editing: bool,
 }
 
-#[derive(Clone, Copy, Debug, EnumIter, Display, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, EnumIter, Display, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Filter {
     All,
     Active,

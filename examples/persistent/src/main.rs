@@ -3,7 +3,7 @@ use yewdux::prelude::*;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Default, Clone, PartialEq, Deserialize, Serialize, Store)]
+#[derive(Default, Clone, PartialEq, Eq, Deserialize, Serialize, Store)]
 #[store(storage = "local")]
 struct State {
     count: u32,

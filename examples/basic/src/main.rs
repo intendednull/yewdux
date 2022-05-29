@@ -1,7 +1,7 @@
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-#[derive(Default, Clone, PartialEq, Store)]
+#[derive(Default, Clone, PartialEq, Eq, Store)]
 struct State {
     count: u32,
 }

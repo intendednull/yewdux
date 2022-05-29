@@ -16,7 +16,7 @@ impl Listener for StorageListener {
     }
 }
 
-#[derive(Default, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 struct State {
     count: u32,
 }

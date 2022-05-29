@@ -100,7 +100,7 @@ mod tests {
     use crate::dispatch::{self, Dispatch};
     use crate::mrc::Mrc;
 
-    #[derive(Clone, PartialEq)]
+    #[derive(Clone, PartialEq, Eq)]
     struct TestState(u32);
     impl Store for TestState {
         fn new() -> Self {
