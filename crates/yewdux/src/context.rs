@@ -48,22 +48,28 @@ pub(crate) fn get_or_init<S: Store>() -> Context<S> {
         static CONTEXTS: Mrc<AnyMap> = Mrc::new(AnyMap::new());
     }
 
+    let contexts = CONTEXTS
+        .try_with(|contexts| contexts.clone())
+        .expect("CONTEXTS thread local key init failed");
+
     // Init store outside of context borrow. This allows `Store::new` to access other stores if
     // needed.
-    let state = Mrc::new(Rc::new(S::new()));
-    CONTEXTS
-        .try_with(|contexts| contexts.clone())
-        .expect("CONTEXTS thread local key init failed")
-        .with_mut(|contexts| {
-            contexts
-                .entry::<Context<S>>()
-                .or_insert_with(|| Context { state })
-                .clone()
-        })
+    let context_exists = contexts.borrow().contains::<Context<S>>();
+    let state = (!context_exists).then(|| Mrc::new(Rc::new(S::new())));
+
+    contexts.with_mut(|x| {
+        x.entry::<Context<S>>()
+            .or_insert_with(|| Context {
+                state: state.expect("Store not initialized"),
+            })
+            .clone()
+    })
 }
 
 #[cfg(test)]
 mod tests {
+    use std::cell::Cell;
+
     use super::*;
 
     #[derive(Clone, PartialEq, Eq)]
@@ -86,5 +92,30 @@ mod tests {
     #[test]
     fn can_access_other_store_for_new_of_current_store() {
         let _context = get_or_init::<TestState2>();
+    }
+
+    #[derive(Clone, PartialEq, Eq)]
+    struct StoreNewIsOnlyCalledOnce(Rc<Cell<u32>>);
+    impl Store for StoreNewIsOnlyCalledOnce {
+        fn new() -> Self {
+            thread_local! {
+                /// Stores all shared state.
+                static COUNT: Rc<Cell<u32>> = Default::default();
+            }
+
+            let count = COUNT.try_with(|x| x.clone()).unwrap();
+
+            count.set(count.get() + 1);
+
+            Self(count)
+        }
+    }
+
+    #[test]
+    fn store_new_is_only_called_once() {
+        get_or_init::<StoreNewIsOnlyCalledOnce>();
+        let context = get_or_init::<StoreNewIsOnlyCalledOnce>();
+
+        assert!(context.state.borrow().0.get() == 1)
     }
 }
