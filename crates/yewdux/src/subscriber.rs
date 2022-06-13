@@ -13,6 +13,10 @@ impl<S: 'static> Store for Subscribers<S> {
     fn new() -> Self {
         Self(Default::default())
     }
+
+    fn changed(&self, other: &Self) -> bool {
+        self != other
+    }
 }
 
 impl<S: Store> Mrc<Subscribers<S>> {
@@ -105,6 +109,10 @@ mod tests {
     impl Store for TestState {
         fn new() -> Self {
             Self(0)
+        }
+
+        fn changed(&self, other: &Self) -> bool {
+            self != other
         }
     }
 

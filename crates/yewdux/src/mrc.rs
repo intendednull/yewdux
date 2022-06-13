@@ -89,6 +89,10 @@ impl<T: Store> Store for Mrc<T> {
     fn new() -> Self {
         T::new().into()
     }
+
+    fn changed(&self, other: &Self) -> bool {
+        self != other
+    }
 }
 
 impl<T: Default> Default for Mrc<T> {
@@ -131,12 +135,20 @@ mod tests {
         fn new() -> Self {
             Self(Mrc::new(0))
         }
+
+        fn changed(&self, other: &Self) -> bool {
+            self != other
+        }
     }
 
     struct CanImplStoreForMrcDirectly;
     impl Store for Mrc<CanImplStoreForMrcDirectly> {
         fn new() -> Self {
             CanImplStoreForMrcDirectly.into()
+        }
+
+        fn changed(&self, other: &Self) -> bool {
+            self != other
         }
     }
 

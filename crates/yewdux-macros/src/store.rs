@@ -53,6 +53,10 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
         #[automatically_derived]
         impl #impl_generics ::yewdux::store::Store for #ident #ty_generics #where_clause {
             #impl_
+
+            fn changed(&self, other: &Self) -> bool {
+                self != other
+            }
         }
     }
 }

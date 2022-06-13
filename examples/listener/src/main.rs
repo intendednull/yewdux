@@ -30,6 +30,10 @@ impl Store for State {
             .flatten()
             .unwrap_or_default()
     }
+
+    fn changed(&self, other: &Self) -> bool {
+        self != other
+    }
 }
 
 #[function_component]

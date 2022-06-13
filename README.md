@@ -25,7 +25,7 @@ yewdux = { git = "https://github.com/intendednull/yewdux.git" }
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-#[derive(Default, Clone, PartialEq, Store)]
+#[derive(Default, Clone, PartialEq, Eq, Store)]
 struct Counter {
     count: u32,
 }
@@ -88,10 +88,19 @@ impl Store for Counter {
             count: Default::default(),
         }
     }
+
+    fn changed(&self, other: &Self) -> bool {
+        // When this returns true, all components are notified and consequently re-render.
+        //
+        // We're using `PartialEq` here to keep it simple, but it's possible to use any custom
+        // logic that you'd want.
+        self != other
+    }
 }
 ```
 
-*Note `PartialEq` is required to implement `Store`, however `Default` is only needed for the macro.*
+*Note: implementing `Store` doesn't require any additional traits, however `Default` and
+`PartialEq` are required for the macro.*
 
 ## Dispatch
 
@@ -309,12 +318,11 @@ impl Component for MyComponent {
 It is also possible to retrieve the current state of a store without subscribing to changes. This is
 useful when you don't really care when/if state has changed, just what the current value is.
 
+`Dispatch::get` will lookup the current value immediately:
+
 ```rust
 let state = dispatch.get();
 ```
-
-*Because `Dispatch::get` comes with a minor lookup cost, it's marginally more efficient to use the
-value given to you by the subscription.*
 
 #### Selectors
 
@@ -399,6 +407,10 @@ impl Store for Counter {
         storage::load(storage::Area::Local)
             .expect("Unable to load state")
             .unwrap_or_default()
+    }
+
+    fn changed(&self, other: &Self) -> bool {
+        self != other
     }
 }
 ```

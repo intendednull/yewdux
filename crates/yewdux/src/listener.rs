@@ -14,6 +14,10 @@ impl<S: Store> Store for Mrc<ListenerStore<S>> {
     fn new() -> Self {
         ListenerStore(None).into()
     }
+
+    fn changed(&self, other: &Self) -> bool {
+        self != other
+    }
 }
 
 /// Initiate a [Listener]. If this listener has already been initiated, it is dropped and replaced
@@ -42,6 +46,10 @@ mod tests {
         fn new() -> Self {
             Self(0)
         }
+
+        fn changed(&self, other: &Self) -> bool {
+            self != other
+        }
     }
 
     #[derive(Clone)]
@@ -60,6 +68,10 @@ mod tests {
         fn new() -> Self {
             init_listener(TestListener2);
             Self
+        }
+
+        fn changed(&self, other: &Self) -> bool {
+            self != other
         }
     }
 

@@ -464,12 +464,20 @@ mod tests {
         fn new() -> Self {
             Self(0)
         }
+
+        fn changed(&self, other: &Self) -> bool {
+            self != other
+        }
     }
     #[derive(PartialEq, Eq)]
     struct TestStateNoClone(u32);
     impl Store for TestStateNoClone {
         fn new() -> Self {
             Self(0)
+        }
+
+        fn changed(&self, other: &Self) -> bool {
+            self != other
         }
     }
 

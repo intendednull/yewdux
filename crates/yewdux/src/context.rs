@@ -24,7 +24,7 @@ impl<S: Store> Context<S> {
         let old = Rc::clone(&self.state.borrow());
         *self.state.borrow_mut() = f(Rc::clone(&old));
 
-        old.as_ref() != self.state.borrow().as_ref()
+        self.state.borrow().changed(&old)
     }
 
     /// Apply a future reduction to state, returning if it has changed or not.
@@ -38,7 +38,7 @@ impl<S: Store> Context<S> {
 
         *self.state.borrow_mut() = f(Rc::clone(&old)).await;
 
-        old.as_ref() != self.state.borrow().as_ref()
+        self.state.borrow().changed(&old)
     }
 }
 
@@ -78,6 +78,10 @@ mod tests {
         fn new() -> Self {
             Self(0)
         }
+
+        fn changed(&self, other: &Self) -> bool {
+            self != other
+        }
     }
 
     #[derive(Clone, PartialEq, Eq)]
@@ -86,6 +90,10 @@ mod tests {
         fn new() -> Self {
             get_or_init::<TestState>();
             Self(0)
+        }
+
+        fn changed(&self, other: &Self) -> bool {
+            self != other
         }
     }
 
@@ -108,6 +116,10 @@ mod tests {
             count.set(count.get() + 1);
 
             Self(count)
+        }
+
+        fn changed(&self, other: &Self) -> bool {
+            self != other
         }
     }
 
