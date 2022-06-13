@@ -25,10 +25,10 @@
 use std::{any::type_name, rc::Rc};
 
 use serde::{de::DeserializeOwned, Serialize};
-use wasm_bindgen::JsValue;
-use web_sys::Storage;
+use wasm_bindgen::{prelude::Closure, JsCast, JsValue};
+use web_sys::{Event, Storage};
 
-use crate::{listener::Listener, store::Store};
+use crate::{dispatch::Dispatch, listener::Listener, store::Store};
 
 #[derive(Debug, thiserror::Error)]
 pub enum StorageError {
@@ -116,4 +116,26 @@ pub fn load<T: DeserializeOwned>(area: Area) -> Result<Option<T>, StorageError> 
         }
         None => Ok(None),
     }
+}
+
+/// Synchronize state across all tabs. **WARNING**: This provides no protection for multiple
+/// calls. Doing so will result in repeated loading. Using the macro is advised.
+pub fn init_tab_sync<S: Store + DeserializeOwned>(area: Area) -> Result<(), JsValue> {
+    let closure = Closure::wrap(Box::new(move |_: &Event| match load(area) {
+        Ok(Some(state)) => {
+            Dispatch::<S>::new().set(state);
+        }
+        Err(e) => {
+            crate::log::error!("Unable to load state: {:?}", e);
+        }
+        _ => {}
+    }) as Box<dyn FnMut(&Event)>);
+
+    web_sys::window()
+        .expect("Window not found")
+        .add_event_listener_with_callback("storage", closure.as_ref().unchecked_ref())?;
+
+    closure.forget();
+
+    Ok(())
 }

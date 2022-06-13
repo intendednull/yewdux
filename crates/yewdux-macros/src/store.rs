@@ -7,6 +7,7 @@ use syn::DeriveInput;
 #[darling(default, attributes(store))]
 struct Opts {
     storage: Option<String>,
+    storage_tab_sync: bool,
 }
 
 pub(crate) fn derive(input: DeriveInput) -> TokenStream {
@@ -25,11 +26,23 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 ),
             };
 
+            let sync = if opts.storage_tab_sync {
+                quote! {
+                    if let Err(err) = ::yewdux::storage::init_tab_sync::<Self>(#area) {
+                        ::yewdux::log::error!("Unable to init tab sync for storage: {:?}", err);
+                    }
+                }
+            } else {
+                quote!()
+            };
+
             quote! {
                 fn new() -> Self {
                     ::yewdux::listener::init_listener(
                         ::yewdux::storage::StorageListener::<Self>::new(#area)
                     );
+
+                    #sync
 
                     match ::yewdux::storage::load(#area) {
                         Ok(val) => val.unwrap_or_default(),
