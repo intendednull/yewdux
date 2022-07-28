@@ -52,10 +52,10 @@ fn Time(props: &TimeProps) -> Html {
 
     let timezone = props.timezone.clone();
     match &*result {
-        None => { html! { <tr> <td> { "Missing timezone" } </td> </tr> } },
+        None => { html! { <tr key={timezone.as_str()}> <td> { "Missing timezone" } </td> </tr> } },
         Some((datetime, status)) => {
             html! {
-                <tr>
+                <tr key={timezone.as_str()}>
                     <td> { timezone } </td>
                     <td> { datetime } </td>
                     <td> { format!("{:?}", status) } </td>
