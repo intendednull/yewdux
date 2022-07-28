@@ -13,14 +13,21 @@ fn App() -> Html {
 
     html! {
         <div>
-        <NewTimeZone />
-        <table style="width:100%">
-        {
-            state.timezones().map(|timezone| {
-                html! { <Time timezone={timezone.clone()} /> }
-            }).collect::<Html>()
-        }
-        </table>
+            <NewTimeZone />
+            <table style="width:100%">
+                <tr>
+                    <th width="30%"> { "Timezone" } </th>
+                    <th width="40%"> { "Datetime" } </th>
+                    <th width="10%"> { "Status" } </th>
+                    <th width="10%"> { "Refresh" } </th>
+                    <th width="10%"> { "Delete" } </th>
+                </tr>
+                {
+                    state.timezones().iter().map(|timezone| {
+                        html! { <Time timezone={timezone.clone()} /> }
+                    }).collect::<Html>()
+                }
+            </table>
         </div>
     }
 }
@@ -39,18 +46,24 @@ fn Time(props: &TimeProps) -> Html {
     let delete = dispatch.reduce_mut_callback(move |state| state.delete(&timezone));
 
     let timezone = props.timezone.clone();
-    let result = use_selector(move |state: &State| state.get(&timezone) );
-    let datetime = result.0.clone();
-    let status = result.1.clone();
+    let result = use_selector(move |state: &State| {
+        state.get(&timezone)
+    });
+
     let timezone = props.timezone.clone();
-    html! {
-        <tr>
-            <th> { timezone } </th>
-            <td> { datetime } </td>
-            <td> { format!("{:?}", status) } </td>
-            <td> <button onclick={refresh}> { "Refresh" } </button> </td>
-            <td> <button onclick={delete}> { "Delete" } </button> </td>
-        </tr>
+    match &*result {
+        None => { html! { <tr> <td> { "Missing timezone" } </td> </tr> } },
+        Some((datetime, status)) => {
+            html! {
+                <tr>
+                    <td> { timezone } </td>
+                    <td> { datetime } </td>
+                    <td> { format!("{:?}", status) } </td>
+                    <td> <button onclick={refresh}> { "Refresh" } </button> </td>
+                    <td> <button onclick={delete}> { "Delete" } </button> </td>
+                </tr>
+            }
+        },
     }
 }
 
@@ -66,8 +79,18 @@ fn NewTimeZone() -> Html {
         }
     });
 
+    let dispatch = Dispatch::<State>::new();
+    let add_mel = dispatch.reduce_mut_callback(|state| state.add("Australia/Melbourne".to_string()));
+    let add_adl = dispatch.reduce_mut_callback(|state| state.add("Australia/Adelaide".to_string()));
+    let add_uto = dispatch.reduce_mut_callback(|state| state.add("Utopia".to_string()));
+
     html! {
-        <input type="text" placeholder="Australia/Melbourne" {onkeypress} />
+        <div>
+        <input type="text" placeholder="Australia/Melbourne" {onkeypress} /> { "⏎" }
+        <div><button onclick={add_mel}> { "Australia/Melbourne" } </button></div>
+        <div><button onclick={add_adl}> { "Australia/Adelaide" } </button></div>
+        <div><button onclick={add_uto}> { "Utopia" } </button></div>
+        </div>
     }
 }
 

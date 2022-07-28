@@ -1,4 +1,3 @@
-use std::collections::hash_map::Keys;
 use std::collections::HashMap;
 use reqwasm::http::Request;
 use serde_json::Value;
@@ -18,13 +17,14 @@ pub struct State {
 }
 
 impl State {
-    pub fn get(&self, timezone: &String) -> (String, Status) {
-        let (datetime, status) = self.timezones.get(timezone.as_str()).unwrap();
-        (datetime.clone(), status.clone())
+    pub fn get(&self, timezone: &String) -> Option<(String, Status)> {
+        self.timezones
+            .get(timezone.as_str())
+            .map(|result| (result.0.clone(), result.1.clone()))
     }
 
-    pub fn timezones(&self) -> Keys<String, (String, Status)> {
-        self.timezones.keys()
+    pub fn timezones(&self) -> Vec<String> {
+        self.timezones.keys().map(|t| t.clone()).collect()
     }
 
     pub fn add(&mut self, timezone: String) {
@@ -47,16 +47,12 @@ impl State {
                 let resp = resp.text().await.unwrap();
                 let resp: Value = serde_json::from_str(resp.as_str()).unwrap();
                 let datetime = resp["datetime"].to_string();
-                dispatch.reduce_mut(|state|
-                    state.timezones.insert(
-                        timezone.clone(),
-                        (datetime, Status::Ready))
+                dispatch.reduce_mut(move |state|
+                    state.timezones.insert(timezone, (datetime, Status::Ready))
                 );
             } else {
-                dispatch.reduce_mut(|state|
-                    state.timezones.insert(
-                        timezone.clone(),
-                        (resp.status_text(), Status::Error))
+                dispatch.reduce_mut(move |state|
+                    state.timezones.insert(timezone, (resp.status_text(), Status::Error))
                 );
             }
         });
