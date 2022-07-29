@@ -46,9 +46,7 @@ fn Time(props: &TimeProps) -> Html {
     let delete = dispatch.reduce_mut_callback(move |state| state.delete(&timezone));
 
     let timezone = props.timezone.clone();
-    let result = use_selector(move |state: &State| {
-        state.get(&timezone)
-    });
+    let result = use_selector_with_deps(move |state: &State, timezone| state.get(&timezone), timezone);
 
     let timezone = props.timezone.clone();
     match &*result {
