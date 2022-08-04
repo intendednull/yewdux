@@ -2,6 +2,33 @@
 
 Simple state management for [Yew](https://yew.rs) applications.
 
+This crate provides a dead-simple approach to global state management. It tries to be zero-cost by
+default, taking the minimal approach first, and exposing additional options for the user to take at
+their discretion.
+
+It does *not* try to provide any additional patterns or features which aren't directly related to
+accessing or manipulating shared state.
+
+Some key features include:
+- Zero-clone - user has complete control over how state is changed. Yewdux will never deep-copy your
+    state unless explicitly told to. CoW behavior is provided by the `Dispatch::reduce_mut*`
+    variants (marked by a `Clone` trait requirement).
+- Selective rendering - subscribers are only notified when state has changed, avoiding any
+    unnecessary re-renders. Can be futher optimized with `use_selector` hooks.
+- Access from anywhere - users can create a dispatch to access a store from anywhere, they are not
+    restricted to only inside components. This boasts greater flexibility over application flow and
+    setup.
+- Ergonomic interface - accessing a store is as simple as creating a dispatch with your desired
+    store type. From this dispatch you can modify the store directly, create callbacks to trigger
+    from events, or even execute in an async context. Naming conventions try to be as intuitive as
+    possible, so it's easy to find what you want.
+- Minimal trait requirements - The only trait required for a type to be a store is the `Store` trait
+    itself. While the `Store` macro does need `Default` and `PartialEq` to work, it is also very
+    simple to implement `Store` yourself, no additional requirements necessary!
+- Complete component support - Yewdux supports both struct components and functional components.
+    Although functional is usually the most convenient option, the utility and flexibility of struct
+    components cannot be denied.
+
 This is the development branch. Latest stable release may be found
 [here](https://github.com/intendednull/yewdux/tree/0.7.0).
 
@@ -333,52 +360,58 @@ Consider the following example.
 
 ```rust
 #[derive(Default, Clone, PartialEq, Store)]
-struct Counter {
-    count_1: u32,
-    count_2: u32,
+struct User {
+    first_name: String,
+    last_name: String,
 }
 
 #[function_component]
-fn CountOne() -> Html {
-    // Only re-render when `Counter::count_1` changes.
-    let count = use_selector(|state: &Counter| state.count_1);
+fn DisplayFirst() -> Html {
+    // This will only re-render when the first name has changed. It will **not** re-render if any
+    // other field has changed.
+    //
+    // Note: we are cloning a string. Probably insignificant for this example, however
+    // sometimes it may be beneficial to wrap fields that are expensive to clone in an `Rc`. 
+    let first_name = use_selector(|state: &User| state.first_name.clone());
 
     html! {
-        <p>{ count }</p>
-    }
-}
-
-#[function_component]
-fn CountTwo() -> Html {
-    // Only re-render when `Counter::count_2` changes.
-    let count = use_selector(|state: &Counter| state.count_2);
-
-    html! {
-        <p>{ count }</p>
-    }
-}
-
-
-#[function_component]
-fn App() -> Html {
-    let dispatch = Dispatch::<Counter>::new();
-    let incr_one = dispatch.reduce_mut_callback(|counter| counter.count_1 += 1);
-    let incr_two = dispatch.reduce_mut_callback(|counter| counter.count_2 += 1);
-
-    html! {
-        <>
-        <CountOne />
-        <button onclick={incr_one}>{"Incr One"}</button>
-        <CountTwo />
-        <button onclick={incr_two}>{"Incr Two"}</button>
-        </>
+        <p>{ first_name }</p>
     }
 }
 ```
 
-Here we have two components accessing the same store, but each only cares about one field of that
-store. They only re-render when the field they have selected has changed, and won't needlessly
-re-render if it hasn't.
+For selectors that need to capture variables from their environment, be sure to provide them as
+dependencies to `use_selector_with_deps`. Otherwise you may notice some odd behaior!
+
+```rust
+#[derive(Default, Clone, PartialEq, Store)]
+struct Items {
+    inner: HashMap<u32, String>,
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct DisplayItemProps {
+    item_id: u32,
+}
+
+#[function_component]
+fn DisplayItem(props: &DisplayItemProps) -> Html {
+    // For multiple dependencies, try using a tuple: (dep1, dep2, ..)
+    let item = use_selector_with_deps(
+        |state: &Items, item_id| state.inner.get(item_id).cloned(),
+        props.item_id,
+    );
+    // Only render the item if it exists.
+    let item = match item { 
+        Some(item) => item,
+        None => return Default::default(),
+    };
+
+    html! {
+        <p>{ item }</p>
+    }
+}
+```
 
 # Persistence
 
