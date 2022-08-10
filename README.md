@@ -14,7 +14,7 @@ Some key features include:
     state unless explicitly told to. CoW behavior is provided by the `Dispatch::reduce_mut*`
     variants (marked by a `Clone` trait requirement).
 - Selective rendering - subscribers are only notified when state has changed, avoiding any
-    unnecessary re-renders. Can be futher optimized with `use_selector` hooks.
+    unnecessary re-renders. Can be further optimized with `use_selector` hooks.
 - Access from anywhere - users can create a dispatch to access a store from anywhere, they are not
     restricted to only inside components. This boasts greater flexibility over application flow and
     setup.
