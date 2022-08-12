@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use reqwasm::http::Request;
 use serde_json::Value;
+use std::collections::HashMap;
 
 use yewdux::prelude::*;
 
@@ -17,48 +17,67 @@ pub struct State {
 }
 
 impl State {
-    pub fn get(&self, timezone: &String) -> Option<(String, Status)> {
-        self.timezones
-            .get(timezone.as_str())
-            .map(|result| (result.0.clone(), result.1.clone()))
+    pub fn get(&self, timezone: &str) -> Option<(String, Status)> {
+        self.timezones.get(timezone).cloned()
     }
 
-    pub fn timezones(&self) -> Vec<String> {
-        self.timezones.keys().map(|t| t.clone()).collect()
+    pub fn timezones(&self) -> impl Iterator<Item = String> + '_ {
+        self.timezones.keys().cloned()
     }
 
     pub fn add(&mut self, timezone: String) {
-        self.timezones.insert(timezone.clone(), ("...".into(), Status::Loading));
+        self.timezones
+            .insert(timezone.clone(), ("...".into(), Status::Loading));
+
         self.refresh(timezone);
     }
 
     pub fn refresh(&mut self, timezone: String) {
-        if let Some(e) = self.timezones.get_mut(timezone.as_str()) {
-            (*e).1 = Status::Loading;
+        if let Some(e) = self.timezones.get_mut(&timezone) {
+            e.1 = Status::Loading;
         }
+
         yew::platform::spawn_local(async move {
-            let url = "http://worldtimeapi.org/api/timezone/".to_string() + timezone.as_str();
-            let resp = Request::get(url.as_str())
-                .send()
-                .await
-                .unwrap();
             let dispatch = Dispatch::<State>::new();
-            if resp.ok() {
-                let resp = resp.text().await.unwrap();
-                let resp: Value = serde_json::from_str(resp.as_str()).unwrap();
-                let datetime = resp["datetime"].to_string();
-                dispatch.reduce_mut(move |state|
-                    state.timezones.insert(timezone, (datetime, Status::Ready))
-                );
-            } else {
-                dispatch.reduce_mut(move |state|
-                    state.timezones.insert(timezone, (resp.status_text(), Status::Error))
-                );
+            let response = {
+                let url = "http://worldtimeapi.org/api/timezone/".to_string() + timezone.as_str();
+                Request::get(&url).send().await
+            };
+
+            match response {
+                Ok(resp) if resp.ok() => {
+                    let resp: Value = {
+                        resp.text()
+                            .await
+                            .ok()
+                            .and_then(|x| serde_json::from_str(&x).ok())
+                            .expect("unexpected response")
+                    };
+                    let datetime = resp["datetime"].to_string();
+
+                    dispatch.reduce_mut(|state| {
+                        state.timezones.insert(timezone, (datetime, Status::Ready))
+                    });
+                }
+                Ok(resp) => {
+                    dispatch.reduce_mut(|state| {
+                        state
+                            .timezones
+                            .insert(timezone, (resp.status_text(), Status::Error))
+                    });
+                }
+                Err(e) => {
+                    dispatch.reduce_mut(|state| {
+                        state
+                            .timezones
+                            .insert(timezone, (e.to_string(), Status::Error))
+                    });
+                }
             }
         });
     }
 
-    pub fn delete(&mut self, timezone: &String) {
+    pub fn delete(&mut self, timezone: &str) {
         self.timezones.remove(timezone);
     }
 }

@@ -1,5 +1,3 @@
-#![feature(async_closure)]
-
 use yew::prelude::*;
 use yewdux::prelude::*;
 
@@ -10,6 +8,12 @@ use proxy::State;
 #[function_component]
 fn App() -> Html {
     let state = use_store_value::<State>();
+    let timezones = state
+        .timezones()
+        .map(|timezone| {
+            html! { <Time {timezone} /> }
+        })
+        .collect::<Html>();
 
     html! {
         <div>
@@ -22,11 +26,7 @@ fn App() -> Html {
                     <th width="10%"> { "Refresh" } </th>
                     <th width="10%"> { "Delete" } </th>
                 </tr>
-                {
-                    state.timezones().iter().map(|timezone| {
-                        html! { <Time timezone={timezone.clone()} /> }
-                    }).collect::<Html>()
-                }
+                { timezones }
             </table>
         </div>
     }
@@ -41,44 +41,56 @@ struct TimeProps {
 fn Time(props: &TimeProps) -> Html {
     let dispatch = Dispatch::<State>::new();
     let timezone = props.timezone.clone();
-    let refresh = dispatch.reduce_mut_callback(move |state| state.refresh(timezone.clone()));
-    let timezone = props.timezone.clone();
-    let delete = dispatch.reduce_mut_callback(move |state| state.delete(&timezone));
-
-    let timezone = props.timezone.clone();
-    let result = use_selector_with_deps(move |state: &State, timezone| state.get(&timezone), timezone);
-
-    let timezone = props.timezone.clone();
-    match &*result {
-        None => { html! { <tr key={timezone.as_str()}> <td> { "Missing timezone" } </td> </tr> } },
+    let refresh = {
+        let timezone = timezone.clone();
+        dispatch.reduce_mut_callback(move |state| state.refresh(timezone.clone()))
+    };
+    let delete = {
+        let timezone = timezone.clone();
+        dispatch.reduce_mut_callback(move |state| state.delete(&timezone))
+    };
+    let result = {
+        let timezone = timezone.clone();
+        use_selector_with_deps(|state: &State, timezone| state.get(timezone), timezone)
+    };
+    let content = match result.as_ref() {
+        None => {
+            html! { <td>{ "Missing timezone" }</td> }
+        }
         Some((datetime, status)) => {
             html! {
-                <tr key={timezone.as_str()}>
-                    <td> { timezone } </td>
-                    <td> { datetime } </td>
-                    <td> { format!("{:?}", status) } </td>
-                    <td> <button onclick={refresh}> { "Refresh" } </button> </td>
-                    <td> <button onclick={delete}> { "Delete" } </button> </td>
-                </tr>
+                <>
+                <td> { &timezone } </td>
+                <td> { datetime } </td>
+                <td> { format!("{:?}", status) } </td>
+                <td> <button onclick={refresh}> { "Refresh" } </button> </td>
+                <td> <button onclick={delete}> { "Delete" } </button> </td>
+                </>
             }
-        },
+        }
+    };
+
+    html! {
+        <tr key={timezone}>
+            { content }
+        </tr>
     }
 }
 
 #[function_component]
 fn NewTimeZone() -> Html {
-    let onkeypress = Callback::from(|e: KeyboardEvent| {
+    let dispatch = Dispatch::<State>::new();
+    let onkeypress = dispatch.reduce_mut_callback_with(|state, e: KeyboardEvent| {
         if e.key() == "Enter" {
             let input: web_sys::HtmlInputElement = e.target_unchecked_into();
             let timezone = input.value();
             input.set_value("");
-            let dispatch = Dispatch::<State>::new();
-            dispatch.reduce_mut(|state| state.add(timezone.to_string()));
+
+            state.add(timezone)
         }
     });
-
-    let dispatch = Dispatch::<State>::new();
-    let add_mel = dispatch.reduce_mut_callback(|state| state.add("Australia/Melbourne".to_string()));
+    let add_mel =
+        dispatch.reduce_mut_callback(|state| state.add("Australia/Melbourne".to_string()));
     let add_adl = dispatch.reduce_mut_callback(|state| state.add("Australia/Adelaide".to_string()));
     let add_uto = dispatch.reduce_mut_callback(|state| state.add("Utopia".to_string()));
 
