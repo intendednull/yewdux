@@ -2,12 +2,9 @@
 
 Simple state management for [Yew](https://yew.rs) applications.
 
-This crate provides a dead-simple approach to global state management. It tries to be zero-cost by
-default, taking the minimal approach first, and exposing additional options for the user to take at
-their discretion.
-
-It does *not* try to provide any additional patterns or features which aren't directly related to
-accessing or manipulating shared state.
+This crate tries to provide a dead-simple, zero-cost approach to global state management. It does
+*not* try to provide any additional patterns or features which aren't directly related to accessing
+or manipulating shared state.
 
 Some key features include:
 - Zero-clone - user has complete control over how state is changed. Yewdux will never deep-copy your
@@ -20,8 +17,7 @@ Some key features include:
     setup.
 - Ergonomic interface - accessing a store is as simple as creating a dispatch with your desired
     store type. From this dispatch you can modify the store directly, create callbacks to trigger
-    from events, or even execute in an async context. Naming conventions try to be as intuitive as
-    possible, so it's easy to find what you want.
+    from events, or even execute in an async context.
 - Minimal trait requirements - The only trait required for a type to be a store is the `Store` trait
     itself. While the `Store` macro does need `Default` and `PartialEq` to work, it is also very
     simple to implement `Store` yourself, no additional requirements necessary!
@@ -90,7 +86,7 @@ following command (replacing [example] with your desired example name):
 ## Store
 
 `Store` represents state that is shared application-wide. It is initialized the first time it is
-accessed, and lives for application lifetime. 
+accessed, and lives for application lifetime.
 
 Implement `Store` for your state using the macro.
 
@@ -101,7 +97,7 @@ struct Counter {
 }
 ```
 
-Or do it manually. 
+Or do it manually.
 
 ```rust
 #[derive(PartialEq)]
@@ -132,7 +128,7 @@ impl Store for Counter {
 ## Dispatch
 
 `Dispatch` provides an interface to your `Store`. To create one you need only provide the store
-type. 
+type.
 
 ```rust
 let dispatch = Dispatch::<Counter>::new();
@@ -306,7 +302,7 @@ enum Msg {
 }
 
 impl Component for MyComponent {
-    type Properties = (); 
+    type Properties = ();
     type Message = Msg;
 
     fn create(ctx: &Context<Self>) -> Self {
@@ -371,7 +367,7 @@ fn DisplayFirst() -> Html {
     // other field has changed.
     //
     // Note: we are cloning a string. Probably insignificant for this example, however
-    // sometimes it may be beneficial to wrap fields that are expensive to clone in an `Rc`. 
+    // sometimes it may be beneficial to wrap fields that are expensive to clone in an `Rc`.
     let first_name = use_selector(|state: &User| state.first_name.clone());
 
     html! {
@@ -402,7 +398,7 @@ fn DisplayItem(props: &DisplayItemProps) -> Html {
         props.item_id,
     );
     // Only render the item if it exists.
-    let item = match item { 
+    let item = match item {
         Some(item) => item,
         None => return Default::default(),
     };
@@ -448,3 +444,129 @@ impl Store for Counter {
 }
 ```
 
+## Tab sync
+
+Normally if your application is open in multiple tabs, the persistent storage is not updated in any
+tab other than the current one. If you want a store to sync in all tabs, add `storage_tab_sync` to
+the macro.
+
+```rust
+#[derive(Default, Clone, PartialEq, Eq, Deserialize, Serialize, Store)]
+#[store(storage = "local", storage_tab_sync)]
+struct State {
+    count: u32,
+}
+```
+
+# Future support
+
+Because a `Dispatch` may be created and executed from anywhere, Yewdux has innate future support.
+Just use it normally, no additonal setup is needed.
+
+For stores that have async methods, dispatch provides some options for your convenience.
+
+The following can be executed immediately, in an async context.
+
+`reduce_future` for the pure approach.
+```rust
+dispatch
+    .reduce_future(|state| async move {
+        let mut state = state.as_ref().clone();
+        state.update_user().await;
+
+        state
+    })
+    .await;
+```
+
+`reduce_mut_future` for the `CoW` approach. Note the extra `Box::pin` that is required
+here. This is due to a current limitation of Rust, and should be phased out in the future.
+```rust
+dispatch
+    .reduce_mut_future(|state| {
+        Box::pin(async move {
+            state.update_user().await;
+        })
+    })
+    .await;
+```
+
+You can also create callbacks that execute a future when called. Note these are simple wrappers over
+`yew::platform::spawn_local`.
+
+`reduce_future_callback` for the pure approach.
+```rust
+let cb = dispatch.reduce_future_callback(|state| async move {
+    let mut state = state.as_ref().clone();
+    state.update_user().await;
+
+    state
+});
+```
+
+`reduce_mut_future_callback` for the `CoW` approach. Note the extra `Box::pin` that is required
+here. This is due to a current limitation of Rust, and should be phased out in the future.
+
+```rust
+let cb = dispatch.reduce_mut_future_callback(|state| {
+    Box::pin(async move {
+        state.update_user().await;
+    })
+});
+```
+
+# Tips
+
+## Setting default store values
+
+The best way to define the default value of your store is by manually implementing `Default`.
+
+```rust
+#[derive(PartialEq, Store)]
+struct MyStore {
+    foo: String,
+    bar: String,
+}
+
+impl Default for MyStore {
+    fn default() -> Self {
+        Self {
+            foo: "foo".to_string(),
+            bar: "bar".to_string(),
+        }
+    }
+}
+
+```
+
+However sometimes you may need additional context to set the initial value of your store. To do
+this, there are a couple options.
+
+You can set the value at the beginning of your application, before your app renders (like in your
+main fn).
+
+```rust
+fn main() {
+    // .. other setup logic and whatnot
+    Dispatch::<MyStore>::new().set(MyStore { ... });
+    // ... now you can render your app!
+}
+```
+
+Or inside some component using `use_effect_with_deps`, provided deps of `()`. Be sure to keep it in
+a root component!
+
+```rust
+use_effect_with_deps(
+    move || {
+        // .. other setup logic and whatnot
+        Dispatch::<MyStore>::new().set(MyStore { ... });
+        || {}
+    },
+    (),
+);
+```
+
+Keep in mind your store will still be initialized with `Store::new` (usually that's set to
+`Default::default()`), however, because Rust is awesome, no fields are allocated initially, and
+overwriting is very cheap.
