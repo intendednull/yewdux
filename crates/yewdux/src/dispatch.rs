@@ -363,9 +363,9 @@ impl<S: Store> PartialEq for Dispatch<S> {
 /// Change state from a function.
 pub fn reduce<S: Store, R: Into<Rc<S>>, F: FnOnce(Rc<S>) -> R>(f: F) {
     let context = context::get_or_init::<S>();
-    let changed = context.reduce(|s| f(s).into());
+    let should_notify = context.reduce(|s| f(s).into());
 
-    if changed {
+    if should_notify {
         let state = Rc::clone(&context.state.borrow());
         notify_subscribers(state)
     }
@@ -380,11 +380,11 @@ where
     FUN: FnOnce(Rc<S>) -> FUT,
 {
     let context = context::get_or_init::<S>();
-    let changed = context
+    let should_notify = context
         .reduce_future(|s| async move { f(s).await.into() })
         .await;
 
-    if changed {
+    if should_notify {
         let state = Rc::clone(&context.state.borrow());
         notify_subscribers(state)
     }
@@ -465,7 +465,7 @@ mod tests {
             Self(0)
         }
 
-        fn changed(&self, other: &Self) -> bool {
+        fn should_notify(&self, other: &Self) -> bool {
             self != other
         }
     }
@@ -476,7 +476,7 @@ mod tests {
             Self(0)
         }
 
-        fn changed(&self, other: &Self) -> bool {
+        fn should_notify(&self, other: &Self) -> bool {
             self != other
         }
     }

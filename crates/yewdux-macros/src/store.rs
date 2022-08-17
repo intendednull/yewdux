@@ -67,7 +67,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
         impl #impl_generics ::yewdux::store::Store for #ident #ty_generics #where_clause {
             #impl_
 
-            fn changed(&self, other: &Self) -> bool {
+            fn should_notify(&self, other: &Self) -> bool {
                 self != other
             }
         }

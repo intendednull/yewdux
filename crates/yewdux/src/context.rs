@@ -19,15 +19,15 @@ impl<S> Clone for Context<S> {
 }
 
 impl<S: Store> Context<S> {
-    /// Apply a function to state, returning if it has changed or not.
+    /// Apply a function to state, returning if it should notify subscribers or not.
     pub(crate) fn reduce(&self, f: impl FnOnce(Rc<S>) -> Rc<S>) -> bool {
         let old = Rc::clone(&self.state.borrow());
         *self.state.borrow_mut() = f(Rc::clone(&old));
 
-        self.state.borrow().changed(&old)
+        self.state.borrow().should_notify(&old)
     }
 
-    /// Apply a future reduction to state, returning if it has changed or not.
+    /// Apply a future reduction to state, returning if it should notify subscribers or not.
     #[cfg(feature = "future")]
     pub(crate) async fn reduce_future<FUN, FUT>(&self, f: FUN) -> bool
     where
@@ -38,7 +38,7 @@ impl<S: Store> Context<S> {
 
         *self.state.borrow_mut() = f(Rc::clone(&old)).await;
 
-        self.state.borrow().changed(&old)
+        self.state.borrow().should_notify(&old)
     }
 }
 
@@ -79,7 +79,7 @@ mod tests {
             Self(0)
         }
 
-        fn changed(&self, other: &Self) -> bool {
+        fn should_notify(&self, other: &Self) -> bool {
             self != other
         }
     }
@@ -92,7 +92,7 @@ mod tests {
             Self(0)
         }
 
-        fn changed(&self, other: &Self) -> bool {
+        fn should_notify(&self, other: &Self) -> bool {
             self != other
         }
     }
@@ -118,7 +118,7 @@ mod tests {
             Self(count)
         }
 
-        fn changed(&self, other: &Self) -> bool {
+        fn should_notify(&self, other: &Self) -> bool {
             self != other
         }
     }

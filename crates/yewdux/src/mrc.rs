@@ -90,7 +90,7 @@ impl<T: Store> Store for Mrc<T> {
         T::new().into()
     }
 
-    fn changed(&self, other: &Self) -> bool {
+    fn should_notify(&self, other: &Self) -> bool {
         self != other
     }
 }
@@ -136,7 +136,7 @@ mod tests {
             Self(Mrc::new(0))
         }
 
-        fn changed(&self, other: &Self) -> bool {
+        fn should_notify(&self, other: &Self) -> bool {
             self != other
         }
     }
@@ -147,7 +147,7 @@ mod tests {
             CanImplStoreForMrcDirectly.into()
         }
 
-        fn changed(&self, other: &Self) -> bool {
+        fn should_notify(&self, other: &Self) -> bool {
             self != other
         }
     }

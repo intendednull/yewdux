@@ -15,7 +15,7 @@ impl<S: Store> Store for Mrc<ListenerStore<S>> {
         ListenerStore(None).into()
     }
 
-    fn changed(&self, other: &Self) -> bool {
+    fn should_notify(&self, other: &Self) -> bool {
         self != other
     }
 }
@@ -47,7 +47,7 @@ mod tests {
             Self(0)
         }
 
-        fn changed(&self, other: &Self) -> bool {
+        fn should_notify(&self, other: &Self) -> bool {
             self != other
         }
     }
@@ -70,7 +70,7 @@ mod tests {
             Self
         }
 
-        fn changed(&self, other: &Self) -> bool {
+        fn should_notify(&self, other: &Self) -> bool {
             self != other
         }
     }

@@ -27,7 +27,7 @@ impl Store for Counter {
             .unwrap_or_default()
     }
 
-    fn changed(&self, other: &Self) -> bool {
+    fn should_notify(&self, other: &Self) -> bool {
         self != other
     }
 }

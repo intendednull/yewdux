@@ -8,8 +8,9 @@ pub trait Store: 'static {
     /// Create this store.
     fn new() -> Self;
 
-    /// Indicate whether or not state has changed.
-    fn changed(&self, other: &Self) -> bool;
+    /// Indicate whether or not subscribers should be notified about this change. Usually this
+    /// should be set to `self != old`.
+    fn should_notify(&self, old: &Self) -> bool;
 }
 
 /// A type that can change state.

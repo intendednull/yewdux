@@ -14,7 +14,7 @@ impl<S: 'static> Store for Subscribers<S> {
         Self(Default::default())
     }
 
-    fn changed(&self, other: &Self) -> bool {
+    fn should_notify(&self, other: &Self) -> bool {
         self != other
     }
 }
@@ -111,7 +111,7 @@ mod tests {
             Self(0)
         }
 
-        fn changed(&self, other: &Self) -> bool {
+        fn should_notify(&self, other: &Self) -> bool {
             self != other
         }
     }

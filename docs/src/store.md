@@ -27,7 +27,7 @@ impl Store for Counter {
         }
     }
 
-    fn changed(&self, other: &Self) -> bool {
+    fn should_notify(&self, other: &Self) -> bool {
         // When this returns true, all components are notified and consequently re-render.
         //
         // We're using `PartialEq` here to keep it simple, but it's possible to use any custom

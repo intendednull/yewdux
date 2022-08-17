@@ -16,7 +16,7 @@
 //!             .unwrap_or_default()
 //!     }
 //!
-//!     fn changed(&mut self) {
+//!     fn should_notify(&mut self) {
 //!         storage::save(self, storage::Area::Local).expect("Unable to save state");
 //!     }
 //! }
