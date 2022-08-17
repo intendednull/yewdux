@@ -3,13 +3,19 @@
 Because a `Dispatch` may be created and executed from anywhere, Yewdux has innate future support.
 Just use it normally, no additonal setup is needed.
 
+```rust
+yew::platform::spawn_local(async {
+    let user = get_user().await;
+    Dispatch::<User>::new().set(user);
+})
+```
+
+## Async associated functions 
 For stores that have async methods, dispatch provides some options for your convenience.
 
-The following can be executed immediately, in an async context.
+### `Dispatch::reduce_future` 
 
-## `Dispatch::reduce_future` 
-
-Execute immediately.
+Executes immediately.
 
 ```rust
 dispatch
@@ -22,10 +28,10 @@ dispatch
     .await;
 ```
 
-## `Dispatch::reduce_mut_future` 
+### `Dispatch::reduce_mut_future` 
 
-For the `CoW` approach. Note the extra `Box::pin` that is required here. This is due to a current
-limitation of Rust, and should be phased out in the future.
+For the `CoW` approach. Note `Box::pin` is required here. This is due to a current limitation of
+Rust, and should be phased out in the future.
 
 ```rust
 dispatch
@@ -37,12 +43,12 @@ dispatch
     .await;
 ```
 
-# Callbacks 
+## Async callbacks 
 
 You can also create callbacks that execute a future when called. Note these are simple wrappers over
 `yew::platform::spawn_local`.
 
-## `Dispatch::reduce_future_callback`
+### `Dispatch::reduce_future_callback`
 
 ```rust
 let cb = dispatch.reduce_future_callback(|state| async move {
@@ -53,7 +59,7 @@ let cb = dispatch.reduce_future_callback(|state| async move {
 });
 ```
 
-## `Dispatch::reduce_mut_future_callback` 
+### `Dispatch::reduce_mut_future_callback` 
 
 ```rust
 let cb = dispatch.reduce_mut_future_callback(|state| {
