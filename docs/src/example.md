@@ -1,10 +1,10 @@
-# Example
+# Quickstart example
 
 ```rust
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-#[derive(Default, Clone, PartialEq, Eq, Store)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Store)]
 struct Counter {
     count: u32,
 }

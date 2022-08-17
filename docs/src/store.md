@@ -1,7 +1,7 @@
-# Setting up a Store
+# Defining a Store
 
-`Store` represents state that is shared application-wide. It is initialized the first time it is
-accessed, and lives for application lifetime.
+A `Store` represents state that is shared application-wide. It is initialized on first access, and
+lives for application lifetime.
 
 Implement `Store` for your state using the macro.
 
@@ -29,9 +29,6 @@ impl Store for Counter {
 
     fn should_notify(&self, other: &Self) -> bool {
         // When this returns true, all components are notified and consequently re-render.
-        //
-        // We're using `PartialEq` here to keep it simple, but it's possible to use any custom
-        // logic that you'd want.
         self != other
     }
 }

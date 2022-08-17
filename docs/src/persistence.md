@@ -13,7 +13,7 @@ struct Counter {
 }
 ```
 
-You can also implement it yourself.
+This can also be done manually.
 
 ```rust
 use yewdux::{prelude::*, storage};
@@ -35,9 +35,8 @@ impl Store for Counter {
 
 ## Tab sync
 
-Normally if your application is open in multiple tabs, the persistent storage is not updated in any
-tab other than the current one. If you want storage to sync in all tabs, add `storage_tab_sync` to
-the macro.
+Normally if your application is open in multiple tabs, the store is not updated in any tab other
+than the current one. If you want storage to sync in all tabs, add `storage_tab_sync` to the macro.
 
 ```rust
 #[derive(Default, Clone, PartialEq, Eq, Deserialize, Serialize, Store)]
