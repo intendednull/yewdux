@@ -7,13 +7,13 @@ use anymap::AnyMap;
 use crate::{mrc::Mrc, store::Store};
 
 pub(crate) struct Context<S> {
-    pub(crate) state: Mrc<Rc<S>>,
+    pub(crate) store: Mrc<Rc<S>>,
 }
 
 impl<S> Clone for Context<S> {
     fn clone(&self) -> Self {
         Self {
-            state: self.state.clone(),
+            store: Mrc::clone(&self.store),
         }
     }
 }
@@ -21,10 +21,10 @@ impl<S> Clone for Context<S> {
 impl<S: Store> Context<S> {
     /// Apply a function to state, returning if it should notify subscribers or not.
     pub(crate) fn reduce(&self, f: impl FnOnce(Rc<S>) -> Rc<S>) -> bool {
-        let old = Rc::clone(&self.state.borrow());
-        *self.state.borrow_mut() = f(Rc::clone(&old));
+        let old = Rc::clone(&self.store.borrow());
+        *self.store.borrow_mut() = f(Rc::clone(&old));
 
-        self.state.borrow().should_notify(&old)
+        self.store.borrow().should_notify(&old)
     }
 
     /// Apply a future reduction to state, returning if it should notify subscribers or not.
@@ -34,17 +34,17 @@ impl<S: Store> Context<S> {
         FUN: FnOnce(Rc<S>) -> FUT,
         FUT: Future<Output = Rc<S>>,
     {
-        let old = Rc::clone(&self.state.borrow());
+        let old = Rc::clone(&self.store.borrow());
 
-        *self.state.borrow_mut() = f(Rc::clone(&old)).await;
+        *self.store.borrow_mut() = f(Rc::clone(&old)).await;
 
-        self.state.borrow().should_notify(&old)
+        self.store.borrow().should_notify(&old)
     }
 }
 
 pub(crate) fn get_or_init<S: Store>() -> Context<S> {
     thread_local! {
-        /// Stores all shared state.
+        /// Holds all shared state.
         static CONTEXTS: Mrc<AnyMap> = Mrc::new(AnyMap::new());
     }
 
@@ -52,15 +52,17 @@ pub(crate) fn get_or_init<S: Store>() -> Context<S> {
         .try_with(|contexts| contexts.clone())
         .expect("CONTEXTS thread local key init failed");
 
-    // Init store outside of context borrow. This allows `Store::new` to access other stores if
-    // needed.
-    let context_exists = contexts.borrow().contains::<Context<S>>();
-    let state = (!context_exists).then(|| Mrc::new(Rc::new(S::new())));
+    // Init store outside of context borrow. This allows this store to access other stores if when
+    // it is being created.
+    let store = {
+        let exists = contexts.borrow().contains::<Context<S>>();
+        (!exists).then(|| Mrc::new(Rc::new(S::new())))
+    };
 
     contexts.with_mut(|x| {
         x.entry::<Context<S>>()
             .or_insert_with(|| Context {
-                state: state.expect("Store not initialized"),
+                store: store.expect("Store not initialized. Something is seriously wrong!"),
             })
             .clone()
     })
@@ -128,6 +130,6 @@ mod tests {
         get_or_init::<StoreNewIsOnlyCalledOnce>();
         let context = get_or_init::<StoreNewIsOnlyCalledOnce>();
 
-        assert!(context.state.borrow().0.get() == 1)
+        assert!(context.store.borrow().0.get() == 1)
     }
 }

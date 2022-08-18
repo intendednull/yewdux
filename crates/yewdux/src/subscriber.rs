@@ -120,41 +120,41 @@ mod tests {
     fn subscribe_adds_to_list() {
         let context = context::get_or_init::<Mrc<Subscribers<TestState>>>();
 
-        assert!(context.state.borrow().borrow().0.is_empty());
+        assert!(context.store.borrow().borrow().0.is_empty());
 
         let _id = dispatch::subscribe(|_: Rc<TestState>| ());
 
-        assert!(!context.state.borrow().borrow().0.is_empty());
+        assert!(!context.store.borrow().borrow().0.is_empty());
     }
 
     #[test]
     fn unsubscribe_removes_from_list() {
         let context = context::get_or_init::<Mrc<Subscribers<TestState>>>();
 
-        assert!(context.state.borrow().borrow().0.is_empty());
+        assert!(context.store.borrow().borrow().0.is_empty());
 
         let id = dispatch::subscribe(|_: Rc<TestState>| ());
 
-        assert!(!context.state.borrow().borrow().0.is_empty());
+        assert!(!context.store.borrow().borrow().0.is_empty());
 
         drop(id);
 
-        assert!(context.state.borrow().borrow().0.is_empty());
+        assert!(context.store.borrow().borrow().0.is_empty());
     }
 
     #[test]
     fn subscriber_id_unsubscribes_when_dropped() {
         let context = context::get_or_init::<Mrc<Subscribers<TestState>>>();
 
-        assert!(context.state.borrow().borrow().0.is_empty());
+        assert!(context.store.borrow().borrow().0.is_empty());
 
         let id = dispatch::subscribe::<TestState, _>(|_| {});
 
-        assert!(!context.state.borrow().borrow().0.is_empty());
+        assert!(!context.store.borrow().borrow().0.is_empty());
 
         drop(id);
 
-        assert!(context.state.borrow().borrow().0.is_empty());
+        assert!(context.store.borrow().borrow().0.is_empty());
     }
 
     #[test]

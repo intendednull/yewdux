@@ -366,7 +366,7 @@ pub fn reduce<S: Store, R: Into<Rc<S>>, F: FnOnce(Rc<S>) -> R>(f: F) {
     let should_notify = context.reduce(|s| f(s).into());
 
     if should_notify {
-        let state = Rc::clone(&context.state.borrow());
+        let state = Rc::clone(&context.store.borrow());
         notify_subscribers(state)
     }
 }
@@ -385,7 +385,7 @@ where
         .await;
 
     if should_notify {
-        let state = Rc::clone(&context.state.borrow());
+        let state = Rc::clone(&context.store.borrow());
         notify_subscribers(state)
     }
 }
@@ -423,13 +423,13 @@ pub fn apply<S: Store, M: Reducer<S>>(msg: M) {
 
 /// Get current state.
 pub fn get<S: Store>() -> Rc<S> {
-    Rc::clone(&context::get_or_init::<S>().state.borrow())
+    Rc::clone(&context::get_or_init::<S>().store.borrow())
 }
 
 /// Send state to all subscribers.
 pub fn notify_subscribers<S: Store>(state: Rc<S>) {
     let context = context::get_or_init::<Mrc<Subscribers<S>>>();
-    context.state.borrow().notify(state);
+    context.store.borrow().notify(state);
 }
 
 /// Subscribe to a store. `on_change` is called immediately, then every  time state changes.
@@ -438,7 +438,7 @@ pub fn subscribe<S: Store, N: Callable<S>>(on_change: N) -> SubscriberId<S> {
     on_change.call(get::<S>());
 
     context::get_or_init::<Mrc<Subscribers<S>>>()
-        .state
+        .store
         .borrow()
         .subscribe(on_change)
 }
@@ -446,7 +446,7 @@ pub fn subscribe<S: Store, N: Callable<S>>(on_change: N) -> SubscriberId<S> {
 /// Similar to [subscribe], however state is not called immediately.
 pub fn subscribe_silent<S: Store, N: Callable<S>>(on_change: N) -> SubscriberId<S> {
     context::get_or_init::<Mrc<Subscribers<S>>>()
-        .state
+        .store
         .borrow()
         .subscribe(on_change)
 }
@@ -792,34 +792,34 @@ mod tests {
     fn dispatch_unsubscribes_when_dropped() {
         let context = context::get_or_init::<Mrc<Subscribers<TestState>>>();
 
-        assert!(context.state.borrow().borrow().0.is_empty());
+        assert!(context.store.borrow().borrow().0.is_empty());
 
         let dispatch = Dispatch::<TestState>::subscribe(|_| ());
 
-        assert!(!context.state.borrow().borrow().0.is_empty());
+        assert!(!context.store.borrow().borrow().0.is_empty());
 
         drop(dispatch);
 
-        assert!(context.state.borrow().borrow().0.is_empty());
+        assert!(context.store.borrow().borrow().0.is_empty());
     }
 
     #[test]
     fn dispatch_clone_and_original_unsubscribe_when_both_dropped() {
         let context = context::get_or_init::<Mrc<Subscribers<TestState>>>();
 
-        assert!(context.state.borrow().borrow().0.is_empty());
+        assert!(context.store.borrow().borrow().0.is_empty());
 
         let dispatch = Dispatch::<TestState>::subscribe(|_| ());
         let dispatch_clone = dispatch.clone();
 
-        assert!(!context.state.borrow().borrow().0.is_empty());
+        assert!(!context.store.borrow().borrow().0.is_empty());
 
         drop(dispatch_clone);
 
-        assert!(!context.state.borrow().borrow().0.is_empty());
+        assert!(!context.store.borrow().borrow().0.is_empty());
 
         drop(dispatch);
 
-        assert!(context.state.borrow().borrow().0.is_empty());
+        assert!(context.store.borrow().borrow().0.is_empty());
     }
 }
