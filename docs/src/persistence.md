@@ -1,6 +1,6 @@
 # Persistence
 
-Yewdux provides a macro to easily persist your state in either local or session storage.
+Yewdux provides the `#[store]` macro to easily persist your state in either local or session storage.
 
 ```rust
 use yewdux::prelude::*;
