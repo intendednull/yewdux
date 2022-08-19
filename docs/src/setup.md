@@ -1,9 +1,16 @@
 # Setup
 
-**IMPORTANT**: This setup docs is for the development branch. Please see [this
-branch](https://github.com/intendednull/yewdux/tree/0.7.0) for docs regarding latest release.
-
 Add Yewdux to your project's `Cargo.toml`:
+
+### Stable release:
+
+```toml
+[dependencies]
+yew = "0.19"
+yewdux = "0.8"
+```
+
+### Development branch:
 
 ```toml
 [dependencies]

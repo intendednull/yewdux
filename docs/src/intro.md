@@ -5,9 +5,6 @@ A state management solution for the [Yew](https://yew.rs) front-end library.
 This crate was inspired by [Redux](https://redux.js.org/), however some deviation was taken in
 the spirit of Rust.
 
-**IMPORTANT**: These docs are for the development branch. Please see [this
-branch](https://github.com/intendednull/yewdux/tree/0.7.0) for docs regarding latest release.
-
 This book is currently in development. If it is confusing in any way, or you have suggestions,
 please post an issue in the [repo](https://github.com/intendednull/yewdux) or ask in the
 [Yew discord](https://discord.gg/UmS6FKYa5a).
