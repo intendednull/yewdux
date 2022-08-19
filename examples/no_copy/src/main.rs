@@ -11,8 +11,8 @@ struct State {
     data: Mrc<MyLargeData>,
 }
 
-#[function_component]
-fn App() -> Html {
+#[function_component(App)]
+fn app() -> Html {
     let (state, dispatch) = use_store::<State>();
     let onclick = dispatch.reduce_mut_callback(|state| {
         let mut data = state.data.borrow_mut();
@@ -29,5 +29,5 @@ fn App() -> Html {
 }
 
 fn main() {
-    yew::Renderer::<App>::new().render();
+    yew::start_app::<App>();
 }

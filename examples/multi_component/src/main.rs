@@ -6,8 +6,8 @@ struct State {
     count: u32,
 }
 
-#[function_component]
-fn ViewCount() -> Html {
+#[function_component(ViewCount)]
+fn view_count() -> Html {
     let (state, _) = use_store::<State>();
 
     html! {
@@ -15,8 +15,8 @@ fn ViewCount() -> Html {
     }
 }
 
-#[function_component]
-fn IncrementCount() -> Html {
+#[function_component(IncrementCount)]
+fn increment_count() -> Html {
     let (_, dispatch) = use_store::<State>();
     let onclick = dispatch.reduce_mut_callback(|state| state.count += 1);
 
@@ -25,8 +25,8 @@ fn IncrementCount() -> Html {
     }
 }
 
-#[function_component]
-fn App() -> Html {
+#[function_component(App)]
+fn app() -> Html {
     html! {
         <>
         <ViewCount />
@@ -36,5 +36,5 @@ fn App() -> Html {
 }
 
 pub fn main() {
-    yew::Renderer::<App>::new().render();
+    yew::start_app::<App>();
 }

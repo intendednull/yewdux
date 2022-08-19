@@ -7,5 +7,5 @@ edition = "2018"
 
 [dependencies]
 wasm-bindgen-futures = "0.4.30"
-yew = { git = "https://github.com/yewstack/yew.git", features = ["csr"] }
+yew = { version = "0.19" }
 yewdux = { path = "../../crates/yewdux" }

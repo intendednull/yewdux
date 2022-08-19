@@ -6,8 +6,8 @@ struct State {
     count: u32,
 }
 
-#[function_component]
-fn App() -> Html {
+#[function_component(App)]
+fn app() -> Html {
     let (state, dispatch) = use_store::<State>();
     let onclick = dispatch.reduce_mut_callback(|state| state.count += 1);
 
@@ -20,5 +20,5 @@ fn App() -> Html {
 }
 
 fn main() {
-    yew::Renderer::<App>::new().render();
+    yew::start_app::<App>();
 }

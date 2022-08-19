@@ -6,10 +6,11 @@ use yewdux::prelude::*;
 
 use state::{Entry, Filter, State};
 
-#[function_component]
-fn App() -> Html {
-    let hidden = use_selector(|s: &State| s.entries.is_empty());
-    let hidden_class = if *hidden { "hidden" } else { "" };
+#[function_component(App)]
+fn app() -> Html {
+    let (state, _dispatch) = use_store::<State>();
+    let hidden = state.entries.is_empty();
+    let hidden_class = if hidden { "hidden" } else { "" };
 
     html! {
         <div class="todomvc-wrapper">
@@ -34,8 +35,8 @@ fn App() -> Html {
     }
 }
 
-#[function_component]
-fn Header() -> Html {
+#[function_component(Header)]
+fn header() -> Html {
     let onkeypress = Dispatch::<State>::new().reduce_mut_callback_with(|s, e: KeyboardEvent| {
         if e.key() == "Enter" {
             let input: HtmlInputElement = e.target_unchecked_into();
@@ -64,13 +65,14 @@ fn Header() -> Html {
     }
 }
 
-#[function_component]
-fn Footer() -> Html {
-    let active_filter = use_selector(|s: &State| s.filter);
+#[function_component(Footer)]
+fn footer() -> Html {
+    let (state, _dispatch) = use_store::<State>();
+    let active_filter = state.filter;
 
     let filters = {
         let view_filter = |filter: Filter| {
-            let cls = if *active_filter == filter {
+            let cls = if active_filter == filter {
                 "selected"
             } else {
                 "not-selected"
@@ -107,9 +109,10 @@ fn Footer() -> Html {
     }
 }
 
-#[function_component]
-fn BtnClearCompleted() -> Html {
-    let total_completed = use_selector(|state: &State| state.total_completed());
+#[function_component(BtnClearCompleted)]
+fn btn_clear_completed() -> Html {
+    let (state, _dispatch) = use_store::<State>();
+    let total_completed = state.total_completed();
     let onclick = Dispatch::<State>::new().reduce_mut_callback(|s| s.clear_completed());
 
     html! {
@@ -119,21 +122,23 @@ fn BtnClearCompleted() -> Html {
     }
 }
 
-#[function_component]
-fn TodoCount() -> Html {
-    let count = use_selector(|state: &State| state.total());
+#[function_component(TodoCount)]
+fn todo_count() -> Html {
+    let (state, _dispatch) = use_store::<State>();
+    let count = state.total();
 
     html! {
         <span class="todo-count">
-            <strong>{ *count }</strong>
+            <strong>{ count }</strong>
             { " item(s) left" }
         </span>
     }
 }
 
-#[function_component]
-fn ToggleAll() -> Html {
-    let checked = use_selector(|state: &State| state.is_all_completed());
+#[function_component(ToggleAll)]
+fn toggle_all() -> Html {
+    let (state, _dispatch) = use_store::<State>();
+    let checked = state.is_all_completed();
     let onclick = Dispatch::new().reduce_mut_callback(|s: &mut State| {
         let status = !s.is_all_completed();
         s.toggle_all(status);
@@ -141,14 +146,14 @@ fn ToggleAll() -> Html {
 
     html! {
         <>
-        <input type="checkbox" class="toggle-all" id="toggle-all" checked={*checked} {onclick} />
+        <input type="checkbox" class="toggle-all" id="toggle-all" {checked} {onclick} />
         <label for="toggle-all" />
         </>
     }
 }
 
-#[function_component]
-fn ListEntries() -> Html {
+#[function_component(ListEntries)]
+fn list_entries() -> Html {
     let focus_ref = use_node_ref();
     let (state, dispatch) = use_store::<State>();
     let view_entry = |(idx, entry): (usize, &Entry)| {
@@ -254,5 +259,5 @@ fn ListEntries() -> Html {
 }
 
 fn main() {
-    yew::Renderer::<App>::new().render();
+    yew::start_app::<App>();
 }

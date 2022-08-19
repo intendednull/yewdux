@@ -23,8 +23,8 @@ impl Reducer<Counter> for Msg {
     }
 }
 
-#[function_component]
-fn App() -> Html {
+#[function_component(App)]
+fn app() -> Html {
     let (counter, dispatch) = use_store::<Counter>();
     let onclick = dispatch.apply_callback(|_| Msg::AddOne);
 
@@ -37,5 +37,5 @@ fn App() -> Html {
 }
 
 fn main() {
-    yew::Renderer::<App>::new().render();
+    yew::start_app::<App>();
 }

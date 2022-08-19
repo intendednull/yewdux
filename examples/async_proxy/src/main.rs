@@ -5,9 +5,9 @@ mod proxy;
 
 use proxy::State;
 
-#[function_component]
-fn App() -> Html {
-    let state = use_store_value::<State>();
+#[function_component(App)]
+fn app() -> Html {
+    let (state, _dispatch) = use_store::<State>();
     let timezones = state
         .timezones()
         .map(|timezone| {
@@ -37,9 +37,9 @@ struct TimeProps {
     timezone: String,
 }
 
-#[function_component]
-fn Time(props: &TimeProps) -> Html {
-    let dispatch = Dispatch::<State>::new();
+#[function_component(Time)]
+fn time(props: &TimeProps) -> Html {
+    let (state, dispatch) = use_store::<State>();
     let timezone = props.timezone.clone();
     let refresh = {
         let timezone = timezone.clone();
@@ -49,11 +49,7 @@ fn Time(props: &TimeProps) -> Html {
         let timezone = timezone.clone();
         dispatch.reduce_mut_callback(move |state| state.delete(&timezone))
     };
-    let result = {
-        let timezone = timezone.clone();
-        use_selector_with_deps(|state: &State, timezone| state.get(timezone), timezone)
-    };
-    let content = match result.as_ref() {
+    let content = match state.get(&timezone) {
         None => {
             html! { <td>{ "Missing timezone" }</td> }
         }
@@ -77,8 +73,8 @@ fn Time(props: &TimeProps) -> Html {
     }
 }
 
-#[function_component]
-fn NewTimeZone() -> Html {
+#[function_component(NewTimeZone)]
+fn new_timezone() -> Html {
     let dispatch = Dispatch::<State>::new();
     let onkeypress = dispatch.reduce_mut_callback_with(|state, e: KeyboardEvent| {
         if e.key() == "Enter" {
@@ -105,5 +101,5 @@ fn NewTimeZone() -> Html {
 }
 
 fn main() {
-    yew::Renderer::<App>::new().render();
+    yew::start_app::<App>();
 }

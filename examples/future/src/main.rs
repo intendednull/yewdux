@@ -6,8 +6,8 @@ struct State {
     count: u32,
 }
 
-#[function_component]
-fn App() -> Html {
+#[function_component(App)]
+fn app() -> Html {
     let (state, dispatch) = use_store::<State>();
 
     let incr = dispatch.reduce_future_callback(|state| async move {
@@ -31,5 +31,5 @@ fn App() -> Html {
 }
 
 fn main() {
-    yew::Renderer::<App>::new().render();
+    yew::start_app::<App>();
 }

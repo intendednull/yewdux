@@ -37,7 +37,7 @@ impl State {
             e.1 = Status::Loading;
         }
 
-        yew::platform::spawn_local(async move {
+        wasm_bindgen_futures::spawn_local(async move {
             let dispatch = Dispatch::<State>::new();
             let response = {
                 let url = "http://worldtimeapi.org/api/timezone/".to_string() + timezone.as_str();
