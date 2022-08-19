@@ -1,6 +1,6 @@
 # Yewdux
 
-Simple state management for [Yew](https://yew.rs) applications.
+Ergonomic state management for [Yew](https://yew.rs) applications.
 
 See the [book](https://intendednull.github.io/yewdux/) for more details.
 
