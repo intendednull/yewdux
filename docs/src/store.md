@@ -27,7 +27,7 @@ impl Store for Counter {
         }
     }
 
-    fn should_notify(&self, other: &Self) -> bool {
+    fn should_notify(&self, old: &Self) -> bool {
         // When this returns true, all components are notified and consequently re-render.
         self != other
     }
