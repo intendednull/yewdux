@@ -52,20 +52,39 @@ pub(crate) fn get_or_init<S: Store>() -> Context<S> {
         .try_with(|contexts| contexts.clone())
         .expect("CONTEXTS thread local key init failed");
 
-    // Init store outside of context borrow. This allows this store to access other stores if when
-    // it is being created.
-    let store = {
-        let exists = contexts.borrow().contains::<Context<S>>();
-        (!exists).then(|| Mrc::new(Rc::new(S::new())))
-    };
-
-    contexts.with_mut(|x| {
-        x.entry::<Context<S>>()
-            .or_insert_with(|| Context {
-                store: store.expect("Store not initialized. Something is seriously wrong!"),
-            })
+    // Get context, or None if it doesn't exist.
+    //
+    // We use an option here because a new Store should not be created during this borrow. We want
+    // to allow this store access to other stores during creation, so cannot be borrowing the
+    // global resource while initializing. Instead we create a temporary placeholder, which
+    // indicates the store needs to be created. Without this indicator we would have needed to
+    // check if the map contains the entry beforehand, which would have meant two map lookups per
+    // call instead of just one.
+    let maybe_context = contexts.with_mut(|x| {
+        x.entry::<Mrc<Option<Context<S>>>>()
+            .or_insert_with(|| None.into())
             .clone()
-    })
+    });
+
+    // If it doesn't exist, create and store the context (no pun intended).
+    let exists = maybe_context.borrow().is_some();
+    if !exists {
+        // Init context outside of borrow. This allows the store to access other stores when it is
+        // being created.
+        let context = Context {
+            store: Mrc::new(Rc::new(S::new())),
+        };
+
+        *maybe_context.borrow_mut() = Some(context);
+    }
+
+    // Now we get the context, which must be initialized because we already checked above.
+    let context = maybe_context
+        .borrow()
+        .clone()
+        .expect("Context not initialized");
+
+    context
 }
 
 #[cfg(test)]
