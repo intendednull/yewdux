@@ -2,12 +2,11 @@ use std::rc::Rc;
 use std::{any::Any, marker::PhantomData};
 
 use slab::Slab;
-use yew::Callback;
 
 use crate::mrc::Mrc;
 use crate::store::Store;
 
-pub(crate) struct Subscribers<S>(pub(crate) Slab<Box<dyn Callable<S>>>);
+pub(crate) struct Subscribers<S>(pub(crate) Slab<Box<dyn Notify<S>>>);
 
 impl<S: 'static> Store for Subscribers<S> {
     fn new() -> Self {
@@ -20,7 +19,7 @@ impl<S: 'static> Store for Subscribers<S> {
 }
 
 impl<S: Store> Mrc<Subscribers<S>> {
-    pub(crate) fn subscribe<C: Callable<S>>(&self, on_change: C) -> SubscriberId<S> {
+    pub(crate) fn subscribe<C: Notify<S>>(&self, on_change: C) -> SubscriberId<S> {
         let key = self.borrow_mut().0.insert(Box::new(on_change));
         SubscriberId {
             subscribers_ref: self.clone(),
@@ -79,19 +78,13 @@ impl<S: Store> Drop for SubscriberId<S> {
     }
 }
 
-pub trait Callable<S>: 'static {
+pub trait Notify<S>: 'static {
     fn call(&self, value: Rc<S>);
 }
 
-impl<S, F: Fn(Rc<S>) + 'static> Callable<S> for F {
+impl<S, F: Fn(Rc<S>) + 'static> Notify<S> for F {
     fn call(&self, value: Rc<S>) {
         self(value)
-    }
-}
-
-impl<S: 'static> Callable<S> for Callback<Rc<S>> {
-    fn call(&self, value: Rc<S>) {
-        self.emit(value)
     }
 }
 

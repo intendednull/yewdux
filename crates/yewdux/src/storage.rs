@@ -28,7 +28,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use wasm_bindgen::{prelude::Closure, JsCast, JsValue};
 use web_sys::{Event, Storage};
 
-use crate::{dispatch::Dispatch, listener::Listener, store::Store};
+use anyflux::{dispatch::Dispatch, listener::Listener, store::Store};
 
 #[derive(Debug, thiserror::Error)]
 pub enum StorageError {

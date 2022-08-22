@@ -1,0 +1,23 @@
+[package]
+name = "anyflux"
+version = "0.1.0"
+authors = ["Noah <noah@coronasoftware.net>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yewdux/yewdux"
+readme = "README.md"
+description = "Generic flux-like state management"
+keywords = ["state", "redux", "shared", "container"]
+categories = ["wasm", "web-programming", "rust-patterns"]
+
+[features]
+default = ["future"]
+future = []
+
+[dependencies]
+anymap = "0.12"
+slab = "0.4"
+
+[dev-dependencies]
+async-std = { version = "1.11", features = ["attributes"] }
+

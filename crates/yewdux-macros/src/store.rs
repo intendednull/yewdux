@@ -38,7 +38,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
 
             quote! {
                 fn new() -> Self {
-                    ::yewdux::listener::init_listener(
+                    ::yewdux::anyflux::listener::init_listener(
                         ::yewdux::storage::StorageListener::<Self>::new(#area)
                     );
 
@@ -64,7 +64,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
 
     quote! {
         #[automatically_derived]
-        impl #impl_generics ::yewdux::store::Store for #ident #ty_generics #where_clause {
+        impl #impl_generics ::yewdux::anyflux::store::Store for #ident #ty_generics #where_clause {
             #impl_
 
             fn should_notify(&self, other: &Self) -> bool {

@@ -3,7 +3,7 @@ use std::{ops::Deref, rc::Rc};
 
 use yew::functional::*;
 
-use crate::{
+use anyflux::{
     dispatch::{self, Dispatch},
     store::Store,
 };
