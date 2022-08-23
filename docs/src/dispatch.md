@@ -1,7 +1,12 @@
+# Dispatch
+
+A [Dispatch](https://docs.rs/yewdux/0.8.1/yewdux/dispatch/struct.Dispatch.html) is the primary
+interface to [Store](https://docs.rs/yewdux/0.8.1/yewdux/store/trait.Store.html). It is used to
+read and write changes to state in various ways.
+
 # Creating a Dispatch
 
-`Dispatch` provides an interface to your `Store`. To create one you need only provide the store
-type.
+To create a dispatch, you need only provide the desired store type.
 
 ```rust
 let dispatch = Dispatch::<Counter>::new();
@@ -17,7 +22,7 @@ let (state, dispatch) = use_store::<Counter>();
 
 `Dispatch` provides many options for changing state.
 
-## `Dispatch::set`
+### `Dispatch::set`
 
 Assign the store to the given value.
 
@@ -25,7 +30,7 @@ Assign the store to the given value.
 dispatch.set(Counter { count: 0 });
 ```
 
-## `Dispatch::set_callback`
+### `Dispatch::set_callback`
 
 Generate a callback that will set the store to a given value.
 
@@ -36,7 +41,7 @@ html! {
 }
 ```
 
-## `Dispatch::reduce`
+### `Dispatch::reduce`
 
 Assign the state of the store using a reducer function.
 
@@ -44,7 +49,7 @@ Assign the state of the store using a reducer function.
 dispatch.reduce(|counter| Counter { count: counter.count + 1});
 ```
 
-## `Dispatch::reduce_callback`
+### `Dispatch::reduce_callback`
 
 Generate a callback that assigns state using a reducer function.
 
@@ -55,7 +60,7 @@ html! {
 }
 ```
 
-## `Dispatch::reduce_callback_with`
+### `Dispatch::reduce_callback_with`
 
 Similar to `Dispatch::reduce_callback`, but also includes the fired event.
 
@@ -80,13 +85,13 @@ html! {
 There are `_mut` variants to every reducer function. This way has less boilerplate, and requires
 your `Store` to implement `Clone`.
 
-## `Dispatch::reduce_mut`
+### `Dispatch::reduce_mut`
 
 ```rust
 dispatch.reduce_mut(|counter| counter.count += 1);
 ```
 
-## `Dispatch::reduce_mut_callback`
+### `Dispatch::reduce_mut_callback`
 
 ```rust
 let onclick = dispatch.reduce_mut_callback(|counter| counter.count += 1);
@@ -95,7 +100,7 @@ html! {
 }
 ```
 
-## `Dispatch::reduce_mut_callback_with`
+### `Dispatch::reduce_mut_callback_with`
 
 ```rust
 let onchange = dispatch.reduce_mut_callback_with(|counter, e: Event| {
@@ -148,7 +153,7 @@ impl Reducer<Counter> for Msg {
 ```
 
 
-## `Dispatch::apply`
+### `Dispatch::apply`
 
 Execute immediately.
 
@@ -156,7 +161,7 @@ Execute immediately.
 dispatch.apply(Msg::AddOne);
 ```
 
-## `Dispatch::apply_callback`
+### `Dispatch::apply_callback`
 
 Generate (you guessed it) a callback.
 

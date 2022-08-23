@@ -1,7 +1,7 @@
 # Defining a Store
 
-A `Store` represents state that is shared application-wide. It is initialized on first access, and
-lives for application lifetime.
+A [Store](https://docs.rs/yewdux/0.8.1/yewdux/store/trait.Store.html) represents state that is
+shared application-wide. It is initialized on first access, and lives for application lifetime.
 
 Implement `Store` for your state using the macro.
 
@@ -12,7 +12,8 @@ struct Counter {
 }
 ```
 
-Or do it manually.
+It is also simple to define a `Store` manually. This is useful when you need finer control over how
+it is created, or when to notify components.
 
 ```rust
 #[derive(PartialEq)]
