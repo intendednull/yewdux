@@ -31,6 +31,9 @@ use anyflux::{
 };
 
 pub trait DispatchExt<S> {
+    fn subscribe_callback(cb: Callback<Rc<S>>) -> Self;
+    fn subscribe_silent_callback(cb: Callback<Rc<S>>) -> Self;
+
     /// Callback for sending a message to the store.
     ///
     /// ```ignore
@@ -159,11 +162,14 @@ pub trait DispatchExt<S> {
 }
 
 impl<S: Store> DispatchExt<S> for Dispatch<S> {
-    /// Callback for sending a message to the store.
-    ///
-    /// ```ignore
-    /// let onclick = dispatch.apply_callback(|_| StoreMsg::AddOne);
-    /// ```
+    fn subscribe_callback(on_change: Callback<Rc<S>>) -> Self {
+        Self::subscribe(move |state| on_change.emit(state))
+    }
+
+    fn subscribe_silent_callback(on_change: Callback<Rc<S>>) -> Self {
+        Self::subscribe_silent(move |state| on_change.emit(state))
+    }
+
     fn apply_callback<E, M, F>(&self, f: F) -> Callback<E>
     where
         M: Reducer<S>,
@@ -175,7 +181,6 @@ impl<S: Store> DispatchExt<S> for Dispatch<S> {
         })
     }
 
-    /// Set state using value from callback.
     fn set_callback<E, F>(&self, f: F) -> Callback<E>
     where
         F: Fn(E) -> S + 'static,
@@ -186,11 +191,6 @@ impl<S: Store> DispatchExt<S> for Dispatch<S> {
         })
     }
 
-    /// Like [reduce](Self::reduce) but from a callback.
-    ///
-    /// ```ignore
-    /// let onclick = dispatch.reduce_callback(|s| State { count: s.count + 1 });
-    /// ```
     fn reduce_callback<F, R, E>(&self, f: F) -> Callback<E>
     where
         R: Into<Rc<S>>,
@@ -202,16 +202,6 @@ impl<S: Store> DispatchExt<S> for Dispatch<S> {
         })
     }
 
-    /// Create a callback to reduce state asynchronously.
-    ///
-    ///  ```ignore
-    /// let incr = dispatch.reduce_future_callback(|state| async move {
-    ///     State {
-    ///         count: state.count + 1,
-    ///     }
-    /// });
-    /// ```
-    ///
     #[cfg(feature = "future")]
     fn reduce_future_callback<R, FUT, FUN, E>(&self, f: FUN) -> Callback<E>
     where
@@ -229,11 +219,6 @@ impl<S: Store> DispatchExt<S> for Dispatch<S> {
         })
     }
 
-    /// Similar to [Self::reduce_callback] but also provides the fired event.
-    ///
-    /// ```ignore
-    /// let oninput = dispatch.reduce_callback_with(|state, count: u32| State { count });
-    /// ```
     fn reduce_callback_with<F, R, E>(&self, f: F) -> Callback<E>
     where
         R: Into<Rc<S>>,
@@ -245,16 +230,6 @@ impl<S: Store> DispatchExt<S> for Dispatch<S> {
         })
     }
 
-    /// Create a callback to reduce state asynchronously, with the fired event.
-    ///
-    /// ```ignore
-    /// let incr = dispatch.reduce_future_callback_with(|state, count| async move {
-    ///     State {
-    ///         count: state.count + count,
-    ///     }
-    /// });
-    /// ```
-    ///
     #[cfg(feature = "future")]
     fn reduce_future_callback_with<R, FUT, FUN, E>(&self, f: FUN) -> Callback<E>
     where
@@ -272,11 +247,6 @@ impl<S: Store> DispatchExt<S> for Dispatch<S> {
         })
     }
 
-    /// Like [Self::reduce_mut] but from a callback.
-    ///
-    /// ```ignore
-    /// let onclick = dispatch.reduce_mut_callback(|s| s.count += 1);
-    /// ```
     fn reduce_mut_callback<F, R, E>(&self, f: F) -> Callback<E>
     where
         S: Clone,
@@ -290,14 +260,6 @@ impl<S: Store> DispatchExt<S> for Dispatch<S> {
         })
     }
 
-    /// Create a callback to asynchronously mutate state with given function.
-    ///
-    /// ```ignore
-    /// let incr = dispatch.reduce_mut_future_callback(|state| Box::pin(async move {
-    ///     state.count += 1;
-    /// }));
-    /// ```
-    ///
     #[cfg(feature = "future")]
     fn reduce_mut_future_callback<R, F, E>(&self, f: F) -> Callback<E>
     where
@@ -314,11 +276,6 @@ impl<S: Store> DispatchExt<S> for Dispatch<S> {
         })
     }
 
-    /// Similar to [Self::reduce_mut_callback] but also provides the fired event.
-    ///
-    /// ```ignore
-    /// let oninput = dispatch.reduce_mut_callback_with(|state, name: String| state.name = name);
-    /// ```
     fn reduce_mut_callback_with<F, R, E>(&self, f: F) -> Callback<E>
     where
         S: Clone,
@@ -332,15 +289,6 @@ impl<S: Store> DispatchExt<S> for Dispatch<S> {
         })
     }
 
-    /// Create a callback to asynchronously mutate state with given function, provided the fired
-    /// event.
-    ///
-    /// ```ignore
-    /// let incr = dispatch.reduce_mut_future_callback_with(|state, count| Box::pin(async move {
-    ///     state.count += count;
-    /// }));
-    /// ```
-    ///
     #[cfg(feature = "future")]
     fn reduce_mut_future_callback_with<R, F, E>(&self, f: F) -> Callback<E>
     where
