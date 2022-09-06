@@ -33,6 +33,8 @@ use std::{
     rc::Rc,
 };
 
+use serde::{Deserialize, Serialize};
+
 use crate::store::Store;
 
 fn nonce() -> u32 {
@@ -54,7 +56,7 @@ fn nonce() -> u32 {
 /// detection (so it works with Yewdux). Whenever this type borrows mutably, it is marked as
 /// changed. Because there is no way to detect whether it has actually changed or not, it is up to
 /// the user to prevent unecessary re-renders.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Mrc<T> {
     inner: Rc<RefCell<T>>,
     nonce: Cell<u32>,

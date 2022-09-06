@@ -17,7 +17,7 @@ future = ["wasm-bindgen-futures"]
 [dependencies]
 anymap = "0.12.1"
 log = "0.4.16"
-serde = { version = "1.0.114" }
+serde = { version = "1.0.114", features = ["rc"] }
 serde_json = "1.0.64"
 slab = "0.4"
 thiserror = "1.0"
