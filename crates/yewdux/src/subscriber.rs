@@ -7,7 +7,7 @@ use yew::Callback;
 use crate::mrc::Mrc;
 use crate::store::Store;
 
-pub(crate) struct Subscribers<S>(pub(crate) Slab<Box<dyn Callable<S>>>);
+pub(crate) struct Subscribers<S>(pub(crate) Slab<Rc<dyn Callable<S>>>);
 
 impl<S: 'static> Store for Subscribers<S> {
     fn new() -> Self {
@@ -21,7 +21,7 @@ impl<S: 'static> Store for Subscribers<S> {
 
 impl<S: Store> Mrc<Subscribers<S>> {
     pub(crate) fn subscribe<C: Callable<S>>(&self, on_change: C) -> SubscriberId<S> {
-        let key = self.borrow_mut().0.insert(Box::new(on_change));
+        let key = self.borrow_mut().0.insert(Rc::new(on_change));
         SubscriberId {
             subscribers_ref: self.clone(),
             key,
@@ -34,7 +34,14 @@ impl<S: Store> Mrc<Subscribers<S>> {
     }
 
     pub(crate) fn notify(&self, state: Rc<S>) {
-        for (_, subscriber) in &self.borrow().0 {
+        let subscribers = self
+            .borrow()
+            .0
+            .iter()
+            .map(|(_, subscriber)| subscriber.clone())
+            .collect::<Vec<_>>();
+
+        for subscriber in subscribers {
             subscriber.call(Rc::clone(&state));
         }
     }
