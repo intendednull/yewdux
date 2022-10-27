@@ -14,6 +14,7 @@ fn App() -> Html {
         State {
             count: state.count + 1,
         }
+        .into()
     });
     let incr_mut = dispatch.reduce_mut_future_callback(|state| {
         Box::pin(async move {

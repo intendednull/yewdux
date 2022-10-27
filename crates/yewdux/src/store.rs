@@ -16,5 +16,14 @@ pub trait Store: 'static {
 /// A type that can change state.
 pub trait Reducer<S> {
     /// Mutate state.
-    fn apply(&self, state: Rc<S>) -> Rc<S>;
+    fn apply(self, state: Rc<S>) -> Rc<S>;
+}
+
+impl<F, S> Reducer<S> for F
+where
+    F: FnOnce(Rc<S>) -> Rc<S>,
+{
+    fn apply(self, state: Rc<S>) -> Rc<S> {
+        self(state)
+    }
 }

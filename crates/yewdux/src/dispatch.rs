@@ -73,7 +73,7 @@ impl<S: Store> Dispatch<S> {
 
     /// Send a message to the store.
     pub fn apply<M: Reducer<S>>(&self, msg: M) {
-        apply(msg);
+        reduce(msg);
     }
 
     /// Callback for sending a message to the store.
@@ -88,7 +88,7 @@ impl<S: Store> Dispatch<S> {
     {
         Callback::from(move |e| {
             let msg = f(e);
-            apply(msg);
+            reduce(msg);
         })
     }
 
@@ -111,12 +111,11 @@ impl<S: Store> Dispatch<S> {
     /// Mutate state with given function.
     ///
     /// ```ignore
-    /// let onclick = dispatch.reduce(|state| State { count: state.count + 1 });
+    /// let onclick = dispatch.reduce(|state| State { count: state.count + 1 }.into());
     /// ```
-    pub fn reduce<F, R>(&self, f: F)
+    pub fn reduce<F>(&self, f: F)
     where
-        R: Into<Rc<S>>,
-        F: FnOnce(Rc<S>) -> R,
+        F: FnOnce(Rc<S>) -> Rc<S>,
     {
         reduce(f);
     }
@@ -127,10 +126,9 @@ impl<S: Store> Dispatch<S> {
     /// dispatch.reduce_future(|state| async move { ... }).await;
     /// ```
     #[cfg(feature = "future")]
-    pub async fn reduce_future<R, FUT, FUN>(&self, f: FUN)
+    pub async fn reduce_future<FUT, FUN>(&self, f: FUN)
     where
-        R: Into<Rc<S>>,
-        FUT: Future<Output = R>,
+        FUT: Future<Output = Rc<S>>,
         FUN: FnOnce(Rc<S>) -> FUT,
     {
         reduce_future(f).await;
@@ -139,12 +137,11 @@ impl<S: Store> Dispatch<S> {
     /// Like [reduce](Self::reduce) but from a callback.
     ///
     /// ```ignore
-    /// let onclick = dispatch.reduce_callback(|s| State { count: s.count + 1 });
+    /// let onclick = dispatch.reduce_callback(|s| State { count: s.count + 1 }.into());
     /// ```
-    pub fn reduce_callback<F, R, E>(&self, f: F) -> Callback<E>
+    pub fn reduce_callback<F, E>(&self, f: F) -> Callback<E>
     where
-        R: Into<Rc<S>>,
-        F: Fn(Rc<S>) -> R + 'static,
+        F: Fn(Rc<S>) -> Rc<S> + 'static,
         E: 'static,
     {
         Callback::from(move |_| {
@@ -159,14 +156,14 @@ impl<S: Store> Dispatch<S> {
     ///     State {
     ///         count: state.count + 1,
     ///     }
+    ///     .into()
     /// });
     /// ```
     ///
     #[cfg(feature = "future")]
-    pub fn reduce_future_callback<R, FUT, FUN, E>(&self, f: FUN) -> Callback<E>
+    pub fn reduce_future_callback<FUT, FUN, E>(&self, f: FUN) -> Callback<E>
     where
-        R: Into<Rc<S>>,
-        FUT: Future<Output = R>,
+        FUT: Future<Output = Rc<S>>,
         FUN: Fn(Rc<S>) -> FUT + 'static,
         E: 'static,
     {
@@ -182,12 +179,11 @@ impl<S: Store> Dispatch<S> {
     /// Similar to [Self::reduce_callback] but also provides the fired event.
     ///
     /// ```ignore
-    /// let oninput = dispatch.reduce_callback_with(|state, count: u32| State { count });
+    /// let oninput = dispatch.reduce_callback_with(|state, count: u32| State { count }.into());
     /// ```
-    pub fn reduce_callback_with<F, R, E>(&self, f: F) -> Callback<E>
+    pub fn reduce_callback_with<F, E>(&self, f: F) -> Callback<E>
     where
-        R: Into<Rc<S>>,
-        F: Fn(Rc<S>, E) -> R + 'static,
+        F: Fn(Rc<S>, E) -> Rc<S> + 'static,
         E: 'static,
     {
         Callback::from(move |e: E| {
@@ -202,14 +198,14 @@ impl<S: Store> Dispatch<S> {
     ///     State {
     ///         count: state.count + count,
     ///     }
+    ///     .into()
     /// });
     /// ```
     ///
     #[cfg(feature = "future")]
-    pub fn reduce_future_callback_with<R, FUT, FUN, E>(&self, f: FUN) -> Callback<E>
+    pub fn reduce_future_callback_with<FUT, FUN, E>(&self, f: FUN) -> Callback<E>
     where
-        R: Into<Rc<S>>,
-        FUT: Future<Output = R>,
+        FUT: Future<Output = Rc<S>>,
         FUN: Fn(Rc<S>, E) -> FUT + 'static,
         E: 'static,
     {
@@ -361,9 +357,9 @@ impl<S: Store> PartialEq for Dispatch<S> {
 }
 
 /// Change state from a function.
-pub fn reduce<S: Store, R: Into<Rc<S>>, F: FnOnce(Rc<S>) -> R>(f: F) {
+pub fn reduce<S: Store, R: Reducer<S>>(r: R) {
     let context = context::get_or_init::<S>();
-    let should_notify = context.reduce(|s| f(s).into());
+    let should_notify = context.reduce(r);
 
     if should_notify {
         let state = Rc::clone(&context.store.borrow());
@@ -372,11 +368,10 @@ pub fn reduce<S: Store, R: Into<Rc<S>>, F: FnOnce(Rc<S>) -> R>(f: F) {
 }
 
 #[cfg(feature = "future")]
-pub async fn reduce_future<S, R, FUT, FUN>(f: FUN)
+pub async fn reduce_future<S, FUT, FUN>(f: FUN)
 where
     S: Store,
-    R: Into<Rc<S>>,
-    FUT: Future<Output = R>,
+    FUT: Future<Output = Rc<S>>,
     FUN: FnOnce(Rc<S>) -> FUT,
 {
     let context = context::get_or_init::<S>();
@@ -413,12 +408,7 @@ where
 
 /// Set state to given value.
 pub fn set<S: Store>(value: S) {
-    reduce(move |_| value);
-}
-
-/// Send a message to state.
-pub fn apply<S: Store, M: Reducer<S>>(msg: M) {
-    reduce(move |state| msg.apply(state));
+    reduce(move |_| value.into());
 }
 
 /// Get current state.
@@ -490,14 +480,14 @@ mod tests {
 
     #[test]
     fn apply_no_clone() {
-        reduce(|_| TestStateNoClone(1));
+        reduce(|_| TestStateNoClone(1).into());
     }
 
     #[test]
     fn reduce_changes_value() {
         let old = get::<TestState>();
 
-        reduce(|_| TestState(1));
+        reduce(|_| TestState(1).into());
 
         let new = get::<TestState>();
 
@@ -509,7 +499,7 @@ mod tests {
     async fn reduce_future_changes_value() {
         let old = get::<TestState>();
 
-        reduce_future(|state: Rc<TestState>| async move { TestState(state.0 + 1) }).await;
+        reduce_future(|state: Rc<TestState>| async move { TestState(state.0 + 1).into() }).await;
 
         let new = get::<TestState>();
 
@@ -542,7 +532,7 @@ mod tests {
     #[test]
     fn reduce_does_not_require_static() {
         let val = "1".to_string();
-        reduce(|_| TestState(val.parse().unwrap()));
+        reduce(|_| TestState(val.parse().unwrap()).into());
     }
 
     #[test]
@@ -566,7 +556,7 @@ mod tests {
     fn apply_changes_value() {
         let old = get::<TestState>();
 
-        apply::<TestState, Msg>(Msg);
+        reduce::<TestState, Msg>(Msg);
 
         let new = get::<TestState>();
 
@@ -627,7 +617,7 @@ mod tests {
         let dispatch = Dispatch::<TestState>::new();
         let old = dispatch.get();
 
-        dispatch.reduce(|_| TestState(1));
+        dispatch.reduce(|_| TestState(1).into());
 
         assert!(dispatch.get() != old)
     }
@@ -639,7 +629,7 @@ mod tests {
         let old = dispatch.get();
 
         dispatch
-            .reduce_future(|state| async move { TestState(state.0 + 1) })
+            .reduce_future(|state| async move { TestState(state.0 + 1).into() })
             .await;
 
         assert!(dispatch.get() != old)
@@ -650,7 +640,7 @@ mod tests {
         let dispatch = Dispatch::<TestState>::new();
         let old = dispatch.get();
 
-        let cb = dispatch.reduce_callback(|_| TestState(1));
+        let cb = dispatch.reduce_callback(|_| TestState(1).into());
         cb.emit(());
 
         assert!(dispatch.get() != old)
@@ -661,8 +651,9 @@ mod tests {
     async fn dispatch_reduce_future_callback_compiles() {
         let dispatch = Dispatch::<TestState>::new();
 
-        let _ = dispatch
-            .reduce_future_callback::<_, _, _, ()>(|state| async move { TestState(state.0 + 1) });
+        let _ = dispatch.reduce_future_callback::<_, _, ()>(|state| async move {
+            TestState(state.0 + 1).into()
+        });
     }
 
     #[test]
@@ -693,8 +684,9 @@ mod tests {
     async fn dispatch_reduce_future_callback_with_compiles() {
         let dispatch = Dispatch::<TestState>::new();
 
-        let _ = dispatch
-            .reduce_future_callback_with(|state, e: u32| async move { TestState(state.0 + e) });
+        let _ = dispatch.reduce_future_callback_with(|state, e: u32| async move {
+            TestState(state.0 + e).into()
+        });
     }
 
     #[test]
@@ -702,7 +694,7 @@ mod tests {
         let dispatch = Dispatch::<TestState>::new();
         let old = dispatch.get();
 
-        let cb = dispatch.reduce_callback_with(|_, _| TestState(1));
+        let cb = dispatch.reduce_callback_with(|_, _| TestState(1).into());
         cb.emit(1);
 
         assert!(dispatch.get() != old)

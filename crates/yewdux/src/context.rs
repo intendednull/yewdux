@@ -4,7 +4,10 @@ use std::rc::Rc;
 
 use anymap::AnyMap;
 
-use crate::{mrc::Mrc, store::Store};
+use crate::{
+    mrc::Mrc,
+    store::{Reducer, Store},
+};
 
 pub(crate) struct Context<S> {
     pub(crate) store: Mrc<Rc<S>>,
@@ -20,9 +23,9 @@ impl<S> Clone for Context<S> {
 
 impl<S: Store> Context<S> {
     /// Apply a function to state, returning if it should notify subscribers or not.
-    pub(crate) fn reduce(&self, f: impl FnOnce(Rc<S>) -> Rc<S>) -> bool {
+    pub(crate) fn reduce<R: Reducer<S>>(&self, r: R) -> bool {
         let old = Rc::clone(&self.store.borrow());
-        *self.store.borrow_mut() = f(Rc::clone(&old));
+        *self.store.borrow_mut() = r.apply(Rc::clone(&old));
 
         self.store.borrow().should_notify(&old)
     }
