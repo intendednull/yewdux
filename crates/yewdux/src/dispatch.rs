@@ -483,7 +483,7 @@ mod tests {
 
     struct Msg;
     impl Reducer<TestState> for Msg {
-        fn apply(&self, state: Rc<TestState>) -> Rc<TestState> {
+        fn apply(self, state: Rc<TestState>) -> Rc<TestState> {
             TestState(state.0 + 1).into()
         }
     }

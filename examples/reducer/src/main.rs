@@ -13,7 +13,7 @@ enum Msg {
 }
 
 impl Reducer<Counter> for Msg {
-    fn apply(&self, mut counter: Rc<Counter>) -> Rc<Counter> {
+    fn apply(self, mut counter: Rc<Counter>) -> Rc<Counter> {
         let state = Rc::make_mut(&mut counter);
         match self {
             Msg::AddOne => state.count += 1,
