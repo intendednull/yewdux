@@ -535,6 +535,23 @@ mod tests {
         assert!(old != new);
     }
 
+    #[cfg(feature = "future")]
+    #[async_std::test]
+    async fn reduce_future_does_not_clash() {
+        use std::time::Duration;
+
+        let dispatch = Dispatch::<TestState>::new();
+
+        dispatch
+            .reduce_future(|state| async move {
+                async_std::task::sleep(Duration::from_millis(100)).await;
+                state
+            })
+            .await;
+
+        dispatch.reduce(|s| s);
+    }
+
     #[test]
     fn reduce_mut_changes_value() {
         let old = get::<TestState>();
