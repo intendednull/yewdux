@@ -48,6 +48,9 @@ mod subscriber;
 #[doc(hidden)]
 pub use log;
 
+#[cfg(feature = "future")]
+pub use async_trait::async_trait;
+
 pub mod prelude {
     //! Default exports
 
@@ -60,4 +63,7 @@ pub mod prelude {
         listener::{init_listener, Listener},
         store::{Reducer, Store},
     };
+
+    #[cfg(feature = "future")]
+    pub use crate::store::AsyncReducer;
 }

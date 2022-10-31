@@ -28,7 +28,7 @@ use yew::Callback;
 use crate::{
     context,
     mrc::Mrc,
-    store::{Reducer, Store},
+    store::{AsyncReducer, Reducer, Store},
     subscriber::{Callable, SubscriberId, Subscribers},
 };
 
@@ -76,6 +76,12 @@ impl<S: Store> Dispatch<S> {
         reduce(msg);
     }
 
+    /// Send a message to the store in an async context.
+    #[cfg(feature = "future")]
+    pub async fn apply_future<M: AsyncReducer<S>>(&self, msg: M) {
+        reduce_future(msg).await;
+    }
+
     /// Callback for sending a message to the store.
     ///
     /// ```ignore
@@ -89,6 +95,25 @@ impl<S: Store> Dispatch<S> {
         Callback::from(move |e| {
             let msg = f(e);
             reduce(msg);
+        })
+    }
+
+    /// Callback for sending a message to the store.
+    ///
+    /// ```ignore
+    /// let onclick = dispatch.apply_future_callback(|_| StoreMsg::AddOne);
+    /// ```
+    #[cfg(feature = "future")]
+    pub fn apply_future_callback<E, M, F>(&self, f: F) -> Callback<E>
+    where
+        M: AsyncReducer<S> + 'static,
+        F: Fn(E) -> M + 'static,
+    {
+        Callback::from(move |e| {
+            let msg = f(e);
+            wasm_bindgen_futures::spawn_local(async move {
+                reduce_future(msg).await;
+            })
         })
     }
 
@@ -368,16 +393,13 @@ pub fn reduce<S: Store, R: Reducer<S>>(r: R) {
 }
 
 #[cfg(feature = "future")]
-pub async fn reduce_future<S, FUT, FUN>(f: FUN)
+pub async fn reduce_future<S, R>(r: R)
 where
     S: Store,
-    FUT: Future<Output = Rc<S>>,
-    FUN: FnOnce(Rc<S>) -> FUT,
+    R: AsyncReducer<S>,
 {
     let context = context::get_or_init::<S>();
-    let should_notify = context
-        .reduce_future(|s| async move { f(s).await.into() })
-        .await;
+    let should_notify = context.reduce_future(r).await;
 
     if should_notify {
         let state = Rc::clone(&context.store.borrow());
@@ -474,6 +496,13 @@ mod tests {
     struct Msg;
     impl Reducer<TestState> for Msg {
         fn apply(self, state: Rc<TestState>) -> Rc<TestState> {
+            TestState(state.0 + 1).into()
+        }
+    }
+
+    #[async_trait::async_trait(?Send)]
+    impl AsyncReducer<TestState> for Msg {
+        async fn apply(self, state: Rc<TestState>) -> Rc<TestState> {
             TestState(state.0 + 1).into()
         }
     }
@@ -733,6 +762,19 @@ mod tests {
         assert!(dispatch.get() != old)
     }
 
+    #[cfg(feature = "future")]
+    #[async_std::test]
+    async fn apply_future_changes_value() {
+        let old = get::<TestState>();
+        let dispatch = Dispatch::<TestState>::new();
+
+        dispatch.apply_future(Msg).await;
+
+        let new = get::<TestState>();
+
+        assert!(old != new);
+    }
+
     #[test]
     fn dispatch_apply_callback_works() {
         let dispatch = Dispatch::<TestState>::new();
@@ -742,6 +784,14 @@ mod tests {
         cb.emit(());
 
         assert!(dispatch.get() != old)
+    }
+
+    #[cfg(feature = "future")]
+    #[async_std::test]
+    async fn apply_future_callback_compiles() {
+        let dispatch = Dispatch::<TestState>::new();
+
+        dispatch.apply_future_callback(|_: ()| Msg);
     }
 
     #[test]

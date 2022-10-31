@@ -1,12 +1,11 @@
-#[cfg(feature = "future")]
-use std::future::Future;
+
 use std::rc::Rc;
 
 use anymap::AnyMap;
 
 use crate::{
     mrc::Mrc,
-    store::{Reducer, Store},
+    store::{AsyncReducer, Reducer, Store},
 };
 
 pub(crate) struct Context<S> {
@@ -32,14 +31,10 @@ impl<S: Store> Context<S> {
 
     /// Apply a future reduction to state, returning if it should notify subscribers or not.
     #[cfg(feature = "future")]
-    pub(crate) async fn reduce_future<FUN, FUT>(&self, f: FUN) -> bool
-    where
-        FUN: FnOnce(Rc<S>) -> FUT,
-        FUT: Future<Output = Rc<S>>,
-    {
+    pub(crate) async fn reduce_future<R: AsyncReducer<S>>(&self, r: R) -> bool {
         let old = Rc::clone(&self.store.borrow());
 
-        *self.store.borrow_mut() = f(Rc::clone(&old)).await;
+        *self.store.borrow_mut() = r.apply(Rc::clone(&old)).await;
 
         self.store.borrow().should_notify(&old)
     }
