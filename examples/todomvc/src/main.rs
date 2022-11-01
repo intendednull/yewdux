@@ -15,7 +15,7 @@ fn App() -> Html {
         <div class="todomvc-wrapper">
             <section class="todoapp">
                 <Header />
-                <section class={classes!("main", hidden_class)} >
+               <section class={classes!("main", hidden_class)} >
                     <ToggleAll />
                     <ListEntries />
                 </section>
@@ -64,44 +64,44 @@ fn Header() -> Html {
     }
 }
 
+#[derive(Properties, PartialEq, Clone)]
+struct SelectFilterProps {
+    active: Filter,
+    target: Filter,
+}
+
+#[function_component]
+fn SelectFilter(&SelectFilterProps { active, target }: &SelectFilterProps) -> Html {
+    let cls = if active == target {
+        "selected"
+    } else {
+        "not-selected"
+    };
+    let onclick = Dispatch::<State>::new().reduce_mut_callback(move |s| s.filter = target);
+    html! {
+        <li>
+            <a class={cls} href={target.as_href()} {onclick}>
+                { target }
+            </a>
+        </li>
+    }
+}
+
 #[function_component]
 fn Footer() -> Html {
     let active_filter = use_selector(|s: &State| s.filter);
-
-    let filters = {
-        let view_filter = |filter: Filter| {
-            let cls = if *active_filter == filter {
-                "selected"
-            } else {
-                "not-selected"
-            };
-            let onclick = Dispatch::<State>::new().reduce_mut_callback(move |s| s.filter = filter);
-            html! {
-                <li>
-                    <a class={cls} href={filter.as_href()} {onclick}>
-                        { filter }
-                    </a>
-                </li>
-            }
-        };
-
-        let items = [Filter::All, Filter::Active, Filter::Completed]
-            .iter()
-            .copied()
-            .map(view_filter)
-            .collect::<Html>();
-
-        html! {
-            <ul class="filters">
-                { items }
-            </ul>
-        }
-    };
+    let filters = [Filter::All, Filter::Active, Filter::Completed]
+        .iter()
+        .copied()
+        .map(|target| html! { <SelectFilter active={*active_filter} {target} /> })
+        .collect::<Html>();
 
     html! {
         <>
         <TodoCount />
-        { filters }
+        <ul class="filters">
+            { filters }
+        </ul>
         <BtnClearCompleted />
         </>
     }
@@ -147,103 +147,122 @@ fn ToggleAll() -> Html {
     }
 }
 
+#[derive(Properties, PartialEq, Clone)]
+struct EntryIdProps {
+    id: usize,
+}
+
 #[function_component]
-fn ListEntries() -> Html {
+fn EntryToggle(&EntryIdProps { id }: &EntryIdProps) -> Html {
+    let (state, dispatch) = use_store::<State>();
+    let entry = &state.entries[id];
+    let onclick = dispatch.reduce_mut_callback(move |s| s.toggle(id));
+    html! {
+        <input
+            type="checkbox"
+            class="toggle"
+            checked={entry.completed}
+            {onclick}
+        />
+    }
+}
+
+#[function_component]
+fn EntryDesc(&EntryIdProps { id }: &EntryIdProps) -> Html {
+    let (state, dispatch) = use_store::<State>();
+    let entry = &state.entries[id];
+    let ondblclick = dispatch.reduce_mut_callback(move |s| {
+        s.edit_value = s.entries[id].description.clone();
+        s.clear_all_edit();
+        s.toggle_edit(id);
+    });
+    let onclick = dispatch.reduce_mut_callback(move |s| s.remove(id));
+    html! {
+        <>
+        <label {ondblclick}>{ &entry.description }</label>
+        <button class="destroy" {onclick} />
+        </>
+    }
+}
+
+#[function_component]
+fn EntryEdit(&EntryIdProps { id }: &EntryIdProps) -> Html {
     let focus_ref = use_node_ref();
     let (state, dispatch) = use_store::<State>();
-    let view_entry = |(idx, entry): (usize, &Entry)| {
-        let mut class = Classes::from("todo");
-        if entry.editing {
-            class.push(" editing");
-        }
-        if entry.completed {
-            class.push(" completed");
-        }
+    let entry = &state.entries[id];
+    let edit = move |input: HtmlInputElement, state: &mut State| {
+        let value = input.value();
+        input.set_value("");
 
-        let toggle = {
-            let onclick = dispatch.reduce_mut_callback(move |s| s.toggle(idx));
-            html! {
-                <input
-                    type="checkbox"
-                    class="toggle"
-                    checked={entry.completed}
-                    {onclick}
-                />
-            }
-        };
-        let view = {
-            let ondblclick = dispatch.reduce_mut_callback(move |s| {
-                s.edit_value = s.entries[idx].description.clone();
-                s.clear_all_edit();
-                s.toggle_edit(idx);
-            });
-            let onclick = dispatch.reduce_mut_callback(move |s| s.remove(idx));
-            html! {
-                <>
-                <label {ondblclick}>{ &entry.description }</label>
-                <button class="destroy" {onclick} />
-                </>
-            }
-        };
-        let edit = {
-            let edit = move |input: HtmlInputElement, state: &mut State| {
-                let value = input.value();
-                input.set_value("");
-
-                state.complete_edit(idx, value.trim().to_string());
-                state.edit_value = "".to_string();
-            };
-            let onblur = dispatch.reduce_mut_callback_with(move |s, e: FocusEvent| {
-                edit(e.target_unchecked_into(), s)
-            });
-            let onmouseover = {
-                let focus_ref = focus_ref.clone();
-                Callback::from(move |_| {
-                    if let Some(input) = focus_ref.cast::<HtmlInputElement>() {
-                        input.focus().unwrap();
-                    }
-                })
-            };
-            let onkeypress = dispatch.reduce_mut_callback_with(move |s, e: KeyboardEvent| {
-                if e.key() == "Enter" {
-                    edit(e.target_unchecked_into(), s)
-                }
-            });
-
-            if entry.editing {
-                html! {
-                    <input
-                        class="edit"
-                        type="text"
-                        ref={focus_ref.clone()}
-                        value={state.edit_value.clone()}
-                        {onmouseover}
-                        {onblur}
-                        {onkeypress}
-                    />
-                }
-            } else {
-                html! { <input type="hidden" /> }
-            }
-        };
-
-        html! {
-            <li {class}>
-                <div class="view">
-                    { toggle }
-                    { view }
-                </div>
-                { edit }
-            </li>
-        }
+        state.complete_edit(id, value.trim().to_string());
+        state.edit_value = "".to_string();
     };
+    let onblur = dispatch
+        .reduce_mut_callback_with(move |s, e: FocusEvent| edit(e.target_unchecked_into(), s));
+    let onmouseover = {
+        let focus_ref = focus_ref.clone();
+        Callback::from(move |_| {
+            if let Some(input) = focus_ref.cast::<HtmlInputElement>() {
+                input.focus().unwrap();
+            }
+        })
+    };
+    let onkeypress = dispatch.reduce_mut_callback_with(move |s, e: KeyboardEvent| {
+        if e.key() == "Enter" {
+            edit(e.target_unchecked_into(), s)
+        }
+    });
 
+    if entry.editing {
+        html! {
+            <input
+                class="edit"
+                type="text"
+                ref={focus_ref.clone()}
+                value={state.edit_value.clone()}
+                {onmouseover}
+                {onblur}
+                {onkeypress}
+            />
+        }
+    } else {
+        html! { <input type="hidden" /> }
+    }
+}
+
+#[function_component]
+fn ViewEntry(&EntryIdProps { id }: &EntryIdProps) -> Html {
+    let mut class = Classes::from("todo");
+    let state = use_store_value::<State>();
+    let entry = &state.entries[id];
+
+    if entry.editing {
+        class.push(" editing");
+    }
+    if entry.completed {
+        class.push(" completed");
+    }
+
+    html! {
+        <li {class}>
+            <div class="view">
+                <EntryToggle {id} />
+                <EntryDesc {id} />
+            </div>
+            <EntryEdit {id} />
+        </li>
+    }
+}
+
+#[function_component]
+fn ListEntries() -> Html {
+    let state = use_store_value::<State>();
     let entries = state
         .entries
         .iter()
-        .filter(|e| state.filter.fits(e))
         .enumerate()
-        .map(view_entry)
+        .filter(|(_, e)| state.filter.fits(e))
+        .map(|(id, _)| html! { <ViewEntry {id} /> })
         .collect::<Html>();
 
     html! {
