@@ -15,7 +15,7 @@ default = ["future"]
 future = ["wasm-bindgen-futures"]
 
 [dependencies]
-anymap = "0.12.1"
+anymap = "1.0.0-beta.2"
 async-trait = "0.1.58"
 log = "0.4.16"
 serde = { version = "1.0.114", features = ["rc"] }
