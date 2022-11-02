@@ -2,31 +2,26 @@
 //!
 //! Useful when you don't want to implement `Clone` or `PartialEq` for a type.
 //!
-//! ```ignore
-//! use yew::prelude::*;
-//! use yewdux::{prelude::*, mrc::Mrc};
-//!
-//! // Notice we don't implement Clone or PartialEq.
-//! #[derive(Default)]
-//! struct MyLargeData(u32);
-//!
-//! #[derive(Default, Clone, PartialEq, Store)]
-//! struct State {
-//!     // Your expensive-clone field here.
-//!     data: Mrc<MyLargeData>,
-//! }
 //! ```
+//! # use yewdux::mrc::Mrc;
+//! # fn main() {
+//! let expensive_data = Mrc::new("Some long string that shouldn't be cloned.".to_string());
+//! let old_ref = expensive_data.clone();
 //!
-//! Mutating is done as expected:
+//! // They are equal (for now).
+//! assert!(expensive_data == old_ref);
 //!
-//! ```ignore
-//! let onclick = dispatch.reduce_callback(|state| {
-//!     let mut data = state.data.borrow_mut();
+//! // Here we use interior mutability to change the inner value. Doing so will mark the
+//! // container as changed.
+//! *expensive_data.borrow_mut() += " Here we can modify our expensive data.";
 //!
-//!     data.0 += 1;
-//! });
+//! // Once marked as changed, it will cause any equality check to fail (forcing a re-render).
+//! assert!(expensive_data != old_ref);
+//! // The underlying state is the same though.
+//! assert!(*expensive_data.borrow() == *old_ref.borrow());
+//! # }
 //! ```
-//!
+
 use std::{
     cell::{Cell, RefCell},
     ops::{Deref, DerefMut},

@@ -1,16 +1,16 @@
 //!  This module defines how you can interact with your [`Store`].
 //!
-//!  ```ignore
+//!  ```
 //!  use yewdux::prelude::*;
 //!
-//!  #[derive(Default, Clone, Store)]
-//!  struct MyState {
+//!  #[derive(Default, Clone, PartialEq, Store)]
+//!  struct State {
 //!     count: usize,
 //!  }
 //!
 //!  # fn main() {
-//!  let dispatch = Dispatch::<MyState>::new();
-//!  dispatch.reduce(|state| state.count = 1);
+//!  let dispatch = Dispatch::<State>::new();
+//!  dispatch.reduce_mut(|state| state.count = 1);
 //!
 //!  let state = dispatch.get();
 //!
@@ -47,6 +47,57 @@ impl<S: Store> Dispatch<S> {
 
     /// Create a dispatch that subscribes to changes in state. Latest state is sent immediately,
     /// and on every subsequent change. Automatically unsubscribes when this dispatch is dropped.
+    /// ```
+    /// use std::rc::Rc;
+    ///
+    /// use yew::prelude::*;
+    /// use yewdux::prelude::*;
+    ///
+    /// #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// struct State {
+    ///     count: u32,
+    /// }
+    ///
+    /// struct App {
+    ///     /// Our local version of state.
+    ///     state: Rc<State>,
+    ///     /// Our dispatch. Make sure to keep this, or the subscription will be dropped.
+    ///     dispatch: Dispatch<State>,
+    /// }
+    ///
+    /// enum Msg {
+    ///     /// Message to receive new state.
+    ///     State(Rc<State>),
+    /// }
+    ///
+    /// impl Component for App {
+    ///     type Message = Msg;
+    /// #    type Properties = ();
+    ///
+    ///     fn create(ctx: &Context<Self>) -> Self {
+    ///         let on_change = ctx.link().callback(Msg::State);
+    ///         let dispatch = Dispatch::subscribe(on_change);
+    ///         Self {
+    ///             state: dispatch.get(),
+    ///             dispatch,
+    ///         }
+    ///     }
+    ///
+    ///     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    ///         match msg {
+    ///             Msg::State(state) => {
+    ///                 self.state = state;
+    ///                 true
+    ///             }
+    ///         }
+    ///     }
+    ///
+    ///     /// ...
+    /// #    fn view(&self, _ctx: &Context<Self>) -> Html {
+    /// #        html! {}
+    /// #    }
+    /// }
+    /// ```
     pub fn subscribe<C: Callable<S>>(on_change: C) -> Self {
         let id = subscribe(on_change);
 
@@ -71,21 +122,104 @@ impl<S: Store> Dispatch<S> {
         get::<S>()
     }
 
-    /// Send a message to the store.
-    pub fn apply<M: Reducer<S>>(&self, msg: M) {
-        reduce(msg);
-    }
-
-    /// Send a message to the store in an async context.
-    #[cfg(feature = "future")]
-    pub async fn apply_future<M: AsyncReducer<S>>(&self, msg: M) {
-        reduce_future(msg).await;
-    }
-
-    /// Callback for sending a message to the store.
+    /// Apply a [`Reducer`](crate::store::Reducer) immediately.
     ///
-    /// ```ignore
-    /// let onclick = dispatch.apply_callback(|_| StoreMsg::AddOne);
+    /// ```
+    /// # use std::rc::Rc;
+    /// # use yew::prelude::*;
+    /// # use yewdux::prelude::*;
+    /// #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// struct State {
+    ///     count: u32,
+    /// }
+    ///
+    /// struct AddOne;
+    /// impl Reducer<State> for AddOne {
+    ///     fn apply(self, state: Rc<State>) -> Rc<State> {
+    ///         State {
+    ///             count: state.count + 1,
+    ///         }
+    ///         .into()
+    ///     }
+    /// }
+    ///
+    /// # fn main() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// dispatch.apply(AddOne);
+    /// # ;
+    /// # }
+    /// ```
+    pub fn apply<R: Reducer<S>>(&self, reducer: R) {
+        reduce(reducer);
+    }
+
+    /// Apply an [`AsyncReducer`](crate::store::AsyncReducer) immediately.
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # async fn get_incr() -> u32 {
+    /// #     1
+    /// # }
+    /// #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// struct State {
+    ///     count: u32,
+    /// }
+    ///
+    /// struct AddOne;
+    /// #[async_trait(?Send)]
+    /// impl AsyncReducer<State> for AddOne {
+    ///     async fn apply(self, state: Rc<State>) -> Rc<State> {
+    ///         // you can do async things here!
+    ///         let incr = get_incr().await;
+    ///         State {
+    ///             count: state.count + incr,
+    ///         }
+    ///         .into()
+    ///     }
+    /// }
+    ///
+    /// # async fn do_thing() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// dispatch.apply_future(AddOne).await;
+    /// # ;
+    /// # }
+    /// ```
+    #[cfg(feature = "future")]
+    pub async fn apply_future<R: AsyncReducer<S>>(&self, reducer: R) {
+        reduce_future(reducer).await;
+    }
+
+    /// Create a callback that applies a [`Reducer`](crate::store::Reducer).
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// # use yew::prelude::*;
+    /// # use yewdux::prelude::*;
+    /// #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// struct State {
+    ///     count: u32,
+    /// }
+    ///
+    /// struct AddOne;
+    /// impl Reducer<State> for AddOne {
+    ///     fn apply(self, state: Rc<State>) -> Rc<State> {
+    ///         State {
+    ///             count: state.count + 1,
+    ///         }
+    ///         .into()
+    ///     }
+    /// }
+    ///
+    /// # fn main() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// let onclick = dispatch.apply_callback(|_| AddOne);
+    /// html! {
+    ///     <button {onclick}>{"+1"}</button>
+    /// }
+    /// # ;
+    /// # }
     /// ```
     pub fn apply_callback<E, M, F>(&self, f: F) -> Callback<E>
     where
@@ -98,10 +232,41 @@ impl<S: Store> Dispatch<S> {
         })
     }
 
-    /// Callback for sending a message to the store.
+    /// Create a callback for applying an [`AsyncReducer`](crate::store::AsyncReducer).
     ///
-    /// ```ignore
-    /// let onclick = dispatch.apply_future_callback(|_| StoreMsg::AddOne);
+    /// ```
+    /// # use std::rc::Rc;
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # async fn get_incr() -> u32 {
+    /// #     1
+    /// # }
+    /// #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// struct State {
+    ///     count: u32,
+    /// }
+    ///
+    /// struct AddOne;
+    /// #[async_trait(?Send)]
+    /// impl AsyncReducer<State> for AddOne {
+    ///     async fn apply(self, state: Rc<State>) -> Rc<State> {
+    ///         // you can do async things here!
+    ///         let incr = get_incr().await;
+    ///         State {
+    ///             count: state.count + incr,
+    ///         }
+    ///         .into()
+    ///     }
+    /// }
+    ///
+    /// # fn main() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// let onclick = dispatch.apply_future_callback(|_| AddOne);
+    /// html! {
+    ///     <button {onclick}>{"+1"}</button>
+    /// }
+    /// # ;
+    /// # }
     /// ```
     #[cfg(feature = "future")]
     pub fn apply_future_callback<E, M, F>(&self, f: F) -> Callback<E>
@@ -117,12 +282,45 @@ impl<S: Store> Dispatch<S> {
         })
     }
 
-    /// Set state to given value.
+    /// Set state to given value immediately.
+    ///
+    /// ```
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// # struct State {
+    /// #     count: u32,
+    /// # }
+    /// # fn main() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// dispatch.set(State { count: 0 });
+    /// # }
+    /// ```
     pub fn set(&self, val: S) {
         set(val);
     }
 
     /// Set state using value from callback.
+    ///
+    /// ```
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// # struct State {
+    /// #     count: u32,
+    /// # }
+    /// # fn main() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// let onchange = dispatch.set_callback(|event: Event| {
+    ///     let value = event.target_unchecked_into::<web_sys::HtmlInputElement>().value();
+    ///     State { count: value.parse().unwrap() }
+    /// });
+    /// html! {
+    ///     <input type="number" placeholder="Enter a number" {onchange}  />
+    /// }
+    /// # ;
+    /// # }
+    /// ```
     pub fn set_callback<E, F>(&self, f: F) -> Callback<E>
     where
         F: Fn(E) -> S + 'static,
@@ -133,10 +331,19 @@ impl<S: Store> Dispatch<S> {
         })
     }
 
-    /// Mutate state with given function.
+    /// Change state immediately.
     ///
-    /// ```ignore
-    /// let onclick = dispatch.reduce(|state| State { count: state.count + 1 }.into());
+    /// ```
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// # struct State {
+    /// #     count: u32,
+    /// # }
+    /// # fn main() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// dispatch.reduce(|state| State { count: state.count + 1 }.into());
+    /// # }
     /// ```
     pub fn reduce<F>(&self, f: F)
     where
@@ -145,10 +352,31 @@ impl<S: Store> Dispatch<S> {
         reduce(f);
     }
 
-    /// Mutate state with a given function, asynchronously.
+    /// Change state immediately, in an async context.
     ///
-    /// ```ignore
-    /// dispatch.reduce_future(|state| async move { ... }).await;
+    /// ```
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// # struct State {
+    /// #     count: u32,
+    /// # }
+    /// # async fn get_incr() -> u32 {
+    /// #   1
+    /// # }
+    /// # async fn do_thing() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// dispatch
+    ///     .reduce_future(|state| async move {
+    ///         let incr = get_incr().await;
+    ///         State {
+    ///             count: state.count + incr,
+    ///         }
+    ///         .into()
+    ///     })
+    ///     .await;
+    ///
+    /// # }
     /// ```
     #[cfg(feature = "future")]
     pub async fn reduce_future<FUT, FUN>(&self, f: FUN)
@@ -159,10 +387,23 @@ impl<S: Store> Dispatch<S> {
         reduce_future(f).await;
     }
 
-    /// Like [reduce](Self::reduce) but from a callback.
+    /// Create a callback that changes state.
     ///
-    /// ```ignore
-    /// let onclick = dispatch.reduce_callback(|s| State { count: s.count + 1 }.into());
+    /// ```
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// # struct State {
+    /// #     count: u32,
+    /// # }
+    /// # fn main() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// let onclick = dispatch.reduce_callback(|state| State { count: state.count + 1 }.into());
+    /// html! {
+    ///     <button {onclick}>{"+1"}</button>
+    /// }
+    /// # ;
+    /// # }
     /// ```
     pub fn reduce_callback<F, E>(&self, f: F) -> Callback<E>
     where
@@ -176,15 +417,31 @@ impl<S: Store> Dispatch<S> {
 
     /// Create a callback to reduce state asynchronously.
     ///
-    ///  ```ignore
-    /// let incr = dispatch.reduce_future_callback(|state| async move {
+    /// ```
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// # struct State {
+    /// #     count: u32,
+    /// # }
+    /// # async fn get_incr() -> u32 {
+    /// #   1
+    /// # }
+    /// # fn main() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// let onclick = dispatch.reduce_future_callback(|state| async move {
+    ///     let incr = get_incr().await;
     ///     State {
-    ///         count: state.count + 1,
+    ///         count: state.count + incr,
     ///     }
     ///     .into()
     /// });
+    /// html! {
+    ///     <button {onclick}>{"+1"}</button>
+    /// }
+    /// # ;
+    /// # }
     /// ```
-    ///
     #[cfg(feature = "future")]
     pub fn reduce_future_callback<FUT, FUN, E>(&self, f: FUN) -> Callback<E>
     where
@@ -203,8 +460,27 @@ impl<S: Store> Dispatch<S> {
 
     /// Similar to [Self::reduce_callback] but also provides the fired event.
     ///
-    /// ```ignore
-    /// let oninput = dispatch.reduce_callback_with(|state, count: u32| State { count }.into());
+    /// ```
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// # struct State {
+    /// #     count: u32,
+    /// # }
+    /// # fn main() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// let onchange = dispatch.reduce_callback_with(|state, event: Event| {
+    ///     let value = event.target_unchecked_into::<web_sys::HtmlInputElement>().value();
+    ///     State {
+    ///         count: value.parse().unwrap()
+    ///     }
+    ///     .into()
+    /// });
+    /// html! {
+    ///     <input type="number" placeholder="Enter a number" {onchange}  />
+    /// }
+    /// # ;
+    /// # }
     /// ```
     pub fn reduce_callback_with<F, E>(&self, f: F) -> Callback<E>
     where
@@ -218,15 +494,33 @@ impl<S: Store> Dispatch<S> {
 
     /// Create a callback to reduce state asynchronously, with the fired event.
     ///
-    /// ```ignore
-    /// let incr = dispatch.reduce_future_callback_with(|state, count| async move {
+    /// ```
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// # struct State {
+    /// #     count: u32,
+    /// # }
+    /// # async fn get_incr() -> u32 {
+    /// #     1
+    /// # }
+    /// # fn main() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// let onchange = dispatch.reduce_future_callback_with(|state, event: Event| async move {
+    ///     let value = event.target_unchecked_into::<web_sys::HtmlInputElement>().value();
+    ///     let incr = get_incr().await;
+    ///     let count = value.parse::<u32>().unwrap() * incr;
     ///     State {
     ///         count: state.count + count,
     ///     }
     ///     .into()
     /// });
+    /// html! {
+    ///     <input type="number" placeholder="Enter a number" {onchange}  />
+    /// }
+    /// # ;
+    /// # }
     /// ```
-    ///
     #[cfg(feature = "future")]
     pub fn reduce_future_callback_with<FUT, FUN, E>(&self, f: FUN) -> Callback<E>
     where
@@ -245,8 +539,17 @@ impl<S: Store> Dispatch<S> {
 
     /// Mutate state with given function.
     ///
-    /// ```ignore
-    /// let onclick = dispatch.reduce_mut(|state| state.count += 1);
+    /// ```
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// # struct State {
+    /// #     count: u32,
+    /// # }
+    /// # fn main() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// dispatch.reduce_mut(|state| state.count += 1);
+    /// # }
     /// ```
     pub fn reduce_mut<F, R>(&self, f: F)
     where
@@ -260,8 +563,27 @@ impl<S: Store> Dispatch<S> {
 
     /// Mutate state with given function, in an async context.
     ///
-    /// ```ignore
-    /// dispatch.reduce_mut_future(|state| Box::pin(async move { *state = ... })).await;
+    /// ```
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// # struct State {
+    /// #     count: u32,
+    /// # }
+    /// # async fn get_incr() -> u32 {
+    /// #   1
+    /// # }
+    /// # async fn do_thing() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// dispatch
+    ///     .reduce_mut_future(|state| {
+    ///         Box::pin(async move {
+    ///             let incr = get_incr().await;
+    ///             state.count += incr;
+    ///         })
+    ///     })
+    ///     .await;
+    /// # }
     /// ```
     #[cfg(feature = "future")]
     pub async fn reduce_mut_future<R, F>(&self, f: F)
@@ -274,8 +596,21 @@ impl<S: Store> Dispatch<S> {
 
     /// Like [Self::reduce_mut] but from a callback.
     ///
-    /// ```ignore
+    /// ```
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// # struct State {
+    /// #     count: u32,
+    /// # }
+    /// # fn main() {
+    /// # let dispatch = Dispatch::<State>::new();
     /// let onclick = dispatch.reduce_mut_callback(|s| s.count += 1);
+    /// html! {
+    ///     <button {onclick}>{"+1"}</button>
+    /// }
+    /// # ;
+    /// # }
     /// ```
     pub fn reduce_mut_callback<F, R, E>(&self, f: F) -> Callback<E>
     where
@@ -290,12 +625,29 @@ impl<S: Store> Dispatch<S> {
         })
     }
 
-    /// Create a callback to asynchronously mutate state with given function.
+    /// Create a callback to asynchronously mutate state.
     ///
-    /// ```ignore
-    /// let incr = dispatch.reduce_mut_future_callback(|state| Box::pin(async move {
-    ///     state.count += 1;
+    /// ```
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// # struct State {
+    /// #     count: u32,
+    /// # }
+    /// # async fn get_incr() -> u32 {
+    /// #   1
+    /// # }
+    /// # fn main() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// let onclick = dispatch.reduce_mut_future_callback(|state| Box::pin(async move {
+    ///     let incr = get_incr().await;
+    ///     state.count += incr;
     /// }));
+    /// html! {
+    ///     <button {onclick}>{"+1"}</button>
+    /// }
+    /// # ;
+    /// # }
     /// ```
     ///
     #[cfg(feature = "future")]
@@ -316,8 +668,24 @@ impl<S: Store> Dispatch<S> {
 
     /// Similar to [Self::reduce_mut_callback] but also provides the fired event.
     ///
-    /// ```ignore
-    /// let oninput = dispatch.reduce_mut_callback_with(|state, name: String| state.name = name);
+    /// ```
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// # struct State {
+    /// #     count: u32,
+    /// # }
+    /// # fn main() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// let onchange = dispatch.reduce_mut_callback_with(|state, event: Event| {
+    ///     let value = event.target_unchecked_into::<web_sys::HtmlInputElement>().value();
+    ///     state.count = value.parse().unwrap();
+    /// });
+    /// html! {
+    ///     <input type="number" placeholder="Enter a number" {onchange}  />
+    /// }
+    /// # ;
+    /// # }
     /// ```
     pub fn reduce_mut_callback_with<F, R, E>(&self, f: F) -> Callback<E>
     where
@@ -335,12 +703,33 @@ impl<S: Store> Dispatch<S> {
     /// Create a callback to asynchronously mutate state with given function, provided the fired
     /// event.
     ///
-    /// ```ignore
-    /// let incr = dispatch.reduce_mut_future_callback_with(|state, count| Box::pin(async move {
-    ///     state.count += count;
-    /// }));
     /// ```
-    ///
+    /// # use yew::prelude::*;
+    /// # use yewdux::{prelude::*, async_trait};
+    /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
+    /// # struct State {
+    /// #     count: u32,
+    /// # }
+    /// # async fn get_incr() -> u32 {
+    /// #     1
+    /// # }
+    /// # fn main() {
+    /// # let dispatch = Dispatch::<State>::new();
+    /// let onchange = dispatch.reduce_mut_future_callback_with(|state, event: Event| {
+    ///     Box::pin(async move {
+    ///         let value = event
+    ///             .target_unchecked_into::<web_sys::HtmlInputElement>()
+    ///             .value();
+    ///         let incr = get_incr().await;
+    ///         state.count = value.parse::<u32>().unwrap() * incr;
+    ///     })
+    /// });
+    /// html! {
+    ///     <input type="number" placeholder="Enter a number" {onchange}  />
+    /// }
+    /// # ;
+    /// # }
+    /// ```
     #[cfg(feature = "future")]
     pub fn reduce_mut_future_callback_with<R, F, E>(&self, f: F) -> Callback<E>
     where

@@ -1,23 +1,40 @@
 //! Store persistence through session or local storage
 //!
 //! ```
-//! use yewdux::prelude::*;
-//! use serde::{Serialize, Deserialize};
+//! use std::rc::Rc;
 //!
-//! #[derive(Clone, PartialEq, Serialize, Deserialize)]
-//! struct Counter {
+//! use yewdux::{prelude::*, storage};
+//!
+//! use serde::{Deserialize, Serialize};
+//!
+//! struct StorageListener;
+//! impl Listener for StorageListener {
+//!     type Store = State;
+//!
+//!     fn on_change(&mut self, state: Rc<Self::Store>) {
+//!         if let Err(err) = storage::save(state.as_ref(), storage::Area::Local) {
+//!             println!("Error saving state to storage: {:?}", err);
+//!         }
+//!     }
+//! }
+//!
+//! #[derive(Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
+//! struct State {
 //!     count: u32,
 //! }
 //!
-//! impl Store for Counter {
+//! impl Store for State {
 //!     fn new() -> Self {
+//!         init_listener(StorageListener);
+//!
 //!         storage::load(storage::Area::Local)
-//!             .expect("Unable to load state")
+//!             .ok()
+//!             .flatten()
 //!             .unwrap_or_default()
 //!     }
 //!
-//!     fn should_notify(&mut self) {
-//!         storage::save(self, storage::Area::Local).expect("Unable to save state");
+//!     fn should_notify(&self, other: &Self) -> bool {
+//!         self != other
 //!     }
 //! }
 //! ```

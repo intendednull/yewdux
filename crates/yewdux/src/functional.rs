@@ -12,20 +12,19 @@ use crate::{
 /// automatically triggered.
 ///
 /// # Example
-/// ```ignore
-/// # use yew_functional::function_component;
-/// # use yew::prelude::*;
-/// use yewdux_functional::use_store;
+/// ```
+/// use yew::prelude::*;
+/// use yewdux::prelude::*;
 ///
-/// #[derive(Default, Clone, Store)]
+/// #[derive(Default, Clone, PartialEq, Store)]
 /// struct State {
 ///     count: u32,
 /// }
 ///
-/// #[function_component(App)]
-/// fn app() -> Html {
+/// #[function_component]
+/// fn App() -> Html {
 ///     let (state, dispatch) = use_store::<State>();
-///     let onclick = dispatch.reduce_callback(|s| s.count += 1);
+///     let onclick = dispatch.reduce_mut_callback(|s| s.count += 1);
 ///     html! {
 ///         <>
 ///         <p>{ state.count }</p>
@@ -54,46 +53,14 @@ pub fn use_store_value<S: Store>() -> Rc<S> {
     state
 }
 
-/// This hook provides access to a portion of state. The equality function tests whether the next
-/// selection is equal to previous, and re-renders when true.
+/// Provides access to some derived portion of state. Useful when you only want to rerender
+/// when that portion has changed.
 ///
 /// # Example
-/// ```ignore
-/// #[derive(Default, Clone, PartialEq, Store)]
-/// struct State {
-///     count: u32,
-/// }
-///
-/// #[function_component]
-/// fn App() -> Html {
-///     let count = use_selector_eq(|state: &State| state.count, |a, b| a == b);
-///     let dispatch = Dispatch::<State>::new();
-///     let onclick = dispatch.reduce_callback(|state| state.count += 1);
-///
-///     html! {
-///         <>
-///         <p>{ *count }</p>
-///         <button {onclick}>{"+1"}</button>
-///         </>
-///     }
-/// }
 /// ```
-#[hook]
-pub fn use_selector_eq<S, F, R, E>(selector: F, eq: E) -> Rc<R>
-where
-    S: Store,
-    R: 'static,
-    F: Fn(&S) -> R + 'static,
-    E: Fn(&R, &R) -> bool + 'static,
-{
-    use_selector_eq_with_deps(move |state, _| selector(state), eq, ())
-}
-
-/// This hook provides access to a portion of state. Similar to [`use_selector_eq`], with a default
-/// equality function of `|a, b| a == b`.
+/// use yew::prelude::*;
+/// use yewdux::prelude::*;
 ///
-/// # Example
-/// ```ignore
 /// #[derive(Default, Clone, PartialEq, Store)]
 /// struct State {
 ///     count: u32,
@@ -102,8 +69,7 @@ where
 /// #[function_component]
 /// fn App() -> Html {
 ///     let count = use_selector(|state: &State| state.count);
-///     let dispatch = Dispatch::<State>::new();
-///     let onclick = dispatch.reduce_callback(|state| state.count += 1);
+///     let onclick = Dispatch::<State>::new().reduce_mut_callback(|state| state.count += 1);
 ///
 ///     html! {
 ///         <>
@@ -123,34 +89,50 @@ where
     use_selector_eq(selector, |a, b| a == b)
 }
 
-/// Hook for selecting a value with dependencies.
+/// Similar to [`use_selector`], with the additional flexibility of a custom equality check for
+/// selected value.
+#[hook]
+pub fn use_selector_eq<S, F, R, E>(selector: F, eq: E) -> Rc<R>
+where
+    S: Store,
+    R: 'static,
+    F: Fn(&S) -> R + 'static,
+    E: Fn(&R, &R) -> bool + 'static,
+{
+    use_selector_eq_with_deps(move |state, _| selector(state), eq, ())
+}
+
+/// Similar to [`use_selector`], but also allows for dependencies from environment. This is
+/// necessary when the derived value uses some captured value.
 ///
 /// # Example
-/// ```ignore
+/// ```
+/// use std::collections::HashMap;
+///
+/// use yew::prelude::*;
+/// use yewdux::prelude::*;
+///
 /// #[derive(Default, Clone, PartialEq, Store)]
 /// struct State {
-///     count: u32,
+///     user_names: HashMap<u32, String>,
+/// }
+///
+/// #[derive(Properties, PartialEq, Clone)]
+/// struct AppProps {
+///     user_id: u32,
 /// }
 ///
 /// #[function_component]
-/// fn App() -> Html {
-///     let multiplier = use_state(|| 1);
-///     let count = use_selector_with_deps(
-///        |state: &State, multiplier| *multiplier * state.count,
-///        *multiplier,
-///     );
-///     let incr = Dispatch::<State>::new().reduce_callback(|state| state.count += 1);
-///     let incr_multiplier = {
-///         let multiplier = multiplier.clone();
-///         Callback::from(|_| multiplier.set(*multiplier + 1))
+/// fn ViewName(&AppProps { user_id }: &AppProps) -> Html {
+///     let user_name = use_selector_with_deps(
+///        |state: &State, id| state.user_names.get(id).cloned().unwrap_or_default(),
+///        user_id,
 ///     );
 ///
 ///     html! {
-///         <>
-///         <p>{ *count }</p>
-///         <button onclick={incr}>{"+1"}</button>
-///         <button onclick={incr_multiplier}>{"+1 mult"}</button>
-///         </>
+///         <p>
+///             { user_name }
+///         </p>
 ///     }
 /// }
 /// ```
@@ -165,7 +147,8 @@ where
     use_selector_eq_with_deps(selector, |a, b| a == b, deps)
 }
 
-/// Hook for selecting a value with dependencies.
+/// Similar to [`use_selector_with_deps`], but also allows an equality function, similar to
+/// [`use_selector_eq`]
 #[hook]
 pub fn use_selector_eq_with_deps<S, F, R, D, E>(selector: F, eq: E, deps: D) -> Rc<R>
 where

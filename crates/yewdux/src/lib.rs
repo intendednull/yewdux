@@ -27,10 +27,6 @@
 //!         </>
 //!     }
 //! }
-//!
-//! fn main() {
-//!     yew::Renderer::<App>::new().render();
-//! }
 //! ```
 #![allow(clippy::needless_doctest_main)]
 
