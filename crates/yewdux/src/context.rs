@@ -1,4 +1,3 @@
-
 use std::rc::Rc;
 
 use anymap::AnyMap;
@@ -22,20 +21,25 @@ impl<S> Clone for Context<S> {
 
 impl<S: Store> Context<S> {
     /// Apply a function to state, returning if it should notify subscribers or not.
-    pub(crate) fn reduce<R: Reducer<S>>(&self, r: R) -> bool {
+    pub(crate) fn reduce<R: Reducer<S>>(&self, reducer: R) -> bool {
         let old = Rc::clone(&self.store.borrow());
-        *self.store.borrow_mut() = r.apply(Rc::clone(&old));
-
+        // Apply the reducer.
+        let new = reducer.apply(Rc::clone(&old));
+        // Update to new state.
+        *self.store.borrow_mut() = new;
+        // Return whether or not subscribers should be notified.
         self.store.borrow().should_notify(&old)
     }
 
     /// Apply a future reduction to state, returning if it should notify subscribers or not.
     #[cfg(feature = "future")]
-    pub(crate) async fn reduce_future<R: AsyncReducer<S>>(&self, r: R) -> bool {
+    pub(crate) async fn reduce_future<R: AsyncReducer<S>>(&self, reducer: R) -> bool {
         let old = Rc::clone(&self.store.borrow());
-
-        *self.store.borrow_mut() = r.apply(Rc::clone(&old)).await;
-
+        // Apply the reducer.
+        let new = reducer.apply(Rc::clone(&old)).await;
+        // Update the new state.
+        *self.store.borrow_mut() = new;
+        // Return whether or not subscribers should be notified.
         self.store.borrow().should_notify(&old)
     }
 }
