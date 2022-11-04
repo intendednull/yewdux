@@ -77,7 +77,7 @@ where
 /// ```
 /// use std::rc::Rc;
 ///
-/// use yewdux::{async_trait, prelude::*};
+/// use yewdux::prelude::*;
 ///
 /// #[derive(Default, Clone, PartialEq, Eq, Store)]
 /// struct State {
@@ -86,7 +86,7 @@ where
 ///
 /// struct MyReducer;
 ///
-/// #[async_trait(?Send)]
+/// #[async_reducer]
 /// impl AsyncReducer<State> for MyReducer {
 ///     /// Mutate state.
 ///     async fn apply(self, state: Rc<State>) -> Rc<State> {

@@ -45,6 +45,7 @@ mod subscriber;
 pub use log;
 
 #[cfg(feature = "future")]
+#[doc(hidden)]
 pub use async_trait::async_trait;
 
 pub mod prelude {
@@ -62,4 +63,6 @@ pub mod prelude {
 
     #[cfg(feature = "future")]
     pub use crate::store::AsyncReducer;
+    #[cfg(feature = "future")]
+    pub use yewdux_macros::async_reducer;
 }

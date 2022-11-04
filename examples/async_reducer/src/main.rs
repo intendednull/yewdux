@@ -4,7 +4,7 @@ use gloo_net::http::Request;
 use serde::{Deserialize, Serialize};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
-use yewdux::{async_trait, prelude::*};
+use yewdux::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Cat {
@@ -38,7 +38,7 @@ enum FetchCats {
     Single,
 }
 
-#[async_trait(?Send)]
+#[async_reducer]
 impl AsyncReducer<Cats> for FetchCats {
     async fn apply(self, mut cats: Rc<Cats>) -> Rc<Cats> {
         let limit = match self {

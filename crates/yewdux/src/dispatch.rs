@@ -158,7 +158,7 @@ impl<S: Store> Dispatch<S> {
     /// ```
     /// # use std::rc::Rc;
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # async fn get_incr() -> u32 {
     /// #     1
     /// # }
@@ -168,7 +168,7 @@ impl<S: Store> Dispatch<S> {
     /// }
     ///
     /// struct AddOne;
-    /// #[async_trait(?Send)]
+    /// #[async_reducer]
     /// impl AsyncReducer<State> for AddOne {
     ///     async fn apply(self, state: Rc<State>) -> Rc<State> {
     ///         // you can do async things here!
@@ -237,7 +237,7 @@ impl<S: Store> Dispatch<S> {
     /// ```
     /// # use std::rc::Rc;
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # async fn get_incr() -> u32 {
     /// #     1
     /// # }
@@ -247,7 +247,7 @@ impl<S: Store> Dispatch<S> {
     /// }
     ///
     /// struct AddOne;
-    /// #[async_trait(?Send)]
+    /// #[async_reducer]
     /// impl AsyncReducer<State> for AddOne {
     ///     async fn apply(self, state: Rc<State>) -> Rc<State> {
     ///         // you can do async things here!
@@ -286,7 +286,7 @@ impl<S: Store> Dispatch<S> {
     ///
     /// ```
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
     /// # struct State {
     /// #     count: u32,
@@ -304,7 +304,7 @@ impl<S: Store> Dispatch<S> {
     ///
     /// ```
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
     /// # struct State {
     /// #     count: u32,
@@ -335,7 +335,7 @@ impl<S: Store> Dispatch<S> {
     ///
     /// ```
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
     /// # struct State {
     /// #     count: u32,
@@ -356,7 +356,7 @@ impl<S: Store> Dispatch<S> {
     ///
     /// ```
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
     /// # struct State {
     /// #     count: u32,
@@ -391,7 +391,7 @@ impl<S: Store> Dispatch<S> {
     ///
     /// ```
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
     /// # struct State {
     /// #     count: u32,
@@ -419,7 +419,7 @@ impl<S: Store> Dispatch<S> {
     ///
     /// ```
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
     /// # struct State {
     /// #     count: u32,
@@ -462,7 +462,7 @@ impl<S: Store> Dispatch<S> {
     ///
     /// ```
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
     /// # struct State {
     /// #     count: u32,
@@ -496,7 +496,7 @@ impl<S: Store> Dispatch<S> {
     ///
     /// ```
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
     /// # struct State {
     /// #     count: u32,
@@ -541,7 +541,7 @@ impl<S: Store> Dispatch<S> {
     ///
     /// ```
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
     /// # struct State {
     /// #     count: u32,
@@ -565,7 +565,7 @@ impl<S: Store> Dispatch<S> {
     ///
     /// ```
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
     /// # struct State {
     /// #     count: u32,
@@ -598,7 +598,7 @@ impl<S: Store> Dispatch<S> {
     ///
     /// ```
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
     /// # struct State {
     /// #     count: u32,
@@ -629,7 +629,7 @@ impl<S: Store> Dispatch<S> {
     ///
     /// ```
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
     /// # struct State {
     /// #     count: u32,
@@ -670,7 +670,7 @@ impl<S: Store> Dispatch<S> {
     ///
     /// ```
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
     /// # struct State {
     /// #     count: u32,
@@ -705,7 +705,7 @@ impl<S: Store> Dispatch<S> {
     ///
     /// ```
     /// # use yew::prelude::*;
-    /// # use yewdux::{prelude::*, async_trait};
+    /// # use yewdux::prelude::*;
     /// # #[derive(Default, Clone, PartialEq, Eq, Store)]
     /// # struct State {
     /// #     count: u32,
