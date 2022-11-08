@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Local};
 use yew::prelude::*;
 use yewdux::prelude::*;
 use yewdux_input::{Checkbox, InputDispatch};
@@ -11,6 +11,7 @@ struct Form {
     // datetime: Option<String>,
     radio: Option<String>,
     range: i32,
+    textarea: String,
 }
 
 #[function_component]
@@ -69,8 +70,24 @@ fn InputDatetime() -> Html {
 
     html! {
         <>
-        <p>{store.datetime.clone().unwrap_or_default()}</p>
+        <p>{store.datetime.unwrap_or_default()}</p>
         <input type="datetime-local" {oninput} />
+        </>
+    }
+}
+
+#[function_component]
+fn InputTextArea() -> Html {
+    let (state, dispatch) = use_store::<Form>();
+    let oninput = dispatch.input_mut(|s, value| {
+        s.textarea = value;
+    });
+
+    html! {
+        <>
+        <p>{ &state.textarea }</p>
+        <textarea {oninput}>
+        </textarea>
         </>
     }
 }
@@ -83,6 +100,7 @@ fn App() -> Html {
         <InputCheckbox />
         <InputRadio />
         <InputDatetime />
+        <InputTextArea />
         </>
     }
 }

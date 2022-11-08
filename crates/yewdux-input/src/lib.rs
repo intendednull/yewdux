@@ -1,20 +1,28 @@
 use std::{rc::Rc, str::FromStr};
 
 use wasm_bindgen::JsCast;
-use web_sys::HtmlInputElement;
+use web_sys::{HtmlInputElement, HtmlTextAreaElement};
 use yew::prelude::*;
 use yewdux::prelude::*;
 
+pub enum InputElement {
+    Input(HtmlInputElement),
+    TextArea(HtmlTextAreaElement),
+}
+
 pub trait FromInputElement: Sized {
-    fn from_input_element(el: HtmlInputElement) -> Option<Self>;
+    fn from_input_element(el: InputElement) -> Option<Self>;
 }
 
 impl<T> FromInputElement for T
 where
     T: FromStr,
 {
-    fn from_input_element(value: HtmlInputElement) -> Option<Self> {
-        value.value().parse().ok()
+    fn from_input_element(el: InputElement) -> Option<Self> {
+        match el {
+            InputElement::Input(el) => el.value().parse().ok(),
+            InputElement::TextArea(el) => el.value().parse().ok(),
+        }
     }
 }
 
@@ -28,8 +36,12 @@ impl Checkbox {
 }
 
 impl FromInputElement for Checkbox {
-    fn from_input_element(el: HtmlInputElement) -> Option<Self> {
-        Some(Self(el.checked()))
+    fn from_input_element(el: InputElement) -> Option<Self> {
+        if let InputElement::Input(el) = el {
+            Some(Self(el.checked()))
+        } else {
+            None
+        }
     }
 }
 
@@ -75,5 +87,10 @@ where
 {
     event
         .target_dyn_into::<HtmlInputElement>()
-        .and_then(|el| R::from_input_element(el))
+        .and_then(|el| R::from_input_element(InputElement::Input(el)))
+        .or_else(|| {
+            event
+                .target_dyn_into::<HtmlTextAreaElement>()
+                .and_then(|el| R::from_input_element(InputElement::TextArea(el)))
+        })
 }
