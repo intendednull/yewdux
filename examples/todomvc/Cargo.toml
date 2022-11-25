@@ -9,7 +9,7 @@ edition = "2018"
 serde = "1"
 strum = "0.24"
 strum_macros = "0.24"
-yew = { git = "https://github.com/yewstack/yew.git", features = ["csr"] }
+yew = { version = "0.20", features = ["csr"] }
 yewdux = { path = "../../crates/yewdux" }
 
 [dependencies.web-sys]

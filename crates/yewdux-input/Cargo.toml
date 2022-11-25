@@ -9,5 +9,5 @@ edition = "2021"
 yewdux = { path = "../yewdux" }
 web-sys = "0.3"
 wasm-bindgen = "0.2"
-yew = { git = "https://github.com/yewstack/yew.git" }
+yew = "0.20"
 chrono = "0.4.22"
