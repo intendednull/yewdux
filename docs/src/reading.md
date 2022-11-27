@@ -84,12 +84,6 @@ let state = dispatch.get();
 
 # Selectors
 
-**IMPORTANT**: Selectors are only available on the [development
-branch](./setup.md#development-branch). When Yew 0.20 is released, this feature will be released as
-well.
-----------
-
-
 Sometimes a component will only care about a particular part of state, and only needs to re-render
 when that part changes. For this we have the `use_selector` hook.
 
