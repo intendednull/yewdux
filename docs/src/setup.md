@@ -6,8 +6,8 @@ Add Yewdux to your project's `Cargo.toml`:
 
 ```toml
 [dependencies]
-yew = "0.19"
-yewdux = "0.8"
+yew = "0.20"
+yewdux = "0.9"
 ```
 
 ### Development branch:

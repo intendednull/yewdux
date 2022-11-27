@@ -126,7 +126,7 @@ struct Msg {
 }
 
 impl Reducer<Counter> for Msg {
-    fn apply(&self, counter: Rc<Counter>) -> Rc<Counter> {
+    fn apply(self, counter: Rc<Counter>) -> Rc<Counter> {
         match self {
             Msg::AddOne => Counter { count: counter.count + 1 },
         }
@@ -140,7 +140,7 @@ impl Reducer<Counter> for Msg {
 
 ```rust
 impl Reducer<Counter> for Msg {
-    fn apply(&self, mut counter: Rc<Counter>) -> Rc<Counter> {
+    fn apply(self, mut counter: Rc<Counter>) -> Rc<Counter> {
         let state = Rc::make_mut(&mut counter);
 
         match self {
