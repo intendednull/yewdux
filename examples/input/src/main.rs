@@ -17,8 +17,12 @@ struct Form {
 #[function_component]
 fn InputText() -> Html {
     let (store, dispatch) = use_store::<Form>();
-    let oninput = dispatch.input_mut(|s, value| {
-        s.text = value;
+    let oninput = dispatch.input(|s, text| {
+        Form {
+            text,
+            ..s.as_ref().clone()
+        }
+        .into()
     });
     html! {
         <>

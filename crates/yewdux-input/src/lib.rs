@@ -48,7 +48,6 @@ impl FromInputElement for Checkbox {
 pub trait InputDispatch<S: Store> {
     fn input<F, E, R>(&self, f: F) -> Callback<E>
     where
-        S: Clone,
         R: FromInputElement,
         F: Fn(Rc<S>, R) -> Rc<S> + 'static,
         E: AsRef<Event> + JsCast + 'static,
