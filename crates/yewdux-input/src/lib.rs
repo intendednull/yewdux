@@ -4,6 +4,7 @@ use wasm_bindgen::JsCast;
 use web_sys::{HtmlInputElement, HtmlTextAreaElement};
 use yew::prelude::*;
 use yewdux::prelude::*;
+use serde::{Deserialize, Serialize};
 
 pub enum InputElement {
     Input(HtmlInputElement),
@@ -26,7 +27,7 @@ where
     }
 }
 
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Checkbox(bool);
 
 impl Checkbox {
