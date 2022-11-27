@@ -1,12 +1,12 @@
 # Setup
 
-Add Yewdux to your project's `Cargo.toml`:
+Add Yewdux to your project's `Cargo.toml`. Make sure Yew has the "csr" feature (client side rendering):
 
 ### Stable release:
 
 ```toml
 [dependencies]
-yew = "0.20"
+yew = { version = "0.20", features = ["csr"] }
 yewdux = "0.9"
 ```
 
