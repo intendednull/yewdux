@@ -276,7 +276,7 @@ impl<S: Store> Dispatch<S> {
     {
         Callback::from(move |e| {
             let msg = f(e);
-            wasm_bindgen_futures::spawn_local(async move {
+            yew::platform::spawn_local(async move {
                 reduce_future(msg).await;
             })
         })
@@ -452,7 +452,7 @@ impl<S: Store> Dispatch<S> {
         let f = Rc::new(f);
         Callback::from(move |_| {
             let f = f.clone();
-            wasm_bindgen_futures::spawn_local(async move {
+            yew::platform::spawn_local(async move {
                 reduce_future(f.as_ref()).await;
             })
         })
@@ -531,7 +531,7 @@ impl<S: Store> Dispatch<S> {
         let f = Rc::new(f);
         Callback::from(move |e: E| {
             let f = f.clone();
-            wasm_bindgen_futures::spawn_local(async move {
+            yew::platform::spawn_local(async move {
                 reduce_future(move |s| f(s, e)).await;
             })
         })
@@ -660,7 +660,7 @@ impl<S: Store> Dispatch<S> {
         let f = Rc::new(f);
         Callback::from(move |_| {
             let f = f.clone();
-            wasm_bindgen_futures::spawn_local(async move {
+            yew::platform::spawn_local(async move {
                 reduce_mut_future(f.as_ref()).await;
             })
         })
@@ -740,7 +740,7 @@ impl<S: Store> Dispatch<S> {
         let f = Rc::new(f);
         Callback::from(move |e: E| {
             let f = f.clone();
-            wasm_bindgen_futures::spawn_local(async move {
+            yew::platform::spawn_local(async move {
                 reduce_mut_future(move |s| f(s, e)).await;
             })
         })

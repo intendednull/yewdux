@@ -12,7 +12,7 @@ categories = ["wasm", "web-programming", "rust-patterns"]
 
 [features]
 default = ["future"]
-future = ["wasm-bindgen-futures"]
+future = []
 
 [dependencies]
 anymap = "1.0.0-beta.2"
@@ -22,11 +22,12 @@ serde = { version = "1.0.114", features = ["rc"] }
 serde_json = "1.0.64"
 slab = "0.4"
 thiserror = "1.0"
-wasm-bindgen = "0.2"
-wasm-bindgen-futures = { version = "0.4.30", optional = true }
 web-sys = "0.3"
 yew = { git = "https://github.com/yewstack/yew.git" }
 yewdux-macros = { path = "../yewdux-macros" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
 
 [dev-dependencies]
 async-std = { version = "1.11", features = ["attributes"] }
