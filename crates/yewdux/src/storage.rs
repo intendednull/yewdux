@@ -137,7 +137,7 @@ pub fn load<T: DeserializeOwned>(area: Area) -> Result<Option<T>, StorageError> 
 
 /// Synchronize state across all tabs. **WARNING**: This provides no protection for multiple
 /// calls. Doing so will result in repeated loading. Using the macro is advised.
-pub fn init_tab_sync<S: Store + DeserializeOwned>(area: Area) -> Result<(), JsValue> {
+pub fn init_tab_sync<S: Store + DeserializeOwned>(area: Area) -> Result<(), StorageError> {
     let closure = Closure::wrap(Box::new(move |_: &Event| match load(area) {
         Ok(Some(state)) => {
             Dispatch::<S>::new().set(state);
@@ -149,10 +149,36 @@ pub fn init_tab_sync<S: Store + DeserializeOwned>(area: Area) -> Result<(), JsVa
     }) as Box<dyn FnMut(&Event)>);
 
     web_sys::window()
-        .expect("Window not found")
-        .add_event_listener_with_callback("storage", closure.as_ref().unchecked_ref())?;
+        .ok_or(StorageError::WindowNotFound)?
+        .add_event_listener_with_callback("storage", closure.as_ref().unchecked_ref())
+        .map_err(StorageError::WebSys)?;
 
     closure.forget();
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::prelude::*;
+
+    use serde::Deserialize;
+
+    #[derive(Deserialize)]
+    struct TestStore;
+    impl Store for TestStore {
+        fn new() -> Self {
+            Self
+        }
+
+        fn should_notify(&self, old: &Self) -> bool {
+            true
+        }
+    }
+
+    #[test]
+    fn tab_sync() {
+        init_tab_sync::<TestStore>(Area::Local);
+    }
 }
