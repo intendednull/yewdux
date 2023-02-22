@@ -1,7 +1,9 @@
 use std::rc::Rc;
 
 use yew::prelude::*;
-use yewdux::{prelude::*, storage};
+use yewdux::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use yewdux::storage;
 
 use serde::{Deserialize, Serialize};
 
@@ -10,6 +12,7 @@ impl Listener for StorageListener {
     type Store = State;
 
     fn on_change(&mut self, state: Rc<Self::Store>) {
+        #[cfg(target_arch = "wasm32")]
         if let Err(err) = storage::save(state.as_ref(), storage::Area::Local) {
             println!("Error saving state to storage: {:?}", err);
         }
@@ -22,6 +25,12 @@ struct State {
 }
 
 impl Store for State {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn new() -> Self {
+        Default::default()
+    }
+
+    #[cfg(target_arch = "wasm32")]
     fn new() -> Self {
         init_listener(StorageListener);
 

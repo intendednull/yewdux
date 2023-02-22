@@ -120,7 +120,9 @@ pub struct Entry {
 }
 
 #[derive(Clone, Copy, Debug, EnumIter, Display, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum Filter {
+    #[default]
     All,
     Active,
     Completed,
@@ -144,8 +146,4 @@ impl Filter {
     }
 }
 
-impl Default for Filter {
-    fn default() -> Self {
-        Filter::All
-    }
-}
+

@@ -30,12 +30,12 @@
 //! ```
 #![allow(clippy::needless_doctest_main)]
 
-// pub mod component;
 mod context;
 pub mod dispatch;
 pub mod functional;
 pub mod listener;
 pub mod mrc;
+#[cfg(target_arch = "wasm32")]
 pub mod storage;
 pub mod store;
 mod subscriber;

@@ -16,6 +16,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let impl_ = match opts.storage {
+        #[cfg(target_arch = "wasm32")]
         Some(storage) => {
             let area = match storage.as_ref() {
                 "local" => quote! { ::yewdux::storage::Area::Local },
@@ -55,7 +56,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 }
             }
         }
-        None => quote! {
+        _ => quote! {
             fn new() -> Self {
                 Default::default()
             }

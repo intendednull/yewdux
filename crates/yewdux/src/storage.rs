@@ -161,7 +161,6 @@ pub fn init_tab_sync<S: Store + DeserializeOwned>(area: Area) -> Result<(), Stor
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::*;
 
     use serde::Deserialize;
 
@@ -172,13 +171,13 @@ mod tests {
             Self
         }
 
-        fn should_notify(&self, old: &Self) -> bool {
+        fn should_notify(&self, _old: &Self) -> bool {
             true
         }
     }
 
     #[test]
     fn tab_sync() {
-        init_tab_sync::<TestStore>(Area::Local);
+        init_tab_sync::<TestStore>(Area::Local).unwrap();
     }
 }
