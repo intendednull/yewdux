@@ -31,6 +31,7 @@
 #![allow(clippy::needless_doctest_main)]
 
 pub mod context;
+pub mod context_provider;
 pub mod dispatch;
 pub mod functional;
 pub mod listener;
@@ -52,6 +53,7 @@ pub mod prelude {
     //! Default exports
 
     pub use crate::{
+        context_provider::YewduxRoot,
         dispatch::Dispatch,
         functional::{
             use_selector, use_selector_eq, use_selector_eq_with_deps, use_selector_with_deps,

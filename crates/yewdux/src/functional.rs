@@ -32,11 +32,14 @@ use crate::{dispatch::Dispatch, store::Store};
 /// ```
 #[hook]
 pub fn use_store<S: Store>() -> (Rc<S>, Dispatch<S>) {
-    let state = use_state(|| Dispatch::<S>::new().get());
-
+    let ctx =
+        use_context::<crate::context::Context>().unwrap_or_else(crate::context::Context::global);
+    let state: UseStateHandle<Rc<S>> = use_state(|| Dispatch::with_context(&ctx).get());
     let dispatch = {
         let state = state.clone();
-        use_state(move || Dispatch::<S>::subscribe_silent(move |val| state.set(val)))
+        use_state(move || {
+            Dispatch::<S>::subscribe_silent_with_context(move |val| state.set(val), &ctx)
+        })
     };
 
     (Rc::clone(&state), dispatch.deref().clone())
@@ -155,9 +158,11 @@ where
     F: Fn(&S, &D) -> R + 'static,
     E: Fn(&R, &R) -> bool + 'static,
 {
+    let ctx =
+        use_context::<crate::context::Context>().unwrap_or_else(crate::context::Context::global);
     // Given to user, this is what we update to force a re-render.
     let selected = {
-        let state = Dispatch::new().get();
+        let state = Dispatch::with_context(&ctx).get();
         let value = selector(&state, &deps);
 
         use_state(|| Rc::new(value))
@@ -173,17 +178,20 @@ where
         use_memo(
             move |deps| {
                 let deps = deps.clone();
-                Dispatch::subscribe(move |val: Rc<S>| {
-                    let value = selector(&val, &deps);
+                Dispatch::subscribe_with_context(
+                    move |val: Rc<S>| {
+                        let value = selector(&val, &deps);
 
-                    if !eq(&current.borrow(), &value) {
-                        let value = Rc::new(value);
-                        // Update value for user.
-                        selected.set(Rc::clone(&value));
-                        // Make sure to update our tracking value too.
-                        *current.borrow_mut() = Rc::clone(&value);
-                    }
-                })
+                        if !eq(&current.borrow(), &value) {
+                            let value = Rc::new(value);
+                            // Update value for user.
+                            selected.set(Rc::clone(&value));
+                            // Make sure to update our tracking value too.
+                            *current.borrow_mut() = Rc::clone(&value);
+                        }
+                    },
+                    &ctx,
+                )
             },
             deps,
         )

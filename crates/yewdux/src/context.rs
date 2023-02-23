@@ -47,7 +47,7 @@ impl<S: Store> Entry<S> {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct Context {
     inner: Mrc<AnyMap>,
 }
