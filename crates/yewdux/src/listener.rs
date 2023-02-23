@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{dispatch, mrc::Mrc, store::Store, subscriber::SubscriberId};
+use crate::{context::Context, dispatch::Dispatch, mrc::Mrc, store::Store};
 
 /// Listens to [Store](crate::store::Store) changes.
 pub trait Listener: 'static {
@@ -9,7 +9,7 @@ pub trait Listener: 'static {
     fn on_change(&mut self, state: Rc<Self::Store>);
 }
 
-struct ListenerStore<S: Store>(Option<SubscriberId<S>>);
+struct ListenerStore<S: Store>(Option<Dispatch<S>>);
 impl<S: Store> Store for Mrc<ListenerStore<S>> {
     fn new() -> Self {
         ListenerStore(None).into()
@@ -22,14 +22,14 @@ impl<S: Store> Store for Mrc<ListenerStore<S>> {
 
 /// Initiate a [Listener]. If this listener has already been initiated, it is dropped and replaced
 /// with the new one.
-pub fn init_listener<L: Listener>(listener: L) {
-    let id = {
+pub fn init_listener<L: Listener>(listener: L, ctx: &Context) {
+    let dispatch = {
         let listener = Mrc::new(listener);
-        dispatch::subscribe_silent(move |state| listener.borrow_mut().on_change(state))
+        Dispatch::subscribe_silent(move |state| listener.borrow_mut().on_change(state))
     };
 
-    dispatch::reduce_mut(|state: &mut Mrc<ListenerStore<L::Store>>| {
-        state.borrow_mut().0 = Some(id)
+    Dispatch::with_context(ctx).reduce_mut(|state: &mut Mrc<ListenerStore<L::Store>>| {
+        state.borrow_mut().0 = Some(dispatch.clone())
     });
 }
 
@@ -66,7 +66,7 @@ mod tests {
     struct TestState2;
     impl Store for TestState2 {
         fn new() -> Self {
-            init_listener(TestListener2);
+            init_listener(TestListener2, &Context::global());
             Self
         }
 
@@ -87,9 +87,9 @@ mod tests {
     fn listener_is_called() {
         let listener = TestListener(Default::default());
 
-        init_listener(listener.clone());
+        init_listener(listener.clone(), &Context::global());
 
-        dispatch::reduce_mut(|state: &mut TestState| state.0 = 1);
+        Dispatch::new().reduce_mut(|state: &mut TestState| state.0 = 1);
 
         assert_eq!(listener.0.get(), 1)
     }
@@ -99,15 +99,15 @@ mod tests {
         let listener1 = TestListener(Default::default());
         let listener2 = TestListener(Default::default());
 
-        init_listener(listener1.clone());
+        init_listener(listener1.clone(), &Context::global());
 
-        dispatch::reduce_mut(|state: &mut TestState| state.0 = 1);
+        Dispatch::new().reduce_mut(|state: &mut TestState| state.0 = 1);
 
         assert_eq!(listener1.0.get(), 1);
 
-        init_listener(listener2.clone());
+        init_listener(listener2.clone(), &Context::global());
 
-        dispatch::reduce_mut(|state: &mut TestState| state.0 = 2);
+        Dispatch::new().reduce_mut(|state: &mut TestState| state.0 = 2);
 
         assert_eq!(listener1.0.get(), 1);
         assert_eq!(listener2.0.get(), 2);
@@ -115,6 +115,6 @@ mod tests {
 
     #[test]
     fn can_init_listener_from_store() {
-        dispatch::get::<TestState2>();
+        Dispatch::<TestState2>::new().get();
     }
 }

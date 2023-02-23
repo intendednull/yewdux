@@ -40,7 +40,8 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 #[cfg(target_arch = "wasm32")]
                 fn new() -> Self {
                     ::yewdux::listener::init_listener(
-                        ::yewdux::storage::StorageListener::<Self>::new(#area)
+                        ::yewdux::storage::StorageListener::<Self>::new(#area),
+                        &::yewdux::context::Context::global()
                     );
 
                     #sync

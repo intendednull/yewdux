@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use yew::prelude::*;
-use yewdux::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use yewdux::storage;
+use yewdux::{context::Context, prelude::*};
 
 use serde::{Deserialize, Serialize};
 
@@ -32,7 +32,7 @@ impl Store for State {
 
     #[cfg(target_arch = "wasm32")]
     fn new() -> Self {
-        init_listener(StorageListener);
+        init_listener(StorageListener, &Context::global());
 
         storage::load(storage::Area::Local)
             .ok()

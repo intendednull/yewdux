@@ -100,8 +100,8 @@ mod tests {
 
     use super::*;
 
-    use crate::context;
-    use crate::dispatch::{self, Dispatch};
+    use crate::context::Context;
+    use crate::dispatch::Dispatch;
     use crate::mrc::Mrc;
 
     #[derive(Clone, PartialEq, Eq)]
@@ -118,22 +118,22 @@ mod tests {
 
     #[test]
     fn subscribe_adds_to_list() {
-        let context = context::get_or_init::<Mrc<Subscribers<TestState>>>();
+        let context = Context::global().get_or_init::<Mrc<Subscribers<TestState>>>();
 
         assert!(context.store.borrow().borrow().0.is_empty());
 
-        let _id = dispatch::subscribe(|_: Rc<TestState>| ());
+        let _id = Dispatch::subscribe(|_: Rc<TestState>| ());
 
         assert!(!context.store.borrow().borrow().0.is_empty());
     }
 
     #[test]
     fn unsubscribe_removes_from_list() {
-        let context = context::get_or_init::<Mrc<Subscribers<TestState>>>();
+        let context = Context::global().get_or_init::<Mrc<Subscribers<TestState>>>();
 
         assert!(context.store.borrow().borrow().0.is_empty());
 
-        let id = dispatch::subscribe(|_: Rc<TestState>| ());
+        let id = Dispatch::subscribe(|_: Rc<TestState>| ());
 
         assert!(!context.store.borrow().borrow().0.is_empty());
 
@@ -144,11 +144,11 @@ mod tests {
 
     #[test]
     fn subscriber_id_unsubscribes_when_dropped() {
-        let context = context::get_or_init::<Mrc<Subscribers<TestState>>>();
+        let context = Context::global().get_or_init::<Mrc<Subscribers<TestState>>>();
 
         assert!(context.store.borrow().borrow().0.is_empty());
 
-        let id = dispatch::subscribe::<TestState, _>(|_| {});
+        let id = Dispatch::<TestState>::subscribe(|_| {});
 
         assert!(!context.store.borrow().borrow().0.is_empty());
 
@@ -163,7 +163,7 @@ mod tests {
 
         let _id = {
             let flag = flag.clone();
-            dispatch::subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
+            Dispatch::<TestState>::subscribe(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
 
         assert!(*flag.borrow());
@@ -175,14 +175,15 @@ mod tests {
 
         let id = {
             let flag = flag.clone();
-            dispatch::subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
+            Context::global()
+                .subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
 
         *flag.borrow_mut() = false;
 
         id.leak();
 
-        dispatch::reduce_mut(|state: &mut TestState| state.0 += 1);
+        Dispatch::new().reduce_mut(|state: &mut TestState| state.0 += 1);
 
         assert!(*flag.borrow());
     }
@@ -191,7 +192,7 @@ mod tests {
     fn can_modify_state_inside_on_changed() {
         let dispatch = Dispatch::<TestState>::subscribe(|state: Rc<TestState>| {
             if state.0 == 0 {
-                dispatch::reduce_mut(|state: &mut TestState| state.0 += 1);
+                Dispatch::new().reduce_mut(|state: &mut TestState| state.0 += 1);
             }
         });
 

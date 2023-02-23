@@ -30,7 +30,7 @@
 //! ```
 #![allow(clippy::needless_doctest_main)]
 
-mod context;
+pub mod context;
 pub mod dispatch;
 pub mod functional;
 pub mod listener;

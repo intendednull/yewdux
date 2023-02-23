@@ -3,10 +3,7 @@ use std::{ops::Deref, rc::Rc};
 
 use yew::functional::*;
 
-use crate::{
-    dispatch::{self, Dispatch},
-    store::Store,
-};
+use crate::{dispatch::Dispatch, store::Store};
 
 /// This hook allows accessing the state of a store. When the store is modified, a re-render is
 /// automatically triggered.
@@ -35,7 +32,7 @@ use crate::{
 /// ```
 #[hook]
 pub fn use_store<S: Store>() -> (Rc<S>, Dispatch<S>) {
-    let state = use_state(|| dispatch::get::<S>());
+    let state = use_state(|| Dispatch::<S>::new().get());
 
     let dispatch = {
         let state = state.clone();
@@ -160,7 +157,7 @@ where
 {
     // Given to user, this is what we update to force a re-render.
     let selected = {
-        let state = dispatch::get::<S>();
+        let state = Dispatch::new().get();
         let value = selector(&state, &deps);
 
         use_state(|| Rc::new(value))
