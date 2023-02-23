@@ -122,7 +122,7 @@ mod tests {
 
         assert!(context.store.borrow().borrow().0.is_empty());
 
-        let _id = Dispatch::subscribe(|_: Rc<TestState>| ());
+        let _id = Dispatch::subscribe_global(|_: Rc<TestState>| ());
 
         assert!(!context.store.borrow().borrow().0.is_empty());
     }
@@ -133,7 +133,7 @@ mod tests {
 
         assert!(context.store.borrow().borrow().0.is_empty());
 
-        let id = Dispatch::subscribe(|_: Rc<TestState>| ());
+        let id = Dispatch::subscribe_global(|_: Rc<TestState>| ());
 
         assert!(!context.store.borrow().borrow().0.is_empty());
 
@@ -148,7 +148,7 @@ mod tests {
 
         assert!(context.store.borrow().borrow().0.is_empty());
 
-        let id = Dispatch::<TestState>::subscribe(|_| {});
+        let id = Dispatch::<TestState>::subscribe_global(|_| {});
 
         assert!(!context.store.borrow().borrow().0.is_empty());
 
@@ -163,7 +163,9 @@ mod tests {
 
         let _id = {
             let flag = flag.clone();
-            Dispatch::<TestState>::subscribe(move |_| flag.clone().with_mut(|flag| *flag = true))
+            Dispatch::<TestState>::subscribe_global(move |_| {
+                flag.clone().with_mut(|flag| *flag = true)
+            })
         };
 
         assert!(*flag.borrow());
@@ -172,29 +174,34 @@ mod tests {
     #[test]
     fn subscriber_is_notified_after_leak() {
         let flag = Mrc::new(false);
+        let cx = Context::new();
 
         let id = {
             let flag = flag.clone();
-            Context::global()
-                .subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
+            cx.subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
 
         *flag.borrow_mut() = false;
 
         id.leak();
 
-        Dispatch::new().reduce_mut(|state: &mut TestState| state.0 += 1);
+        cx.reduce_mut(|state: &mut TestState| state.0 += 1);
 
         assert!(*flag.borrow());
     }
 
     #[test]
     fn can_modify_state_inside_on_changed() {
-        let dispatch = Dispatch::<TestState>::subscribe(|state: Rc<TestState>| {
-            if state.0 == 0 {
-                Dispatch::new().reduce_mut(|state: &mut TestState| state.0 += 1);
-            }
-        });
+        let cx = Context::new();
+        let cxo = cx.clone();
+        let dispatch = Dispatch::<TestState>::subscribe(
+            move |state: Rc<TestState>| {
+                if state.0 == 0 {
+                    Dispatch::new(&cxo).reduce_mut(|state: &mut TestState| state.0 += 1);
+                }
+            },
+            &cx,
+        );
 
         assert_eq!(dispatch.get().0, 1)
     }

@@ -122,7 +122,7 @@ impl<T> PartialEq for Mrc<T> {
 #[cfg(test)]
 mod tests {
 
-    use crate::{dispatch::Dispatch, store::Store};
+    use crate::{dispatch::Dispatch, store::Store, Context};
 
     use super::*;
 
@@ -152,10 +152,14 @@ mod tests {
     #[test]
     fn subscriber_is_notified_on_borrow_mut() {
         let flag = Mrc::new(false);
+        let cx = Context::new();
 
         let dispatch = {
             let flag = flag.clone();
-            Dispatch::<TestState>::subscribe(move |_| flag.clone().with_mut(|flag| *flag = true))
+            Dispatch::<TestState>::subscribe(
+                move |_| flag.clone().with_mut(|flag| *flag = true),
+                &cx,
+            )
         };
 
         *flag.borrow_mut() = false;
@@ -170,10 +174,14 @@ mod tests {
     #[test]
     fn subscriber_is_notified_on_with_mut() {
         let flag = Mrc::new(false);
+        let cx = Context::new();
 
         let dispatch = {
             let flag = flag.clone();
-            Dispatch::<TestState>::subscribe(move |_| flag.clone().with_mut(|flag| *flag = true))
+            Dispatch::<TestState>::subscribe(
+                move |_| flag.clone().with_mut(|flag| *flag = true),
+                &cx,
+            )
         };
 
         *flag.borrow_mut() = false;
@@ -185,7 +193,7 @@ mod tests {
 
     #[test]
     fn can_wrap_store_with_mrc() {
-        let dispatch = Dispatch::<Mrc<TestState>>::new();
+        let dispatch = Dispatch::<Mrc<TestState>>::global();
         assert!(*dispatch.get().borrow().0.borrow() == 0)
     }
 }

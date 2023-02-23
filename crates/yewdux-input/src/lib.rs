@@ -1,10 +1,10 @@
 use std::{rc::Rc, str::FromStr};
 
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsCast;
 use web_sys::{HtmlInputElement, HtmlTextAreaElement};
 use yew::prelude::*;
 use yewdux::prelude::*;
-use serde::{Deserialize, Serialize};
 
 pub enum InputElement {
     Input(HtmlInputElement),
@@ -53,7 +53,7 @@ pub trait InputDispatch<S: Store> {
         F: Fn(Rc<S>, R) -> Rc<S> + 'static,
         E: AsRef<Event> + JsCast + 'static,
     {
-        Dispatch::<S>::new().reduce_callback_with(move |s, e| {
+        Dispatch::<S>::global().reduce_callback_with(move |s, e| {
             if let Some(value) = input_value(e) {
                 f(s, value)
             } else {
@@ -69,7 +69,7 @@ pub trait InputDispatch<S: Store> {
         F: Fn(&mut S, R) + 'static,
         E: AsRef<Event> + JsCast + 'static,
     {
-        Dispatch::<S>::new().reduce_mut_callback_with(move |s, e| {
+        Dispatch::<S>::global().reduce_mut_callback_with(move |s, e| {
             if let Some(value) = input_value(e) {
                 f(s, value);
             }

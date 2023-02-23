@@ -140,7 +140,7 @@ pub fn load<T: DeserializeOwned>(area: Area) -> Result<Option<T>, StorageError> 
 pub fn init_tab_sync<S: Store + DeserializeOwned>(area: Area) -> Result<(), StorageError> {
     let closure = Closure::wrap(Box::new(move |_: &Event| match load(area) {
         Ok(Some(state)) => {
-            Dispatch::<S>::new().set(state);
+            Dispatch::<S>::global().set(state);
         }
         Err(e) => {
             crate::log::error!("Unable to load state: {:?}", e);

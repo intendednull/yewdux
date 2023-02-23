@@ -22,13 +22,13 @@ impl<S: Store> Store for Mrc<ListenerStore<S>> {
 
 /// Initiate a [Listener]. If this listener has already been initiated, it is dropped and replaced
 /// with the new one.
-pub fn init_listener<L: Listener>(listener: L, ctx: &Context) {
+pub fn init_listener<L: Listener>(listener: L, cx: &Context) {
     let dispatch = {
         let listener = Mrc::new(listener);
-        Dispatch::subscribe_silent(move |state| listener.borrow_mut().on_change(state))
+        Dispatch::subscribe_silent(move |state| listener.borrow_mut().on_change(state), cx)
     };
 
-    Dispatch::with_context(ctx).reduce_mut(|state: &mut Mrc<ListenerStore<L::Store>>| {
+    Dispatch::new(cx).reduce_mut(|state: &mut Mrc<ListenerStore<L::Store>>| {
         state.borrow_mut().0 = Some(dispatch.clone())
     });
 }
@@ -62,59 +62,35 @@ mod tests {
         }
     }
 
-    #[derive(Clone, PartialEq, Eq)]
-    struct TestState2;
-    impl Store for TestState2 {
-        fn new() -> Self {
-            init_listener(TestListener2, &Context::global());
-            Self
-        }
-
-        fn should_notify(&self, other: &Self) -> bool {
-            self != other
-        }
-    }
-
-    #[derive(Clone)]
-    struct TestListener2;
-    impl Listener for TestListener2 {
-        type Store = TestState2;
-
-        fn on_change(&mut self, _state: Rc<Self::Store>) {}
-    }
-
     #[test]
     fn listener_is_called() {
+        let cx = Context::new();
         let listener = TestListener(Default::default());
 
-        init_listener(listener.clone(), &Context::global());
+        init_listener(listener.clone(), &cx);
 
-        Dispatch::new().reduce_mut(|state: &mut TestState| state.0 = 1);
+        Dispatch::new(&cx).reduce_mut(|state: &mut TestState| state.0 = 1);
 
         assert_eq!(listener.0.get(), 1)
     }
 
     #[test]
     fn listener_is_replaced() {
+        let cx = Context::new();
         let listener1 = TestListener(Default::default());
         let listener2 = TestListener(Default::default());
 
-        init_listener(listener1.clone(), &Context::global());
+        init_listener(listener1.clone(), &cx);
 
-        Dispatch::new().reduce_mut(|state: &mut TestState| state.0 = 1);
+        Dispatch::new(&cx).reduce_mut(|state: &mut TestState| state.0 = 1);
 
         assert_eq!(listener1.0.get(), 1);
 
-        init_listener(listener2.clone(), &Context::global());
+        init_listener(listener2.clone(), &cx);
 
-        Dispatch::new().reduce_mut(|state: &mut TestState| state.0 = 2);
+        Dispatch::new(&cx).reduce_mut(|state: &mut TestState| state.0 = 2);
 
         assert_eq!(listener1.0.get(), 1);
         assert_eq!(listener2.0.get(), 2);
-    }
-
-    #[test]
-    fn can_init_listener_from_store() {
-        Dispatch::<TestState2>::new().get();
     }
 }
