@@ -49,6 +49,10 @@ pub use log;
 #[doc(hidden)]
 pub use async_trait::async_trait;
 
+// Allow shorthand, like `yewdux::Dispatch`
+pub use context::Context;
+pub use prelude::*;
+
 pub mod prelude {
     //! Default exports
 

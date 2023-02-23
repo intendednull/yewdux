@@ -47,6 +47,19 @@ impl<S: Store> Entry<S> {
     }
 }
 
+/// Execution context for a dispatch
+///
+/// # Example
+///
+/// ```
+/// use yewdux::prelude::*;
+///
+/// #[derive(Clone, PartialEq, Default, Store)]
+/// struct Counter(usize);
+///
+/// let cx = yewdux::Context::new();
+/// let dispatch = Dispatch::<Counter>::with_context(&cx);
+/// ```
 #[derive(Clone, Default, PartialEq)]
 pub struct Context {
     inner: Mrc<AnyMap>,
@@ -59,34 +72,34 @@ impl Context {
 
     pub fn global() -> Self {
         thread_local! {
-            static CONTEXTS: Context = Default::default();
+            static CONTEXT: Context = Default::default();
         }
 
-        CONTEXTS
-            .try_with(|contexts| contexts.clone())
+        CONTEXT
+            .try_with(|cx| cx.clone())
             .expect("CONTEXTS thread local key init failed")
     }
 
     pub(crate) fn get_or_init<S: Store>(&self) -> Entry<S> {
         // Get context, or None if it doesn't exist.
         //
-        // We use an option here because a new Store should not be created during this borrow. We want
-        // to allow this store access to other stores during creation, so cannot be borrowing the
-        // global resource while initializing. Instead we create a temporary placeholder, which
+        // We use an option here because a new Store should not be created during this borrow. We
+        // want to allow this store access to other stores during creation, so cannot be borrowing
+        // the global resource while initializing. Instead we create a temporary placeholder, which
         // indicates the store needs to be created. Without this indicator we would have needed to
-        // check if the map contains the entry beforehand, which would have meant two map lookups per
-        // call instead of just one.
+        // check if the map contains the entry beforehand, which would have meant two map lookups
+        // per call instead of just one.
         let maybe_entry = self.inner.with_mut(|x| {
             x.entry::<Mrc<Option<Entry<S>>>>()
                 .or_insert_with(|| None.into())
                 .clone()
         });
 
-        // If it doesn't exist, create and store the context (no pun intended).
+        // If it doesn't exist, create and save the new store (no pun intended).
         let exists = maybe_entry.borrow().is_some();
         if !exists {
-            // Init context outside of borrow. This allows the store to access other stores when it is
-            // being created.
+            // Init store outside of borrow. This allows the store to access other stores when it
+            // is being created.
             let entry = Entry {
                 store: Mrc::new(Rc::new(S::new())),
             };
