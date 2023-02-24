@@ -22,7 +22,7 @@ struct Counter {
 }
 
 impl Store for Counter {
-    fn new() {
+    fn new(_cx: &Context) {
         Self {
             count: Default::default(),
         }

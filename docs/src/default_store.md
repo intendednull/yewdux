@@ -29,7 +29,7 @@ main fn).
 ```rust
 fn main() {
     // .. other setup logic and whatnot
-    Dispatch::<MyStore>::new().set(MyStore { ... });
+    Dispatch::<MyStore>::global().set(MyStore { ... });
     // ... now you can render your app!
 }
 ```
@@ -41,7 +41,7 @@ a root component!
 use_effect_with_deps(
     move || {
         // .. other setup logic and whatnot
-        Dispatch::<MyStore>::new().set(MyStore { ... });
+        Dispatch::<MyStore>::global().set(MyStore { ... });
         || {}
     },
     (),
@@ -49,5 +49,4 @@ use_effect_with_deps(
 ```
 
 Keep in mind your store will still be initialized with `Store::new` (usually that's set to
-`Default::default()`), however, because Rust is awesome, no fields are allocated initially, and
-overwriting is very cheap.
+`Default::default()`), however this is typically inexpensive.

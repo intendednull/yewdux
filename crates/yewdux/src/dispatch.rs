@@ -8,14 +8,12 @@
 //!     count: usize,
 //!  }
 //!
-//!  # fn main() {
-//!  let dispatch = Dispatch::<State>::new();
+//!  let dispatch = Dispatch::<State>::global();
 //!  dispatch.reduce_mut(|state| state.count = 1);
 //!
 //!  let state = dispatch.get();
 //!
 //!  assert!(state.count == 1);
-//!  # }
 //!  ```
 //!
 
@@ -82,7 +80,7 @@ impl<S: Store> Dispatch<S> {
     ///
     ///     fn create(ctx: &Context<Self>) -> Self {
     ///         let on_change = ctx.link().callback(Msg::State);
-    ///         let dispatch = Dispatch::subscribe(on_change);
+    ///         let dispatch = Dispatch::subscribe_global(on_change);
     ///         Self {
     ///             state: dispatch.get(),
     ///             dispatch,
@@ -160,7 +158,7 @@ impl<S: Store> Dispatch<S> {
     /// }
     ///
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// dispatch.apply(AddOne);
     /// # ;
     /// # }
@@ -197,7 +195,7 @@ impl<S: Store> Dispatch<S> {
     /// }
     ///
     /// # async fn do_thing() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// dispatch.apply_future(AddOne).await;
     /// # ;
     /// # }
@@ -229,7 +227,7 @@ impl<S: Store> Dispatch<S> {
     /// }
     ///
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onclick = dispatch.apply_callback(|_| AddOne);
     /// html! {
     ///     <button {onclick}>{"+1"}</button>
@@ -277,7 +275,7 @@ impl<S: Store> Dispatch<S> {
     /// }
     ///
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onclick = dispatch.apply_future_callback(|_| AddOne);
     /// html! {
     ///     <button {onclick}>{"+1"}</button>
@@ -311,7 +309,7 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// dispatch.set(State { count: 0 });
     /// # }
     /// ```
@@ -329,7 +327,7 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onchange = dispatch.set_callback(|event: Event| {
     ///     let value = event.target_unchecked_into::<web_sys::HtmlInputElement>().value();
     ///     State { count: value.parse().unwrap() }
@@ -361,7 +359,7 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// dispatch.reduce(|state| State { count: state.count + 1 }.into());
     /// # }
     /// ```
@@ -385,7 +383,7 @@ impl<S: Store> Dispatch<S> {
     /// #   1
     /// # }
     /// # async fn do_thing() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// dispatch
     ///     .reduce_future(|state| async move {
     ///         let incr = get_incr().await;
@@ -417,7 +415,7 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onclick = dispatch.reduce_callback(|state| State { count: state.count + 1 }.into());
     /// html! {
     ///     <button {onclick}>{"+1"}</button>
@@ -449,7 +447,7 @@ impl<S: Store> Dispatch<S> {
     /// #   1
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onclick = dispatch.reduce_future_callback(|state| async move {
     ///     let incr = get_incr().await;
     ///     State {
@@ -491,7 +489,7 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onchange = dispatch.reduce_callback_with(|state, event: Event| {
     ///     let value = event.target_unchecked_into::<web_sys::HtmlInputElement>().value();
     ///     State {
@@ -529,7 +527,7 @@ impl<S: Store> Dispatch<S> {
     /// #     1
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onchange = dispatch.reduce_future_callback_with(|state, event: Event| async move {
     ///     let value = event.target_unchecked_into::<web_sys::HtmlInputElement>().value();
     ///     let incr = get_incr().await;
@@ -573,7 +571,7 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// dispatch.reduce_mut(|state| state.count += 1);
     /// # }
     /// ```
@@ -600,7 +598,7 @@ impl<S: Store> Dispatch<S> {
     /// #   1
     /// # }
     /// # async fn do_thing() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// dispatch
     ///     .reduce_mut_future(|state| {
     ///         Box::pin(async move {
@@ -630,7 +628,7 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onclick = dispatch.reduce_mut_callback(|s| s.count += 1);
     /// html! {
     ///     <button {onclick}>{"+1"}</button>
@@ -665,7 +663,7 @@ impl<S: Store> Dispatch<S> {
     /// #   1
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onclick = dispatch.reduce_mut_future_callback(|state| Box::pin(async move {
     ///     let incr = get_incr().await;
     ///     state.count += incr;
@@ -705,7 +703,7 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onchange = dispatch.reduce_mut_callback_with(|state, event: Event| {
     ///     let value = event.target_unchecked_into::<web_sys::HtmlInputElement>().value();
     ///     state.count = value.parse().unwrap();
@@ -744,7 +742,7 @@ impl<S: Store> Dispatch<S> {
     /// #     1
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onchange = dispatch.reduce_mut_future_callback_with(|state, event: Event| {
     ///     Box::pin(async move {
     ///         let value = event

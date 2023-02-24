@@ -9,7 +9,7 @@ read and write changes to state in various ways.
 To create a dispatch, you need only provide the desired store type.
 
 ```rust
-let dispatch = Dispatch::<Counter>::new();
+let dispatch = Dispatch::<Counter>::global();
 ```
 
 A dispatch is also given when using the functional hook.
@@ -180,7 +180,7 @@ Just use it normally, no additonal setup is needed.
 ```rust
 yew::platform::spawn_local(async {
     let user = get_user().await;
-    Dispatch::<User>::new().set(user);
+    Dispatch::<User>::global().set(user);
 })
 ```
 
@@ -205,7 +205,7 @@ dispatch
 ### `Dispatch::reduce_mut_future`
 
 For the `CoW` approach. Note `Box::pin` is required here. This is due to a current limitation of
-Rust, and should be phased out in the future.
+Rust's type system, and should be phased out in the future.
 
 ```rust
 dispatch

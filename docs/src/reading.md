@@ -43,7 +43,7 @@ impl Component for MyComponent {
         let callback = ctx.link().callback(Msg::UpdateCounter);
         // Subscribe to changes in state. New state is received in `update`. Be sure to save this,
         // dropping it will unsubscribe.
-        let dispatch = Dispatch::<Counter>::subscribe(callback);
+        let dispatch = Dispatch::<Counter>::subscribe_global(callback);
         Self {
             // Get the current state.
             counter: dispatch.get(),

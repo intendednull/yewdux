@@ -36,7 +36,7 @@ struct State {
 
 impl Store for State {
     fn new() -> Self {
-        init_listener(StorageListener);
+        init_listener(StorageListener, &yewdux::Context::global());
 
         storage::load(storage::Area::Local)
             .ok()

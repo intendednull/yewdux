@@ -58,7 +58,7 @@ impl<S: Store> Entry<S> {
 /// struct Counter(usize);
 ///
 /// let cx = yewdux::Context::new();
-/// let dispatch = Dispatch::<Counter>::with_context(&cx);
+/// let dispatch = Dispatch::<Counter>::new(&cx);
 /// ```
 #[derive(Clone, Default, PartialEq)]
 pub struct Context {

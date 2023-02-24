@@ -67,7 +67,7 @@ pub fn use_store_value<S: Store>() -> Rc<S> {
 /// #[function_component]
 /// fn App() -> Html {
 ///     let count = use_selector(|state: &State| state.count);
-///     let onclick = Dispatch::<State>::new().reduce_mut_callback(|state| state.count += 1);
+///     let onclick = Dispatch::<State>::global().reduce_mut_callback(|state| state.count += 1);
 ///
 ///     html! {
 ///         <>
