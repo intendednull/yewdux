@@ -1,4 +1,4 @@
-use std::{borrow::BorrowMut, rc::Rc};
+use std::rc::Rc;
 #[cfg(feature = "future")]
 use std::{future::Future, pin::Pin};
 
@@ -10,27 +10,14 @@ use crate::{
     subscriber::{Callable, SubscriberId, Subscribers},
 };
 
-#[allow(unused_variables)]
-fn check_arch(is_global: bool) {
-    #[cfg(not(target_arch = "wasm32"))]
-    if is_global {
-        panic!(concat!(
-            "Writing to global context outside of the browser is unsafe.",
-            " Please use a context provider like YewduxRoot",
-        ))
-    }
-}
-
 pub(crate) struct Entry<S> {
     pub(crate) store: Mrc<Rc<S>>,
-    is_global: bool,
 }
 
 impl<S> Clone for Entry<S> {
     fn clone(&self) -> Self {
         Self {
             store: Mrc::clone(&self.store),
-            is_global: self.is_global,
         }
     }
 }
@@ -38,8 +25,6 @@ impl<S> Clone for Entry<S> {
 impl<S: Store> Entry<S> {
     /// Apply a function to state, returning if it should notify subscribers or not.
     pub(crate) fn reduce<R: Reducer<S>>(&self, reducer: R) -> bool {
-        check_arch(self.is_global);
-
         let old = Rc::clone(&self.store.borrow());
         // Apply the reducer.
         let new = reducer.apply(Rc::clone(&old));
@@ -52,8 +37,6 @@ impl<S: Store> Entry<S> {
     /// Apply a future reduction to state, returning if it should notify subscribers or not.
     #[cfg(feature = "future")]
     pub(crate) async fn reduce_future<R: AsyncReducer<S>>(&self, reducer: R) -> bool {
-        check_arch(self.is_global);
-
         let old = Rc::clone(&self.store.borrow());
         // Apply the reducer.
         let new = reducer.apply(Rc::clone(&old)).await;
@@ -80,7 +63,6 @@ impl<S: Store> Entry<S> {
 #[derive(Clone, Default, PartialEq)]
 pub struct Context {
     inner: Mrc<AnyMap>,
-    is_global: bool,
 }
 
 impl Context {
@@ -93,13 +75,9 @@ impl Context {
             static CONTEXT: Context = Default::default();
         }
 
-        let mut cx = CONTEXT
+        CONTEXT
             .try_with(|cx| cx.clone())
-            .expect("CONTEXTS thread local key init failed");
-        // Mark as global, for safety check later.
-        cx.borrow_mut().is_global = true;
-
-        cx
+            .expect("CONTEXTS thread local key init failed")
     }
 
     pub(crate) fn get_or_init<S: Store>(&self) -> Entry<S> {
@@ -124,7 +102,6 @@ impl Context {
             // is being created.
             let entry = Entry {
                 store: Mrc::new(Rc::new(S::new())),
-                is_global: self.is_global,
             };
 
             *maybe_entry.borrow_mut() = Some(entry);
@@ -285,12 +262,5 @@ mod tests {
         let context = Context::global().get_or_init::<StoreNewIsOnlyCalledOnce>();
 
         assert!(context.store.borrow().0.get() == 1)
-    }
-
-    #[test]
-    #[cfg_attr(not(target_arch = "wasm32"), should_panic)]
-    fn global_fails_without_wasm() {
-        let cx = Context::global();
-        cx.set(TestState(1));
     }
 }
