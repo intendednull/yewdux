@@ -805,7 +805,7 @@ mod tests {
     #[derive(Clone, PartialEq, Eq)]
     struct TestState(u32);
     impl Store for TestState {
-        fn new() -> Self {
+        fn new(_cx: &Context) -> Self {
             Self(0)
         }
 
@@ -816,7 +816,7 @@ mod tests {
     #[derive(PartialEq, Eq)]
     struct TestStateNoClone(u32);
     impl Store for TestStateNoClone {
-        fn new() -> Self {
+        fn new(_cx: &Context) -> Self {
             Self(0)
         }
 

@@ -34,7 +34,7 @@ fn main() {
 ## Additional examples
 
 Complete working examples can be found in the
-[examples](https://github.com/intendednull/yewdux/tree/0.8.1/examples) folder of github.
+[examples](https://github.com/intendednull/yewdux/tree/master/examples) folder of github.
 
 To run an example you'll need to install [trunk](https://github.com/thedodd/trunk) (a rust wasm
 bundler), then run the following command (replacing [example] with your desired example name):

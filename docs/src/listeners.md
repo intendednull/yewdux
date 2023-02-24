@@ -16,7 +16,7 @@ impl Listener for StorageListener {
     // Here's where we say which store we want to subscribe to.
     type Store = State;
 
-    fn on_change(&mut self, state: Rc<Self::Store>) {
+    fn on_change(&mut self, _cx: &yewdux::Context, state: Rc<Self::Store>) {
         storage::save(state.as_ref(), storage::Area::Local).expect("unable to save state");
     }
 }
@@ -35,8 +35,8 @@ struct State {
 }
 
 impl Store for State {
-    fn new() -> Self {
-        init_listener(StorageListener, &yewdux::Context::global());
+    fn new(cx: &yewdux::Context) -> Self {
+        init_listener(StorageListener, cx);
 
         storage::load(storage::Area::Local)
             .ok()

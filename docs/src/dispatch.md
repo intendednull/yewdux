@@ -1,7 +1,7 @@
 # Dispatch
 
-A [Dispatch](https://docs.rs/yewdux/0.8.1/yewdux/dispatch/struct.Dispatch.html) is the primary
-interface to [Store](https://docs.rs/yewdux/0.8.1/yewdux/store/trait.Store.html). It is used to
+A [Dispatch](https://docs.rs/yewdux/latest/yewdux/dispatch/struct.Dispatch.html) is the primary
+interface to [Store](https://docs.rs/yewdux/latest/yewdux/store/trait.Store.html). It is used to
 read and write changes to state in various ways.
 
 # Creating a Dispatch
@@ -18,7 +18,7 @@ A dispatch is also given when using the functional hook.
 let (state, dispatch) = use_store::<Counter>();
 ```
 
-# Changing global state with Dispatch
+# Changing state
 
 `Dispatch` provides many options for changing state.
 

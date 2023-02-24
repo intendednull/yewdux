@@ -101,7 +101,7 @@ impl Context {
             // Init store outside of borrow. This allows the store to access other stores when it
             // is being created.
             let entry = Entry {
-                store: Mrc::new(Rc::new(S::new())),
+                store: Mrc::new(Rc::new(S::new(self))),
             };
 
             *maybe_entry.borrow_mut() = Some(entry);
@@ -208,7 +208,7 @@ mod tests {
     #[derive(Clone, PartialEq, Eq)]
     struct TestState(u32);
     impl Store for TestState {
-        fn new() -> Self {
+        fn new(_cx: &Context) -> Self {
             Self(0)
         }
 
@@ -220,7 +220,7 @@ mod tests {
     #[derive(Clone, PartialEq, Eq)]
     struct TestState2(u32);
     impl Store for TestState2 {
-        fn new() -> Self {
+        fn new(_cx: &Context) -> Self {
             Context::global().get_or_init::<TestState>();
             Self(0)
         }
@@ -238,7 +238,7 @@ mod tests {
     #[derive(Clone, PartialEq, Eq)]
     struct StoreNewIsOnlyCalledOnce(Rc<Cell<u32>>);
     impl Store for StoreNewIsOnlyCalledOnce {
-        fn new() -> Self {
+        fn new(_cx: &Context) -> Self {
             thread_local! {
                 /// Stores all shared state.
                 static COUNT: Rc<Cell<u32>> = Default::default();

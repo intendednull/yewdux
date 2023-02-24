@@ -30,7 +30,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::store::Store;
+use crate::{store::Store, Context};
 
 fn nonce() -> u32 {
     thread_local! {
@@ -83,8 +83,8 @@ impl<T> Mrc<T> {
 }
 
 impl<T: Store> Store for Mrc<T> {
-    fn new() -> Self {
-        T::new().into()
+    fn new(cx: &Context) -> Self {
+        T::new(cx).into()
     }
 
     fn should_notify(&self, other: &Self) -> bool {
@@ -129,7 +129,7 @@ mod tests {
     #[derive(Clone, PartialEq)]
     struct TestState(Mrc<u32>);
     impl Store for TestState {
-        fn new() -> Self {
+        fn new(_cx: &Context) -> Self {
             Self(Mrc::new(0))
         }
 
@@ -140,7 +140,7 @@ mod tests {
 
     struct CanImplStoreForMrcDirectly;
     impl Store for Mrc<CanImplStoreForMrcDirectly> {
-        fn new() -> Self {
+        fn new(_cx: &Context) -> Self {
             CanImplStoreForMrcDirectly.into()
         }
 

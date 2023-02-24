@@ -19,9 +19,8 @@ This can also be done manually.
 use yewdux::{prelude::*, storage};
 
 impl Store for Counter {
-    fn new() -> Self {
-        let cx = yewdux::Context::global();
-        init_listener(storage::StorageListener::<Self>::new(storage::Area::Local), &cx);
+    fn new(cx: &yewdux::Context) -> Self {
+        init_listener(storage::StorageListener::<Self>::new(storage::Area::Local), cx);
 
         storage::load(storage::Area::Local)
             .expect("Unable to load state")

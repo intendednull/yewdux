@@ -6,12 +6,12 @@ use crate::{context::Context, dispatch::Dispatch, mrc::Mrc, store::Store};
 pub trait Listener: 'static {
     type Store: Store;
 
-    fn on_change(&mut self, state: Rc<Self::Store>);
+    fn on_change(&mut self, cx: &Context, state: Rc<Self::Store>);
 }
 
 struct ListenerStore<S: Store>(Option<Dispatch<S>>);
 impl<S: Store> Store for Mrc<ListenerStore<S>> {
-    fn new() -> Self {
+    fn new(_cx: &Context) -> Self {
         ListenerStore(None).into()
     }
 
@@ -25,7 +25,11 @@ impl<S: Store> Store for Mrc<ListenerStore<S>> {
 pub fn init_listener<L: Listener>(listener: L, cx: &Context) {
     let dispatch = {
         let listener = Mrc::new(listener);
-        Dispatch::subscribe_silent(move |state| listener.borrow_mut().on_change(state), cx)
+        let cxo = cx.clone();
+        Dispatch::subscribe_silent(
+            move |state| listener.borrow_mut().on_change(&cxo, state),
+            cx,
+        )
     };
 
     Dispatch::new(cx).reduce_mut(|state: &mut Mrc<ListenerStore<L::Store>>| {
@@ -43,7 +47,7 @@ mod tests {
     #[derive(Clone, PartialEq, Eq)]
     struct TestState(u32);
     impl Store for TestState {
-        fn new() -> Self {
+        fn new(_cx: &Context) -> Self {
             Self(0)
         }
 
@@ -57,7 +61,7 @@ mod tests {
     impl Listener for TestListener {
         type Store = TestState;
 
-        fn on_change(&mut self, state: Rc<Self::Store>) {
+        fn on_change(&mut self, _cx: &Context, state: Rc<Self::Store>) {
             self.0.set(state.0);
         }
     }

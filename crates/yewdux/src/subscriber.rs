@@ -4,13 +4,12 @@ use std::{any::Any, marker::PhantomData};
 use slab::Slab;
 use yew::Callback;
 
-use crate::mrc::Mrc;
-use crate::store::Store;
+use crate::{mrc::Mrc, store::Store, Context};
 
 pub(crate) struct Subscribers<S>(pub(crate) Slab<Box<dyn Callable<S>>>);
 
 impl<S: 'static> Store for Subscribers<S> {
-    fn new() -> Self {
+    fn new(_cx: &Context) -> Self {
         Self(Default::default())
     }
 
@@ -107,7 +106,7 @@ mod tests {
     #[derive(Clone, PartialEq, Eq)]
     struct TestState(u32);
     impl Store for TestState {
-        fn new() -> Self {
+        fn new(_cx: &Context) -> Self {
             Self(0)
         }
 

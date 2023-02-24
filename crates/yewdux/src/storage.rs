@@ -11,7 +11,7 @@
 //! impl Listener for StorageListener {
 //!     type Store = State;
 //!
-//!     fn on_change(&mut self, state: Rc<Self::Store>) {
+//!     fn on_change(&mut self, _cx: &Context, state: Rc<Self::Store>) {
 //!         if let Err(err) = storage::save(state.as_ref(), storage::Area::Local) {
 //!             println!("Error saving state to storage: {:?}", err);
 //!         }
@@ -24,8 +24,8 @@
 //! }
 //!
 //! impl Store for State {
-//!     fn new() -> Self {
-//!         init_listener(StorageListener);
+//!     fn new(cx: &yewdux::Context) -> Self {
+//!         init_listener(StorageListener, cx);
 //!
 //!         storage::load(storage::Area::Local)
 //!             .ok()
@@ -45,7 +45,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use wasm_bindgen::{prelude::Closure, JsCast, JsValue};
 use web_sys::{Event, Storage};
 
-use crate::{dispatch::Dispatch, listener::Listener, store::Store};
+use crate::{dispatch::Dispatch, listener::Listener, store::Store, Context};
 
 #[derive(Debug, thiserror::Error)]
 pub enum StorageError {
@@ -86,7 +86,7 @@ where
 {
     type Store = T;
 
-    fn on_change(&mut self, state: Rc<Self::Store>) {
+    fn on_change(&mut self, _cx: &Context, state: Rc<Self::Store>) {
         if let Err(err) = save(state.as_ref(), self.area) {
             crate::log::error!("Error saving state to storage: {:?}", err);
         }
@@ -137,10 +137,14 @@ pub fn load<T: DeserializeOwned>(area: Area) -> Result<Option<T>, StorageError> 
 
 /// Synchronize state across all tabs. **WARNING**: This provides no protection for multiple
 /// calls. Doing so will result in repeated loading. Using the macro is advised.
-pub fn init_tab_sync<S: Store + DeserializeOwned>(area: Area) -> Result<(), StorageError> {
+pub fn init_tab_sync<S: Store + DeserializeOwned>(
+    area: Area,
+    cx: &Context,
+) -> Result<(), StorageError> {
+    let cx = cx.clone();
     let closure = Closure::wrap(Box::new(move |_: &Event| match load(area) {
         Ok(Some(state)) => {
-            Dispatch::<S>::global().set(state);
+            Dispatch::<S>::new(&cx).set(state);
         }
         Err(e) => {
             crate::log::error!("Unable to load state: {:?}", e);
@@ -167,7 +171,7 @@ mod tests {
     #[derive(Deserialize)]
     struct TestStore;
     impl Store for TestStore {
-        fn new() -> Self {
+        fn new(_cx: &Context) -> Self {
             Self
         }
 
@@ -178,6 +182,6 @@ mod tests {
 
     #[test]
     fn tab_sync() {
-        init_tab_sync::<TestStore>(Area::Local).unwrap();
+        init_tab_sync::<TestStore>(Area::Local, &Context::global()).unwrap();
     }
 }
