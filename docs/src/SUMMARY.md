@@ -13,6 +13,8 @@
     - [Persistence](./persistence.md)
 - [Dispatch](./dispatch.md)
     - [Subscriptions](./reading.md)
+- [Contexts](./context.md)
+    - [SSR Support](./ssr.md)
 - [Listeners](./listeners.md)
 - [Tips](./tips.md)
     - [Setting default value](./default_store.md)
