@@ -1,5 +1,7 @@
+use std::rc::Rc;
+
 use yew::prelude::*;
-use yewdux::prelude::*;
+use yewdux::{prelude::*, log::{log, Level}};
 
 use serde::{Deserialize, Serialize};
 
@@ -23,5 +25,16 @@ fn App() -> Html {
 }
 
 fn main() {
+    wasm_logger::init(wasm_logger::Config::default());
     yew::Renderer::<App>::new().render();
+}
+
+
+struct LogListener;
+impl Listener for LogListener {
+    type Store = State;
+
+    fn on_change(&mut self, _state: Rc<Self::Store>) {
+        log!(Level::Info, "State has changed 123");
+    }
 }
