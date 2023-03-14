@@ -119,8 +119,7 @@ pub struct Entry {
     pub editing: bool,
 }
 
-#[derive(Clone, Copy, Debug, EnumIter, Display, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Clone, Copy, Debug, EnumIter, Display, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Filter {
     #[default]
     All,
@@ -145,5 +144,3 @@ impl Filter {
         }
     }
 }
-
-

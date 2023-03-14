@@ -9,16 +9,16 @@ pub trait Listener: 'static {
     fn on_change(&mut self, state: Rc<Self::Store>);
 }
 
-struct ListenerStore<L : Listener>(Option<SubscriberId<L::Store>>);
-    impl<L : Listener> Store for Mrc<ListenerStore<L>> {
-        fn new() -> Self {
-            ListenerStore(None).into()
-        }
-
-        fn should_notify(&self, other: &Self) -> bool {
-            self != other
-        }
+struct ListenerStore<L: Listener>(Option<SubscriberId<L::Store>>);
+impl<L: Listener> Store for Mrc<ListenerStore<L>> {
+    fn new() -> Self {
+        ListenerStore(None).into()
     }
+
+    fn should_notify(&self, other: &Self) -> bool {
+        self != other
+    }
+}
 
 /// Initiate a [Listener]. If this listener has already been initiated, it is dropped and replaced
 /// with the new one.
@@ -28,9 +28,7 @@ pub fn init_listener<L: Listener>(listener: L) {
         dispatch::subscribe_silent(move |state| listener.borrow_mut().on_change(state))
     };
 
-    dispatch::reduce_mut(|state: &mut Mrc<ListenerStore<L>>| {
-        state.borrow_mut().0 = Some(id)
-    });
+    dispatch::reduce_mut(|state: &mut Mrc<ListenerStore<L>>| state.borrow_mut().0 = Some(id));
 }
 
 #[cfg(test)]

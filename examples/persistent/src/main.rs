@@ -1,7 +1,10 @@
 use std::rc::Rc;
 
 use yew::prelude::*;
-use yewdux::{prelude::*, log::{log, Level}};
+use yewdux::{
+    log::{log, Level},
+    prelude::*,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -28,7 +31,6 @@ fn main() {
     wasm_logger::init(wasm_logger::Config::default());
     yew::Renderer::<App>::new().render();
 }
-
 
 struct LogListener;
 impl Listener for LogListener {
