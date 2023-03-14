@@ -14,8 +14,8 @@ struct LogListener;
 impl Listener for LogListener {
     type Store = State;
 
-    fn on_change(&mut self, _state: Rc<Self::Store>) {
-        log!(Level::Info, "State has changed");
+    fn on_change(&mut self, state: Rc<Self::Store>) {
+        log!(Level::Info, "Count changed to {}", state.count);
     }
 }
 
