@@ -6,7 +6,7 @@ use yewdux::{prelude::*, log::{log, Level}};
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Clone, PartialEq, Eq, Deserialize, Serialize, Store)]
-#[store(storage = "local")]
+#[store(storage = "local", listener(LogListener))]
 struct State {
     count: u32,
 }
@@ -34,7 +34,7 @@ struct LogListener;
 impl Listener for LogListener {
     type Store = State;
 
-    fn on_change(&mut self, _state: Rc<Self::Store>) {
-        log!(Level::Info, "State has changed 123");
+    fn on_change(&mut self, state: Rc<Self::Store>) {
+        log!(Level::Info, "Count changed to {}", state.count);
     }
 }
