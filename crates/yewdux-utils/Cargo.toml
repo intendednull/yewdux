@@ -10,13 +10,7 @@ description = "Ergonomic state management for Yew applications"
 keywords = ["yew", "state", "redux", "shared", "container"]
 categories = ["wasm", "web-programming", "rust-patterns"]
 
-[lib]
-proc-macro = true
 
 [dependencies]
-darling = "0.13.3"
-proc-macro-error = "1.0.4"
-proc-macro2 = "1.0.36"
-quote = "1.0.14"
-syn = "1.0.84"
+yewdux = { path = "../yewdux" }
 
