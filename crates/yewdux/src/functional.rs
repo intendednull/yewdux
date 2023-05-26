@@ -174,6 +174,7 @@ where
     let _dispatch = {
         let selected = selected.clone();
         use_memo(
+            deps,
             move |deps| {
                 let deps = deps.clone();
                 Dispatch::subscribe(move |val: Rc<S>| {
@@ -188,7 +189,7 @@ where
                     }
                 })
             },
-            deps,
+
         )
     };
 

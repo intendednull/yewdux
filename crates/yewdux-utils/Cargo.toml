@@ -1,0 +1,16 @@
+[package]
+name = "yewdux-utils"
+version = "0.1.0"
+authors = ["Noah <noah@coronasoftware.net>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yewdux/yewdux-utils"
+readme = "../../README.md"
+description = "Ergonomic state management for Yew applications"
+keywords = ["yew", "state", "redux", "shared", "container"]
+categories = ["wasm", "web-programming", "rust-patterns"]
+
+
+[dependencies]
+yewdux = { path = "../yewdux" }
+
