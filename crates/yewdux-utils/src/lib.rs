@@ -12,7 +12,7 @@ impl<T: Store + PartialEq> Reducer<HistoryStore<T>> for HistoryChangeMessage<T> 
             return state;
         }
 
-        let mut mut_state = Rc::make_mut(&mut state);
+        let mut_state = Rc::make_mut(&mut state);
         mut_state.index += 1;
         mut_state.vector.truncate(mut_state.index);
         mut_state.vector.push(self.0);
