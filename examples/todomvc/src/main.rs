@@ -81,7 +81,7 @@ fn SelectFilter(&SelectFilterProps { active, target }: &SelectFilterProps) -> Ht
     html! {
         <li>
             <a class={cls} href={target.as_href()} {onclick}>
-                { target }
+                { target.to_string() }
             </a>
         </li>
     }
