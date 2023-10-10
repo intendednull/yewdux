@@ -14,9 +14,8 @@ categories = ["wasm", "web-programming", "rust-patterns"]
 proc-macro = true
 
 [dependencies]
-darling = "0.13.3"
+darling = "0.20"
 proc-macro-error = "1.0.4"
 proc-macro2 = "1.0.36"
 quote = "1.0.14"
-syn = "1.0.84"
-
+syn = "2"
