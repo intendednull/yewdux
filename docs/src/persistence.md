@@ -46,3 +46,24 @@ struct State {
 }
 ```
 
+## Additional Listeners
+
+You can inject additional listeners into the `#[store]` macro.
+
+```rust
+#[derive(Default, Clone, PartialEq, Eq, Deserialize, Serialize, Store)]
+#[store(storage = "local", listener(LogListener))]
+struct State {
+    count: u32,
+}
+
+struct LogListener;
+impl Listener for LogListener {
+    type Store = State;
+
+    fn on_change(&mut self, state: Rc<Self::Store>) {
+        log!(Level::Info, "Count changed to {}", state.count);
+    }
+}
+```
+

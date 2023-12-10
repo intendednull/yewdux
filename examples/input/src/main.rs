@@ -74,7 +74,7 @@ fn InputDatetime() -> Html {
 
     html! {
         <>
-        <p>{store.datetime.unwrap_or_default()}</p>
+        <p>{store.datetime.unwrap_or_default().to_rfc2822()}</p>
         <input type="datetime-local" {oninput} />
         </>
     }

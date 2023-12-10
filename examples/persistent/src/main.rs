@@ -1,10 +1,15 @@
+use std::rc::Rc;
+
 use yew::prelude::*;
-use yewdux::prelude::*;
+use yewdux::{
+    log::{log, Level},
+    prelude::*, Context,
+};
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Clone, PartialEq, Eq, Deserialize, Serialize, Store)]
-#[store(storage = "local")]
+#[store(storage = "local", listener(LogListener))]
 struct State {
     count: u32,
 }
@@ -23,5 +28,15 @@ fn App() -> Html {
 }
 
 fn main() {
+    wasm_logger::init(wasm_logger::Config::default());
     yew::Renderer::<App>::new().render();
+}
+
+struct LogListener;
+impl Listener for LogListener {
+    type Store = State;
+
+    fn on_change(&mut self, _cx: &Context, state: Rc<Self::Store>) {
+        log!(Level::Info, "Count changed to {}", state.count);
+    }
 }

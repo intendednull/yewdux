@@ -1,4 +1,4 @@
-use darling::FromDeriveInput;
+use darling::{util::PathList, FromDeriveInput};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::DeriveInput;
@@ -8,12 +8,25 @@ use syn::DeriveInput;
 struct Opts {
     storage: Option<String>,
     storage_tab_sync: bool,
+    listener: PathList,
 }
 
 pub(crate) fn derive(input: DeriveInput) -> TokenStream {
     let opts = Opts::from_derive_input(&input).expect("Invalid options");
     let ident = input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+    let extra_listeners: Vec<_> = opts
+        .listener
+        .iter()
+        .map(|path| {
+            quote! {
+                ::yewdux::listener::init_listener(
+                    #path, cx
+                );
+            }
+        })
+        .collect();
 
     let impl_ = match opts.storage {
         Some(storage) => {
@@ -43,6 +56,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                         ::yewdux::storage::StorageListener::<Self>::new(#area),
                         cx
                     );
+                    #(#extra_listeners)*
 
                     #sync
 
@@ -59,12 +73,14 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
 
                 #[cfg(not(target_arch = "wasm32"))]
                 fn new(_cx: &::yewdux::Context) -> Self {
+                    #(#extra_listeners)*
                     Default::default()
                 }
             }
         }
         None => quote! {
             fn new(_cx: &::yewdux::Context) -> Self {
+                #(#extra_listeners)*
                 Default::default()
             }
         },

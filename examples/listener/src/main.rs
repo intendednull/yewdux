@@ -1,11 +1,23 @@
 use std::rc::Rc;
 
 use yew::prelude::*;
-use yewdux::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use yewdux::storage;
+use yewdux::{
+    log::{log, Level},
+    prelude::*, Context,
+};
 
 use serde::{Deserialize, Serialize};
+
+struct LogListener;
+impl Listener for LogListener {
+    type Store = State;
+
+    fn on_change(&mut self, _cx: &Context, state: Rc<Self::Store>) {
+        log!(Level::Info, "Count changed to {}", state.count);
+    }
+}
 
 struct StorageListener;
 impl Listener for StorageListener {
@@ -33,6 +45,7 @@ impl Store for State {
     #[cfg(target_arch = "wasm32")]
     fn new(cx: &yewdux::Context) -> Self {
         init_listener(StorageListener, cx);
+        init_listener(LogListener, cx);
 
         storage::load(storage::Area::Local)
             .ok()
@@ -59,5 +72,6 @@ fn App() -> Html {
 }
 
 fn main() {
+    wasm_logger::init(wasm_logger::Config::default());
     yew::Renderer::<App>::new().render();
 }

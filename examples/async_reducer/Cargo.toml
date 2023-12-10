@@ -9,5 +9,5 @@ edition = "2018"
 yew = { git = "https://github.com/yewstack/yew.git", features = ["csr"] }
 yewdux = { path = "../../crates/yewdux" }
 serde = "1.0"
-gloo-net = "0.2.4"
+gloo-net = "0.4"
 web-sys = "0.3"

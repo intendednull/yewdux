@@ -575,14 +575,18 @@ impl<S: Store> Dispatch<S> {
     /// dispatch.reduce_mut(|state| state.count += 1);
     /// # }
     /// ```
-    pub fn reduce_mut<F, R>(&self, f: F)
+    pub fn reduce_mut<F, R>(&self, f: F) -> R
     where
         S: Clone,
         F: FnOnce(&mut S) -> R,
     {
+        let mut result = None;
+
         self.context.reduce_mut(|x| {
-            f(x);
+            result = Some(f(x));
         });
+
+        result.expect("result not initialized")
     }
 
     /// Mutate state with given function, in an async context.

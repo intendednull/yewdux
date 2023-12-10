@@ -12,7 +12,7 @@ pub fn YewduxRoot(Props { children }: &Props) -> Html {
     let ctx = use_state(context::Context::new);
     html! {
         <ContextProvider<context::Context> context={(*ctx).clone()}>
-            { children }
+            { children.clone() }
         </ContextProvider<context::Context>>
     }
 }
