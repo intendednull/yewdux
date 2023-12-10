@@ -55,7 +55,7 @@ fn Controls() -> Html {
         .enumerate()
         .map(|(i, x)| {
             let matches = i == state.index();
-            let match_text = matches.then_some("<<<");
+            let match_text = matches.then_some("<<<").unwrap_or("");
             let text = format!("{x:?}");
 
             let onclick = dispatch.apply_callback(move |_| HistoryMessage::JumpTo(i));
