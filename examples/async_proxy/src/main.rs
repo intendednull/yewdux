@@ -39,7 +39,7 @@ struct TimeProps {
 
 #[function_component]
 fn Time(props: &TimeProps) -> Html {
-    let dispatch = Dispatch::<State>::global();
+    let dispatch = Dispatch::<State>::new();
     let timezone = props.timezone.clone();
     let refresh = {
         let timezone = timezone.clone();
@@ -79,7 +79,7 @@ fn Time(props: &TimeProps) -> Html {
 
 #[function_component]
 fn NewTimeZone() -> Html {
-    let dispatch = Dispatch::<State>::global();
+    let dispatch = Dispatch::<State>::new();
     let onkeypress = dispatch.reduce_mut_callback_with(|state, e: KeyboardEvent| {
         if e.key() == "Enter" {
             let input: web_sys::HtmlInputElement = e.target_unchecked_into();

@@ -144,7 +144,7 @@ pub fn init_tab_sync<S: Store + DeserializeOwned>(
     let cx = cx.clone();
     let closure = Closure::wrap(Box::new(move |_: &Event| match load(area) {
         Ok(Some(state)) => {
-            Dispatch::<S>::new(&cx).set(state);
+            Dispatch::<S>::with_cx(&cx).set(state);
         }
         Err(e) => {
             crate::log::error!("Unable to load state: {:?}", e);

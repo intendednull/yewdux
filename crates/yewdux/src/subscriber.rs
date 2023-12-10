@@ -196,7 +196,7 @@ mod tests {
         let dispatch = Dispatch::<TestState>::subscribe(
             move |state: Rc<TestState>| {
                 if state.0 == 0 {
-                    Dispatch::new(&cxo).reduce_mut(|state: &mut TestState| state.0 += 1);
+                    Dispatch::with_cx(&cxo).reduce_mut(|state: &mut TestState| state.0 += 1);
                 }
             },
             &cx,

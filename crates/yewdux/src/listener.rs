@@ -102,7 +102,7 @@ mod tests {
 
         init_listener(listener.clone(), &cx);
 
-        Dispatch::new(&cx).reduce_mut(|state: &mut TestState| state.0 = 1);
+        Dispatch::with_cx(&cx).reduce_mut(|state: &mut TestState| state.0 = 1);
 
         assert_eq!(listener.0.get(), 1)
     }
@@ -115,13 +115,13 @@ mod tests {
 
         init_listener(listener1.clone(), &cx);
 
-        Dispatch::new(&cx).reduce_mut(|state: &mut TestState| state.0 = 1);
+        Dispatch::with_cx(&cx).reduce_mut(|state: &mut TestState| state.0 = 1);
 
         assert_eq!(listener1.0.get(), 1);
 
         init_listener(listener2.clone(), &cx);
 
-        Dispatch::new(&cx).reduce_mut(|state: &mut TestState| state.0 = 2);
+        Dispatch::with_cx(&cx).reduce_mut(|state: &mut TestState| state.0 = 2);
 
         assert_eq!(listener1.0.get(), 1);
         assert_eq!(listener2.0.get(), 2);

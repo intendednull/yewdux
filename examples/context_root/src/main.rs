@@ -8,7 +8,7 @@ struct State {
 
 #[function_component]
 fn Counter() -> Html {
-    let global_state = Dispatch::<State>::global().get();
+    let global_state = Dispatch::<State>::new().get();
     let (state, dispatch) = use_store::<State>();
     let onclick = dispatch.reduce_mut_callback(|state| state.count += 1);
     html! {

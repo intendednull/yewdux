@@ -34,7 +34,7 @@ use crate::{dispatch::Dispatch, store::Store};
 pub fn use_store<S: Store>() -> (Rc<S>, Dispatch<S>) {
     let ctx =
         use_context::<crate::context::Context>().unwrap_or_else(crate::context::Context::global);
-    let state: UseStateHandle<Rc<S>> = use_state(|| Dispatch::new(&ctx).get());
+    let state: UseStateHandle<Rc<S>> = use_state(|| Dispatch::with_cx(&ctx).get());
     let dispatch = {
         let state = state.clone();
         use_state(move || Dispatch::<S>::subscribe_silent(move |val| state.set(val), &ctx))
@@ -160,7 +160,7 @@ where
         use_context::<crate::context::Context>().unwrap_or_else(crate::context::Context::global);
     // Given to user, this is what we update to force a re-render.
     let selected = {
-        let state = Dispatch::new(&ctx).get();
+        let state = Dispatch::with_cx(&ctx).get();
         let value = selector(&state, &deps);
 
         use_state(|| Rc::new(value))

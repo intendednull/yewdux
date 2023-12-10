@@ -193,7 +193,7 @@ mod tests {
 
     #[test]
     fn can_wrap_store_with_mrc() {
-        let dispatch = Dispatch::<Mrc<TestState>>::global();
+        let dispatch = Dispatch::<Mrc<TestState>>::new();
         assert!(*dispatch.get().borrow().0.borrow() == 0)
     }
 }
