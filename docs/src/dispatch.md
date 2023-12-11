@@ -6,13 +6,18 @@ read and write changes to state in various ways.
 
 # Creating a Dispatch
 
-To create a dispatch, you need only provide the desired store type. This is available in **any** rust code, not just yew components.
+To create a dispatch, you need only provide the desired store type. This is available in **any**
+rust code, not just yew components.
 
 ```rust
-let dispatch = Dispatch::<Counter>::global();
+let dispatch = Dispatch::<Counter>::new();
 ```
 
-A dispatch is also given when using the functional hook, which is only available in yew components.
+A dispatch is also given when using the functional hook, which is only available in yew functional
+components.
+
+**IMPORTANT**: `use_store` is a functional hook, and must be used at the top level of a function
+component.
 
 ```rust
 let (state, dispatch) = use_store::<Counter>();
