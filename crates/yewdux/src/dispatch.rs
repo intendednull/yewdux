@@ -43,6 +43,13 @@ impl<S: Store> std::fmt::Debug for Dispatch<S> {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+impl<S: Store> Default for Dispatch<S> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<S: Store> Dispatch<S> {
     /// Create a new dispatch with the global context (thread local).
     #[cfg(target_arch = "wasm32")]
@@ -56,6 +63,11 @@ impl<S: Store> Dispatch<S> {
             _subscriber_id: Default::default(),
             context: cx.clone(),
         }
+    }
+
+    /// Get the context used by this dispatch.
+    pub fn context(&self) -> &Context {
+        &self.context
     }
 
     /// Create a dispatch that subscribes to changes in state. Latest state is sent immediately,
@@ -1189,9 +1201,8 @@ mod tests {
 
         let _id = {
             let flag = flag.clone();
-            Dispatch::<TestState>::with_cx(&cx).subscribe(
-                move |_| flag.clone().with_mut(|flag| *flag = true),
-            )
+            Dispatch::<TestState>::with_cx(&cx)
+                .subscribe(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
 
         *flag.borrow_mut() = false;

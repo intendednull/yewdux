@@ -1,5 +1,5 @@
 use std::{marker::PhantomData, rc::Rc};
-use yewdux::{prelude::*, Context, dispatch};
+use yewdux::{prelude::*, Context};
 
 #[derive(Default)]
 pub struct HistoryListener<T: Store + PartialEq>(PhantomData<T>);
@@ -74,7 +74,7 @@ impl<T: Store + PartialEq> HistoryStore<T> {
     }
 }
 
-impl <T: Store + PartialEq> Store for HistoryStore<T> {
+impl<T: Store + PartialEq> Store for HistoryStore<T> {
     fn new(cx: &Context) -> Self {
         let dispatch = Dispatch::<T>::with_cx(cx);
         let s1 = dispatch.get();

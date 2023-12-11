@@ -47,12 +47,15 @@ impl FromInputElement for Checkbox {
 }
 
 pub trait InputDispatch<S: Store> {
-    fn input<F, E, R>(&self, f: F, cx: &Context) -> Callback<E>
+    fn context(&self) -> &Context;
+
+    fn input<F, E, R>(&self, f: F) -> Callback<E>
     where
         R: FromInputElement,
         F: Fn(Rc<S>, R) -> Rc<S> + 'static,
         E: AsRef<Event> + JsCast + 'static,
     {
+        let cx = self.context();
         Dispatch::<S>::with_cx(cx).reduce_callback_with(move |s, e| {
             if let Some(value) = input_value(e) {
                 f(s, value)
@@ -62,13 +65,14 @@ pub trait InputDispatch<S: Store> {
         })
     }
 
-    fn input_mut<F, E, R>(&self, f: F, cx: &Context) -> Callback<E>
+    fn input_mut<F, E, R>(&self, f: F) -> Callback<E>
     where
         S: Clone,
         R: FromInputElement,
         F: Fn(&mut S, R) + 'static,
         E: AsRef<Event> + JsCast + 'static,
     {
+        let cx = self.context();
         Dispatch::<S>::with_cx(cx).reduce_mut_callback_with(move |s, e| {
             if let Some(value) = input_value(e) {
                 f(s, value);
@@ -77,7 +81,11 @@ pub trait InputDispatch<S: Store> {
     }
 }
 
-impl<S: Store> InputDispatch<S> for Dispatch<S> {}
+impl<S: Store> InputDispatch<S> for Dispatch<S> {
+    fn context(&self) -> &Context {
+        self.context()
+    }
+}
 
 /// Get any parsable value out of an input event.
 pub fn input_value<E, R>(event: E) -> Option<R>
