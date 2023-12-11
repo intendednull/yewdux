@@ -72,7 +72,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 }
 
                 #[cfg(not(target_arch = "wasm32"))]
-                fn new(_cx: &::yewdux::Context) -> Self {
+                fn new(cx: &::yewdux::Context) -> Self {
                     #(#extra_listeners)*
                     Default::default()
                 }

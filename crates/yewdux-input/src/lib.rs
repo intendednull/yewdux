@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsCast;
 use web_sys::{HtmlInputElement, HtmlTextAreaElement};
 use yew::prelude::*;
-use yewdux::prelude::*;
+use yewdux::{prelude::*, Context};
 
 pub enum InputElement {
     Input(HtmlInputElement),
@@ -47,13 +47,13 @@ impl FromInputElement for Checkbox {
 }
 
 pub trait InputDispatch<S: Store> {
-    fn input<F, E, R>(&self, f: F) -> Callback<E>
+    fn input<F, E, R>(&self, f: F, cx: &Context) -> Callback<E>
     where
         R: FromInputElement,
         F: Fn(Rc<S>, R) -> Rc<S> + 'static,
         E: AsRef<Event> + JsCast + 'static,
     {
-        Dispatch::<S>::new().reduce_callback_with(move |s, e| {
+        Dispatch::<S>::with_cx(cx).reduce_callback_with(move |s, e| {
             if let Some(value) = input_value(e) {
                 f(s, value)
             } else {
@@ -62,14 +62,14 @@ pub trait InputDispatch<S: Store> {
         })
     }
 
-    fn input_mut<F, E, R>(&self, f: F) -> Callback<E>
+    fn input_mut<F, E, R>(&self, f: F, cx: &Context) -> Callback<E>
     where
         S: Clone,
         R: FromInputElement,
         F: Fn(&mut S, R) + 'static,
         E: AsRef<Event> + JsCast + 'static,
     {
-        Dispatch::<S>::new().reduce_mut_callback_with(move |s, e| {
+        Dispatch::<S>::with_cx(cx).reduce_mut_callback_with(move |s, e| {
             if let Some(value) = input_value(e) {
                 f(s, value);
             }

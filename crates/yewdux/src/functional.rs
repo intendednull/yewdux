@@ -3,7 +3,19 @@ use std::{ops::Deref, rc::Rc};
 
 use yew::functional::*;
 
-use crate::{dispatch::Dispatch, store::Store};
+use crate::{dispatch::Dispatch, store::Store, Context};
+
+#[hook]
+fn use_cx() -> Context {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use_context::<crate::context::Context>().unwrap_or_else(crate::context::Context::global)
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    { 
+        use_context::<crate::context::Context>().expect("YewduxRoot not found")
+    }
+}
 
 /// This hook allows accessing the state of a store. When the store is modified, a re-render is
 /// automatically triggered.
@@ -32,16 +44,18 @@ use crate::{dispatch::Dispatch, store::Store};
 /// ```
 #[hook]
 pub fn use_store<S: Store>() -> (Rc<S>, Dispatch<S>) {
-    let ctx =
-        use_context::<crate::context::Context>().unwrap_or_else(crate::context::Context::global);
-    let state: UseStateHandle<Rc<S>> = use_state(|| Dispatch::with_cx(&ctx).get());
+    let cx = use_cx();
+    let dispatch = Dispatch::<S>::with_cx(&cx);
+    let state: UseStateHandle<Rc<S>> = use_state(|| dispatch.get());
     let dispatch = {
         let state = state.clone();
-        use_state(move || Dispatch::<S>::subscribe_silent(move |val| state.set(val), &ctx))
+        use_state(move || dispatch.subscribe_silent(move |val| state.set(val)))
     };
 
     (Rc::clone(&state), dispatch.deref().clone())
 }
+
+
 
 /// Simliar to ['use_store'], but only provides the state.
 #[hook]
@@ -67,7 +81,7 @@ pub fn use_store_value<S: Store>() -> Rc<S> {
 /// #[function_component]
 /// fn App() -> Html {
 ///     let count = use_selector(|state: &State| state.count);
-///     let onclick = Dispatch::<State>::global().reduce_mut_callback(|state| state.count += 1);
+///     let onclick = Dispatch::<State>::new().reduce_mut_callback(|state| state.count += 1);
 ///
 ///     html! {
 ///         <>
@@ -156,11 +170,10 @@ where
     F: Fn(&S, &D) -> R + 'static,
     E: Fn(&R, &R) -> bool + 'static,
 {
-    let ctx =
-        use_context::<crate::context::Context>().unwrap_or_else(crate::context::Context::global);
+    let cx = use_cx();
     // Given to user, this is what we update to force a re-render.
     let selected = {
-        let state = Dispatch::with_cx(&ctx).get();
+        let state = Dispatch::with_cx(&cx).get();
         let value = selector(&state, &deps);
 
         use_state(|| Rc::new(value))
@@ -177,7 +190,7 @@ where
             deps,
             move |deps| {
                 let deps = deps.clone();
-                Dispatch::subscribe(
+                Dispatch::with_cx(&cx).subscribe(
                     move |val: Rc<S>| {
                         let value = selector(&val, &deps);
 
@@ -189,7 +202,6 @@ where
                             *current.borrow_mut() = Rc::clone(&value);
                         }
                     },
-                    &ctx,
                 )
             },
 

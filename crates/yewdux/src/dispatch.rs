@@ -35,8 +35,17 @@ pub struct Dispatch<S: Store> {
     pub(crate) context: Context,
 }
 
+impl<S: Store> std::fmt::Debug for Dispatch<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Dispatch")
+            .field("_subscriber_id", &self._subscriber_id)
+            .finish()
+    }
+}
+
 impl<S: Store> Dispatch<S> {
     /// Create a new dispatch with the global context (thread local).
+    #[cfg(target_arch = "wasm32")]
     pub fn new() -> Self {
         Self::with_cx(&Context::global())
     }
@@ -102,32 +111,24 @@ impl<S: Store> Dispatch<S> {
     /// #    }
     /// }
     /// ```
-    pub fn subscribe_global<C: Callable<S>>(on_change: C) -> Self {
-        Self::subscribe(on_change, &Context::global())
-    }
-
-    pub fn subscribe<C: Callable<S>>(on_change: C, cx: &Context) -> Self {
-        let id = cx.subscribe(on_change);
+    pub fn subscribe<C: Callable<S>>(self, on_change: C) -> Self {
+        let id = self.context.subscribe(on_change);
 
         Self {
             _subscriber_id: Some(Rc::new(id)),
-            context: cx.clone(),
+            context: self.context,
         }
     }
 
     /// Create a dispatch that subscribes to changes in state. Similar to [Self::subscribe],
     /// however state is **not** sent immediately. Automatically unsubscribes when this dispatch is
     /// dropped.
-    pub fn subscribe_silent_global<C: Callable<S>>(on_change: C) -> Self {
-        Self::subscribe_silent(on_change, &Context::global())
-    }
-
-    pub fn subscribe_silent<C: Callable<S>>(on_change: C, cx: &Context) -> Self {
-        let id = cx.subscribe_silent(on_change);
+    pub fn subscribe_silent<C: Callable<S>>(self, on_change: C) -> Self {
+        let id = self.context.subscribe_silent(on_change);
 
         Self {
             _subscriber_id: Some(Rc::new(id)),
-            context: cx.clone(),
+            context: self.context,
         }
     }
 
@@ -1188,9 +1189,8 @@ mod tests {
 
         let _id = {
             let flag = flag.clone();
-            Dispatch::<TestState>::subscribe(
+            Dispatch::<TestState>::with_cx(&cx).subscribe(
                 move |_| flag.clone().with_mut(|flag| *flag = true),
-                &cx,
             )
         };
 

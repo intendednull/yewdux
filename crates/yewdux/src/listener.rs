@@ -26,9 +26,8 @@ pub fn init_listener<L: Listener>(listener: L, cx: &Context) {
     let dispatch = {
         let listener = Mrc::new(listener);
         let cxo = cx.clone();
-        Dispatch::subscribe_silent(
+        Dispatch::with_cx(cx).subscribe_silent(
             move |state| listener.borrow_mut().on_change(&cxo, state),
-            cx,
         )
     };
 

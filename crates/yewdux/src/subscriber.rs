@@ -58,6 +58,14 @@ pub struct SubscriberId<S: Store> {
     pub(crate) _store_type: PhantomData<S>,
 }
 
+impl<S: Store> std::fmt::Debug for SubscriberId<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SubscriberId")
+            .field("key", &self.key)
+            .finish()
+    }
+}
+
 impl<S: Store> SubscriberId<S> {
     /// Leak this subscription, so it is never dropped.
     pub fn leak(self) {
