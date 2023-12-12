@@ -54,7 +54,7 @@ impl<S: Store> Dispatch<S> {
     /// Create a new dispatch with the global context (thread local).
     ///
     /// This is only available for wasm. For SSR, see the YewduxRoot pattern.
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(any(doc, feature = "doctests", target_arch = "wasm32"))]
     pub fn global() -> Self {
         Self::new(&Context::global())
     }
@@ -103,7 +103,7 @@ impl<S: Store> Dispatch<S> {
     ///
     ///     fn create(ctx: &Context<Self>) -> Self {
     ///         let on_change = ctx.link().callback(Msg::State);
-    ///         let dispatch = Dispatch::subscribe_global(on_change);
+    ///         let dispatch = Dispatch::global().subscribe(on_change);
     ///         Self {
     ///             state: dispatch.get(),
     ///             dispatch,
@@ -341,8 +341,9 @@ impl<S: Store> Dispatch<S> {
     /// # struct State {
     /// #     count: u32,
     /// # }
-    /// # fn main() {
-    /// let dispatch = Dispatch::<State>::global();
+    /// # #[hook]
+    /// # fn use_foo() {
+    /// let dispatch = use_dispatch::<State>();
     /// let onchange = dispatch.set_callback(|event: Event| {
     ///     let value = event.target_unchecked_into::<web_sys::HtmlInputElement>().value();
     ///     State { count: value.parse().unwrap() }
@@ -760,8 +761,9 @@ impl<S: Store> Dispatch<S> {
     /// # async fn get_incr() -> u32 {
     /// #     1
     /// # }
-    /// # fn main() {
-    /// let dispatch = Dispatch::<State>::global();
+    /// # #[hook]
+    /// # fn use_foo() {
+    /// let dispatch = use_dispatch::<State>();
     /// let onchange = dispatch.reduce_mut_future_callback_with(|state, event: Event| {
     ///     Box::pin(async move {
     ///         let value = event

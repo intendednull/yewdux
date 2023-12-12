@@ -17,6 +17,12 @@ fn use_cx() -> Context {
     }
 }
 
+#[hook]
+pub fn use_dispatch<S: Store>() -> Dispatch<S> {
+    let cx = use_cx();
+    Dispatch::new(&cx)
+}
+
 /// This hook allows accessing the state of a store. When the store is modified, a re-render is
 /// automatically triggered.
 ///
@@ -78,8 +84,9 @@ pub fn use_store_value<S: Store>() -> Rc<S> {
 ///
 /// #[function_component]
 /// fn App() -> Html {
+///     let dispatch = use_dispatch::<State>();
 ///     let count = use_selector(|state: &State| state.count);
-///     let onclick = Dispatch::<State>::new().reduce_mut_callback(|state| state.count += 1);
+///     let onclick = dispatch.reduce_mut_callback(|state| state.count += 1);
 ///
 ///     html! {
 ///         <>

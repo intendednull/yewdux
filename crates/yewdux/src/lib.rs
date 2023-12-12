@@ -60,8 +60,8 @@ pub mod prelude {
         context_provider::YewduxRoot,
         dispatch::Dispatch,
         functional::{
-            use_selector, use_selector_eq, use_selector_eq_with_deps, use_selector_with_deps,
-            use_store, use_store_value,
+            use_dispatch, use_selector, use_selector_eq, use_selector_eq_with_deps,
+            use_selector_with_deps, use_store, use_store_value,
         },
         listener::{init_listener, Listener},
         store::{Reducer, Store},

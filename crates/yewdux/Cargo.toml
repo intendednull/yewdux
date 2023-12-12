@@ -14,6 +14,9 @@ categories = ["wasm", "web-programming", "rust-patterns"]
 default = ["future"]
 future = []
 
+# INTERNAL USE ONLY
+doctests = []
+
 [dependencies]
 anymap = "1.0.0-beta.2"
 async-trait = "0.1.58"

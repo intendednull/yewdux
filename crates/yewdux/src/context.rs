@@ -70,7 +70,7 @@ impl Context {
         Default::default()
     }
 
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(any(doc, feature = "doctests", target_arch = "wasm32"))]
     pub fn global() -> Self {
         thread_local! {
             static CONTEXT: Context = Default::default();
