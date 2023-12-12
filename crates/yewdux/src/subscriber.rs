@@ -130,7 +130,7 @@ mod tests {
 
         assert!(entry.store.borrow().borrow().0.is_empty());
 
-        let _id = Dispatch::with_cx(&cx).subscribe(|_: Rc<TestState>| ());
+        let _id = Dispatch::new(&cx).subscribe(|_: Rc<TestState>| ());
 
         assert!(!entry.store.borrow().borrow().0.is_empty());
     }
@@ -142,7 +142,7 @@ mod tests {
 
         assert!(entry.store.borrow().borrow().0.is_empty());
 
-        let id = Dispatch::with_cx(&cx).subscribe(|_: Rc<TestState>| ());
+        let id = Dispatch::new(&cx).subscribe(|_: Rc<TestState>| ());
 
         assert!(!entry.store.borrow().borrow().0.is_empty());
 
@@ -158,7 +158,7 @@ mod tests {
 
         assert!(entry.store.borrow().borrow().0.is_empty());
 
-        let id = Dispatch::<TestState>::with_cx(&cx).subscribe(|_| {});
+        let id = Dispatch::<TestState>::new(&cx).subscribe(|_| {});
 
         assert!(!entry.store.borrow().borrow().0.is_empty());
 
@@ -174,7 +174,7 @@ mod tests {
 
         let _id = {
             let flag = flag.clone();
-            Dispatch::<TestState>::with_cx(&cx)
+            Dispatch::<TestState>::new(&cx)
                 .subscribe(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
 
@@ -204,12 +204,11 @@ mod tests {
     fn can_modify_state_inside_on_changed() {
         let cx = Context::new();
         let cxo = cx.clone();
-        let dispatch =
-            Dispatch::<TestState>::with_cx(&cx).subscribe(move |state: Rc<TestState>| {
-                if state.0 == 0 {
-                    Dispatch::with_cx(&cxo).reduce_mut(|state: &mut TestState| state.0 += 1);
-                }
-            });
+        let dispatch = Dispatch::<TestState>::new(&cx).subscribe(move |state: Rc<TestState>| {
+            if state.0 == 0 {
+                Dispatch::new(&cxo).reduce_mut(|state: &mut TestState| state.0 += 1);
+            }
+        });
 
         assert_eq!(dispatch.get().0, 1)
     }

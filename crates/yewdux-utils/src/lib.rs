@@ -25,7 +25,7 @@ impl<T: Store + PartialEq> Listener for HistoryListener<T> {
     type Store = T;
 
     fn on_change(&mut self, cx: &Context, state: Rc<Self::Store>) {
-        Dispatch::<HistoryStore<T>>::with_cx(cx).apply(HistoryChangeMessage::<T>(state))
+        Dispatch::<HistoryStore<T>>::new(cx).apply(HistoryChangeMessage::<T>(state))
     }
 }
 
@@ -76,7 +76,7 @@ impl<T: Store + PartialEq> HistoryStore<T> {
 
 impl<T: Store + PartialEq> Store for HistoryStore<T> {
     fn new(cx: &Context) -> Self {
-        let dispatch = Dispatch::<T>::with_cx(cx);
+        let dispatch = Dispatch::<T>::new(cx);
         let s1 = dispatch.get();
         Self {
             vector: vec![s1],

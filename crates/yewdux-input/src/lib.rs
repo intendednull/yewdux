@@ -56,7 +56,7 @@ pub trait InputDispatch<S: Store> {
         E: AsRef<Event> + JsCast + 'static,
     {
         let cx = self.context();
-        Dispatch::<S>::with_cx(cx).reduce_callback_with(move |s, e| {
+        Dispatch::<S>::new(cx).reduce_callback_with(move |s, e| {
             if let Some(value) = input_value(e) {
                 f(s, value)
             } else {
@@ -73,7 +73,7 @@ pub trait InputDispatch<S: Store> {
         E: AsRef<Event> + JsCast + 'static,
     {
         let cx = self.context();
-        Dispatch::<S>::with_cx(cx).reduce_mut_callback_with(move |s, e| {
+        Dispatch::<S>::new(cx).reduce_mut_callback_with(move |s, e| {
             if let Some(value) = input_value(e) {
                 f(s, value);
             }
