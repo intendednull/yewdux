@@ -53,7 +53,7 @@ impl<S: Store> Default for Dispatch<S> {
 impl<S: Store> Dispatch<S> {
     /// Create a new dispatch with the global context (thread local).
     ///
-    /// This is only available for wasm32 targets. For SSR, see the YewduxRoot pattern.
+    /// This is only available for wasm. For SSR, see the YewduxRoot pattern.
     #[cfg(target_arch = "wasm32")]
     pub fn global() -> Self {
         Self::new(&Context::global())
@@ -68,7 +68,7 @@ impl<S: Store> Dispatch<S> {
     }
 
     /// Get the context used by this dispatch.
-    pub fn cx(&self) -> &Context {
+    pub fn context(&self) -> &Context {
         &self.cx
     }
 
