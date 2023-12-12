@@ -5,7 +5,8 @@ use yew::prelude::*;
 use yewdux::storage;
 use yewdux::{
     log::{log, Level},
-    prelude::*, Context,
+    prelude::*,
+    Context,
 };
 
 use serde::{Deserialize, Serialize};

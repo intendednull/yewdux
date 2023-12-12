@@ -83,7 +83,7 @@ pub trait InputDispatch<S: Store> {
 
 impl<S: Store> InputDispatch<S> for Dispatch<S> {
     fn context(&self) -> &Context {
-        self.context()
+        self.cx()
     }
 }
 

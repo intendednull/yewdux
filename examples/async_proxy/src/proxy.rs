@@ -38,7 +38,7 @@ impl State {
         }
 
         yew::platform::spawn_local(async move {
-            let dispatch = Dispatch::<State>::new();
+            let dispatch = Dispatch::<State>::global();
             let response = {
                 let url = "http://worldtimeapi.org/api/timezone/".to_string() + timezone.as_str();
                 Request::get(&url).send().await

@@ -38,7 +38,7 @@ fn App() -> Html {
 
 #[function_component]
 fn Header() -> Html {
-    let onkeypress = Dispatch::<State>::new().reduce_mut_callback_with(|s, e: KeyboardEvent| {
+    let onkeypress = Dispatch::<State>::global().reduce_mut_callback_with(|s, e: KeyboardEvent| {
         if e.key() == "Enter" {
             let input: HtmlInputElement = e.target_unchecked_into();
             let value = input.value();
@@ -79,7 +79,7 @@ fn SelectFilter(&SelectFilterProps { active, target }: &SelectFilterProps) -> Ht
     } else {
         "not-selected"
     };
-    let onclick = Dispatch::<State>::new().reduce_mut_callback(move |s| s.filter = target);
+    let onclick = Dispatch::<State>::global().reduce_mut_callback(move |s| s.filter = target);
     html! {
         <li>
             <a class={cls} href={target.as_href()} {onclick}>
@@ -112,7 +112,7 @@ fn Footer() -> Html {
 #[function_component]
 fn BtnClearCompleted() -> Html {
     let total_completed = use_selector(|state: &State| state.total_completed());
-    let onclick = Dispatch::<State>::new().reduce_mut_callback(|s| s.clear_completed());
+    let onclick = Dispatch::<State>::global().reduce_mut_callback(|s| s.clear_completed());
 
     html! {
         <button class="clear-completed" {onclick} >
@@ -136,7 +136,7 @@ fn TodoCount() -> Html {
 #[function_component]
 fn ToggleAll() -> Html {
     let checked = use_selector(|state: &State| state.is_all_completed());
-    let onclick = Dispatch::new().reduce_mut_callback(|s: &mut State| {
+    let onclick = Dispatch::global().reduce_mut_callback(|s: &mut State| {
         let status = !s.is_all_completed();
         s.toggle_all(status);
     });

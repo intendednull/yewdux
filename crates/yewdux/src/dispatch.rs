@@ -32,7 +32,7 @@ use crate::{
 /// The primary interface to a [`Store`].
 pub struct Dispatch<S: Store> {
     pub(crate) _subscriber_id: Option<Rc<SubscriberId<S>>>,
-    pub(crate) context: Context,
+    pub(crate) cx: Context,
 }
 
 impl<S: Store> std::fmt::Debug for Dispatch<S> {
@@ -46,28 +46,30 @@ impl<S: Store> std::fmt::Debug for Dispatch<S> {
 #[cfg(target_arch = "wasm32")]
 impl<S: Store> Default for Dispatch<S> {
     fn default() -> Self {
-        Self::new()
+        Self::global()
     }
 }
 
 impl<S: Store> Dispatch<S> {
     /// Create a new dispatch with the global context (thread local).
+    ///
+    /// This is only available for wasm32 targets. For SSR, see the YewduxRoot pattern.
     #[cfg(target_arch = "wasm32")]
-    pub fn new() -> Self {
+    pub fn global() -> Self {
         Self::with_cx(&Context::global())
     }
 
-    /// Create a new dispatch using the given context.
+    /// Create a new dispatch with access to the given context.
     pub fn with_cx(cx: &Context) -> Self {
         Self {
             _subscriber_id: Default::default(),
-            context: cx.clone(),
+            cx: cx.clone(),
         }
     }
 
     /// Get the context used by this dispatch.
-    pub fn context(&self) -> &Context {
-        &self.context
+    pub fn cx(&self) -> &Context {
+        &self.cx
     }
 
     /// Create a dispatch that subscribes to changes in state. Latest state is sent immediately,
@@ -124,11 +126,11 @@ impl<S: Store> Dispatch<S> {
     /// }
     /// ```
     pub fn subscribe<C: Callable<S>>(self, on_change: C) -> Self {
-        let id = self.context.subscribe(on_change);
+        let id = self.cx.subscribe(on_change);
 
         Self {
             _subscriber_id: Some(Rc::new(id)),
-            context: self.context,
+            cx: self.cx,
         }
     }
 
@@ -136,17 +138,17 @@ impl<S: Store> Dispatch<S> {
     /// however state is **not** sent immediately. Automatically unsubscribes when this dispatch is
     /// dropped.
     pub fn subscribe_silent<C: Callable<S>>(self, on_change: C) -> Self {
-        let id = self.context.subscribe_silent(on_change);
+        let id = self.cx.subscribe_silent(on_change);
 
         Self {
             _subscriber_id: Some(Rc::new(id)),
-            context: self.context,
+            cx: self.cx,
         }
     }
 
     /// Get the current state.
     pub fn get(&self) -> Rc<S> {
-        self.context.get::<S>()
+        self.cx.get::<S>()
     }
 
     /// Apply a [`Reducer`](crate::store::Reducer) immediately.
@@ -177,7 +179,7 @@ impl<S: Store> Dispatch<S> {
     /// # }
     /// ```
     pub fn apply<R: Reducer<S>>(&self, reducer: R) {
-        self.context.reduce(reducer);
+        self.cx.reduce(reducer);
     }
 
     /// Apply an [`AsyncReducer`](crate::store::AsyncReducer) immediately.
@@ -215,7 +217,7 @@ impl<S: Store> Dispatch<S> {
     /// ```
     #[cfg(feature = "future")]
     pub async fn apply_future<R: AsyncReducer<S>>(&self, reducer: R) {
-        self.context.reduce_future(reducer).await;
+        self.cx.reduce_future(reducer).await;
     }
 
     /// Create a callback that applies a [`Reducer`](crate::store::Reducer).
@@ -253,7 +255,7 @@ impl<S: Store> Dispatch<S> {
         M: Reducer<S>,
         F: Fn(E) -> M + 'static,
     {
-        let context = self.context.clone();
+        let context = self.cx.clone();
         Callback::from(move |e| {
             let msg = f(e);
             context.reduce(msg);
@@ -302,7 +304,7 @@ impl<S: Store> Dispatch<S> {
         M: AsyncReducer<S> + 'static,
         F: Fn(E) -> M + 'static,
     {
-        let context = self.context.clone();
+        let context = self.cx.clone();
         Callback::from(move |e| {
             let msg = f(e);
             let context = context.clone();
@@ -327,7 +329,7 @@ impl<S: Store> Dispatch<S> {
     /// # }
     /// ```
     pub fn set(&self, val: S) {
-        self.context.set(val);
+        self.cx.set(val);
     }
 
     /// Set state using value from callback.
@@ -355,7 +357,7 @@ impl<S: Store> Dispatch<S> {
     where
         F: Fn(E) -> S + 'static,
     {
-        let context = self.context.clone();
+        let context = self.cx.clone();
         Callback::from(move |e| {
             let val = f(e);
             context.set(val);
@@ -380,7 +382,7 @@ impl<S: Store> Dispatch<S> {
     where
         F: FnOnce(Rc<S>) -> Rc<S>,
     {
-        self.context.reduce(f);
+        self.cx.reduce(f);
     }
 
     /// Change state immediately, in an async context.
@@ -415,7 +417,7 @@ impl<S: Store> Dispatch<S> {
         FUT: Future<Output = Rc<S>>,
         FUN: FnOnce(Rc<S>) -> FUT,
     {
-        self.context.reduce_future(f).await;
+        self.cx.reduce_future(f).await;
     }
 
     /// Create a callback that changes state.
@@ -441,7 +443,7 @@ impl<S: Store> Dispatch<S> {
         F: Fn(Rc<S>) -> Rc<S> + 'static,
         E: 'static,
     {
-        let context = self.context.clone();
+        let context = self.cx.clone();
         Callback::from(move |_| {
             context.reduce(&f);
         })
@@ -482,7 +484,7 @@ impl<S: Store> Dispatch<S> {
         E: 'static,
     {
         let f = Rc::new(f);
-        let context = self.context.clone();
+        let context = self.cx.clone();
         Callback::from(move |_| {
             let f = f.clone();
             let context = context.clone();
@@ -521,7 +523,7 @@ impl<S: Store> Dispatch<S> {
         F: Fn(Rc<S>, E) -> Rc<S> + 'static,
         E: 'static,
     {
-        let context = self.context.clone();
+        let context = self.cx.clone();
         Callback::from(move |e: E| {
             context.reduce(|x| f(x, e));
         })
@@ -564,7 +566,7 @@ impl<S: Store> Dispatch<S> {
         E: 'static,
     {
         let f = Rc::new(f);
-        let context = self.context.clone();
+        let context = self.cx.clone();
         Callback::from(move |e: E| {
             let f = f.clone();
             let context = context.clone();
@@ -595,7 +597,7 @@ impl<S: Store> Dispatch<S> {
     {
         let mut result = None;
 
-        self.context.reduce_mut(|x| {
+        self.cx.reduce_mut(|x| {
             result = Some(f(x));
         });
 
@@ -632,7 +634,7 @@ impl<S: Store> Dispatch<S> {
         S: Clone,
         F: FnOnce(&mut S) -> Pin<Box<dyn Future<Output = R> + '_>>,
     {
-        self.context.reduce_mut_future(f).await;
+        self.cx.reduce_mut_future(f).await;
     }
 
     /// Like [Self::reduce_mut] but from a callback.
@@ -659,7 +661,7 @@ impl<S: Store> Dispatch<S> {
         F: Fn(&mut S) -> R + 'static,
         E: 'static,
     {
-        let context = self.context.clone();
+        let context = self.cx.clone();
         Callback::from(move |_| {
             context.reduce_mut(|x| {
                 f(x);
@@ -700,7 +702,7 @@ impl<S: Store> Dispatch<S> {
         E: 'static,
     {
         let f = Rc::new(f);
-        let context = self.context.clone();
+        let context = self.cx.clone();
         Callback::from(move |_| {
             let f = f.clone();
             let context = context.clone();
@@ -737,7 +739,7 @@ impl<S: Store> Dispatch<S> {
         F: Fn(&mut S, E) -> R + 'static,
         E: 'static,
     {
-        let context = self.context.clone();
+        let context = self.cx.clone();
         Callback::from(move |e: E| {
             context.reduce_mut(|x| {
                 f(x, e);
@@ -783,7 +785,7 @@ impl<S: Store> Dispatch<S> {
         E: 'static,
     {
         let f = Rc::new(f);
-        let context = self.context.clone();
+        let context = self.cx.clone();
         Callback::from(move |e: E| {
             let f = f.clone();
             let context = context.clone();
@@ -798,7 +800,7 @@ impl<S: Store> Clone for Dispatch<S> {
     fn clone(&self) -> Self {
         Self {
             _subscriber_id: self._subscriber_id.clone(),
-            context: self.context.clone(),
+            cx: self.cx.clone(),
         }
     }
 }
