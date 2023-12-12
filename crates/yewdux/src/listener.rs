@@ -26,9 +26,8 @@ pub fn init_listener<L: Listener>(listener: L, cx: &Context) {
     let dispatch = {
         let listener = Mrc::new(listener);
         let cxo = cx.clone();
-        Dispatch::with_cx(cx).subscribe_silent(
-            move |state| listener.borrow_mut().on_change(&cxo, state),
-        )
+        Dispatch::with_cx(cx)
+            .subscribe_silent(move |state| listener.borrow_mut().on_change(&cxo, state))
     };
 
     cx.reduce_mut(|state: &mut Mrc<ListenerStore<L>>| state.borrow_mut().0 = Some(dispatch));
@@ -128,7 +127,7 @@ mod tests {
 
     #[test]
     fn listener_of_different_type_is_not_replaced() {
-        let cx = Context::global();
+        let cx = Context::new();
         let listener1 = TestListener(Default::default());
         let listener2 = AnotherTestListener(Default::default());
 
@@ -148,6 +147,7 @@ mod tests {
 
     #[test]
     fn can_init_listener_from_store() {
-        Context::global().get::<TestState2>();
+        let cx = Context::new();
+        cx.get::<TestState2>();
     }
 }

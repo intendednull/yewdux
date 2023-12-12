@@ -1,3 +1,5 @@
+#![cfg(target_arch = "wasm32")]
+
 use yew::prelude::*;
 use yewdux::prelude::*;
 

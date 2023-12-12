@@ -156,10 +156,8 @@ mod tests {
 
         let dispatch = {
             let flag = flag.clone();
-            Dispatch::<TestState>::subscribe(
-                move |_| flag.clone().with_mut(|flag| *flag = true),
-                &cx,
-            )
+            Dispatch::<TestState>::with_cx(&cx)
+                .subscribe(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
 
         *flag.borrow_mut() = false;
@@ -178,10 +176,8 @@ mod tests {
 
         let dispatch = {
             let flag = flag.clone();
-            Dispatch::<TestState>::subscribe(
-                move |_| flag.clone().with_mut(|flag| *flag = true),
-                &cx,
-            )
+            Dispatch::<TestState>::with_cx(&cx)
+                .subscribe(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
 
         *flag.borrow_mut() = false;
@@ -193,7 +189,8 @@ mod tests {
 
     #[test]
     fn can_wrap_store_with_mrc() {
-        let dispatch = Dispatch::<Mrc<TestState>>::new();
+        let cx = Context::new();
+        let dispatch = Dispatch::<Mrc<TestState>>::with_cx(&cx);
         assert!(*dispatch.get().borrow().0.borrow() == 0)
     }
 }

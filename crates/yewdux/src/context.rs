@@ -221,8 +221,8 @@ mod tests {
     #[derive(Clone, PartialEq, Eq)]
     struct TestState2(u32);
     impl Store for TestState2 {
-        fn new(_cx: &Context) -> Self {
-            Context::global().get_or_init::<TestState>();
+        fn new(cx: &Context) -> Self {
+            cx.get_or_init::<TestState>();
             Self(0)
         }
 
@@ -233,7 +233,7 @@ mod tests {
 
     #[test]
     fn can_access_other_store_for_new_of_current_store() {
-        let _context = Context::global().get_or_init::<TestState2>();
+        let _context = Context::new().get_or_init::<TestState2>();
     }
 
     #[derive(Clone, PartialEq, Eq)]
@@ -259,9 +259,10 @@ mod tests {
 
     #[test]
     fn store_new_is_only_called_once() {
-        Context::global().get_or_init::<StoreNewIsOnlyCalledOnce>();
-        let context = Context::global().get_or_init::<StoreNewIsOnlyCalledOnce>();
+        let cx = Context::new();
+        cx.get_or_init::<StoreNewIsOnlyCalledOnce>();
+        let entry = cx.get_or_init::<StoreNewIsOnlyCalledOnce>();
 
-        assert!(context.store.borrow().0.get() == 1)
+        assert!(entry.store.borrow().0.get() == 1)
     }
 }
