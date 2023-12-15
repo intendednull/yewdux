@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 use yew::prelude::*;
 use yew_agent::reactor::{use_reactor_bridge, ReactorEvent, ReactorProvider};
+use yew_hooks::use_effect_once;
 use yewdux::{
     log::{log, Level},
     prelude::*,
@@ -24,23 +25,30 @@ pub fn App() -> Html {
     let (state, dispatch) = use_store::<Counter>();
     let onclick = dispatch.reduce_mut_callback(|state| state.count += 1);
 
-    yew::platform::spawn_local(async {
-        match load::<Counter>(DatabaseObjectPointer::new(
-            "idb-agent".to_string(),
-            "counter".to_string(),
-        ))
-        .await
-        {
-            Ok(value) => {
-                if let Some(v) = value {
-                    log!(Level::Info, "got counter");
-                    Dispatch::<Counter>::new().set(v);
+    use_effect_once(|| {
+        yew::platform::spawn_local(async {
+            match load::<Data>(DatabaseObjectPointer::new(
+                "idb-agent".to_string(),
+                "counter".to_string(),
+            ))
+            .await
+            {
+                Ok(value) => {
+                    if let Some(data) = value {
+                        log!(Level::Info, "got counter");
+                        match data {
+                            Data::Counter(counter) => {
+                                Dispatch::<Counter>::new().reduce(|_| counter);
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    log!(Level::Error, "{:?}", e);
                 }
             }
-            Err(e) => {
-                log!(Level::Error, "{:?}", e);
-            }
-        }
+        });
+        || {}
     });
 
     html! {

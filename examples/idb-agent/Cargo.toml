@@ -12,3 +12,4 @@ yew-agent = "0.3.0"
 yewdux = { path = "../../crates/yewdux" }
 yewdux-idb = { path = "../../crates/yewdux-idb" }
 wasm-logger = "0.2.0"
+yew-hooks = "0.3.0"

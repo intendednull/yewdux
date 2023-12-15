@@ -199,7 +199,7 @@ pub async fn save<T: Serialize>(pointer: DatabaseObjectPointer, value: T) -> Res
 }
 
 /// Load a value from the given pointer.
-pub async fn load<T: std::fmt::Debug + for<'de> Deserialize<'de>>(
+pub async fn load<T: for<'de> Deserialize<'de>>(
     pointer: DatabaseObjectPointer,
 ) -> Result<Option<T>, Error> {
     let db = database(pointer.database.clone()).await?;
