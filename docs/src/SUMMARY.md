@@ -10,11 +10,10 @@
 # Usage
 
 - [Store](./store.md)
+    - [Default value](./default_store.md)
     - [Persistence](./persistence.md)
-- [Dispatch](./dispatch.md)
-    - [Subscriptions](./reading.md)
+- [Writing state](./dispatch.md)
+- [Reading state](./reading.md)
 - [Contexts](./context.md)
     - [SSR Support](./ssr.md)
 - [Listeners](./listeners.md)
-- [Tips](./tips.md)
-    - [Setting default value](./default_store.md)

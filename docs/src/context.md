@@ -6,6 +6,11 @@ You can easily create and use a local context by instantiating with `Context::ne
 dispatch using your new context.
 
 ```rust
+# extern crate yew;
+# extern crate yewdux;
+use yew::prelude::*;
+use yewdux::prelude::*;
+
 #[derive(Clone, PartialEq, Default, Store)]
 struct Counter(u32);
 
@@ -16,6 +21,10 @@ let dispatch = Dispatch::<Counter>::new(&cx);
 Changes to one context are not reflected in any others:
 
 ```rust
+# extern crate yewdux;
+# use yewdux::prelude::*;
+# #[derive(Clone, PartialEq, Default, Store)]
+# struct Counter(u32);
 let cx_1 = yewdux::Context::new();
 let dispatch_1 = Dispatch::<Counter>::new(&cx_1);
 
@@ -35,6 +44,10 @@ dispatch with `Dispatch::global`. The global context is thread-local, and can be
 from anywhere.
 
 ```rust
+# extern crate yewdux;
+# use yewdux::prelude::*;
+# #[derive(Clone, PartialEq, Default, Store)]
+# struct Counter(u32);
 // These are equivalent!
 let dispatch_1 = Dispatch::<Counter>::global();
 let dispatch_2 = Dispatch::<Counter>::new(&yewdux::Context::global());
@@ -44,7 +57,7 @@ dispatch_1.set(Counter(1));
 assert!(dispatch_1.get() == dispatch_2.get());
 ```
 
-**IMPORTANT**: Use of global context during SSR time is not recommended. See [ssr support](./ssr.md)
+**IMPORTANT**: Use of global context is only supported for wasm targets. See [ssr support](./ssr.md)
 for more details.
 -------
 
