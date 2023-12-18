@@ -79,7 +79,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
             }
         }
         None => quote! {
-            fn new(_cx: &::yewdux::Context) -> Self {
+            fn new(cx: &::yewdux::Context) -> Self {
                 #(#extra_listeners)*
                 Default::default()
             }

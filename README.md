@@ -10,7 +10,7 @@ See the [book](https://intendednull.github.io/yewdux/) for more details.
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-#[derive(Debug, Default, Clone, PartialEq, Store)]
+#[derive(Default, Clone, PartialEq, Store)]
 struct State {
     count: u32,
 }

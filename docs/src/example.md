@@ -8,7 +8,7 @@ Below you'll find a simple counter example, demonstrating how to read and write 
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-#[derive(Debug, Default, Clone, PartialEq, Store)]
+#[derive(Default, Clone, PartialEq, Store)]
 struct State {
     count: u32,
 }
