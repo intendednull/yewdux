@@ -1,9 +1,10 @@
 # Contexts
 
-A `Context` contains the state of `Store`s.
+Contexts contains the state of your Stores. You rarely (if ever) need to manage them manually, but
+it's useful to understand how they work.
 
-You can easily create and use a local context by instantiating with `Context::new`, and creating a
-dispatch using your new context.
+You can easily create a new local context with `Context::new`. Then just pass it into a dispatch and
+you have your very own locally managed store!
 
 ```rust
 # extern crate yew;
@@ -37,11 +38,11 @@ dispatch_2.set(Counter(2));
 assert!(dispatch_1.get() != dispatch_2.get());
 ```
 
-# The Global Context
+## The Global Context
 
 You may already be familar with the global context. This is what you are using when you create a
-dispatch with `Dispatch::global`. The global context is thread-local, and can be accessed easily
-from anywhere.
+dispatch with `Dispatch::global`. The global context is thread-local, meaning you can access it from
+anywhere in your code as long as it's on the same thread (for wasm this is effectively everywhere).
 
 ```rust
 # extern crate yewdux;

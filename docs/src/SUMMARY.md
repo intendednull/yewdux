@@ -14,6 +14,6 @@
     - [Persistence](./persistence.md)
 - [Writing state](./dispatch.md)
 - [Reading state](./reading.md)
+- [Listeners](./listeners.md)
 - [Contexts](./context.md)
     - [SSR Support](./ssr.md)
-- [Listeners](./listeners.md)

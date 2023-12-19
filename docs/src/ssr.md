@@ -47,7 +47,7 @@ fn App() -> Html {
 }
 ```
 
-Yewdux hooks automatically detect when YewduxRoot is present, and us it accordingly.
+Yewdux hooks automatically detect when YewduxRoot is present, and use it accordingly.
 
 ## SSR with struct components
 
