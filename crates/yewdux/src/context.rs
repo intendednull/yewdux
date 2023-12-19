@@ -96,7 +96,7 @@ impl Context {
                 .clone()
         });
 
-        // If it doesn't exist, create and save the new store (no pun intended).
+        // If it doesn't exist, create and save the new store.
         let exists = maybe_entry.borrow().is_some();
         if !exists {
             // Init store outside of borrow. This allows the store to access other stores when it
@@ -117,7 +117,6 @@ impl Context {
         entry
     }
 
-    /// Change state from a function.
     pub fn reduce<S: Store, R: Reducer<S>>(&self, r: R) {
         let entry = self.get_or_init::<S>();
         let should_notify = entry.reduce(r);
@@ -143,7 +142,6 @@ impl Context {
         }
     }
 
-    /// Change state using a mutable reference from a function.
     pub fn reduce_mut<S: Store + Clone, F: FnOnce(&mut S)>(&self, f: F) {
         self.reduce(|mut state| {
             f(Rc::make_mut(&mut state));
