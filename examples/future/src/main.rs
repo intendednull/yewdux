@@ -1,32 +1,61 @@
+use gloo_net::http::Request;
+use serde::{Deserialize, Serialize};
+use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-#[derive(Default, Clone, PartialEq, Eq, Store)]
-struct State {
-    count: u32,
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Cat {
+    url: String,
 }
+
+async fn fetch_cats(limit: u32) -> Result<Cats, ()> {
+    let cats = Request::get(&format!(
+        "https://api.thecatapi.com/v1/images/search?limit={}",
+        limit
+    ))
+    .send()
+    .await
+    .map_err(|_| ())?
+    .json::<Vec<Cat>>()
+    .await
+    .map_err(|_| ())?
+    .into_iter()
+    .collect::<Vec<_>>();
+
+    Ok(Cats(cats))
+}
+
+#[derive(Default, Clone, PartialEq, Eq, Store)]
+struct Cats(Vec<Cat>);
 
 #[function_component]
 fn App() -> Html {
-    let (state, dispatch) = use_store::<State>();
+    let (state, dispatch) = use_store::<Cats>();
 
-    let incr = dispatch.reduce_future_callback(|state| async move {
-        State {
-            count: state.count + 1,
+    let fetch_single = dispatch.future_callback(|dispatch| async move {
+        let result = fetch_cats(5).await;
+        if let Ok(cats) = result {
+            dispatch.set(cats);
         }
-        .into()
     });
-    let incr_mut = dispatch.reduce_mut_future_callback(|state| {
-        Box::pin(async move {
-            state.count += 1;
+
+    let cats = state
+        .0
+        .iter()
+        .map(|Cat { url }| {
+            html! {
+                <img src={url.clone()} />
+            }
         })
-    });
+        .collect::<Html>();
 
     html! {
         <>
-        <p>{ state.count }</p>
-        <button onclick={incr}>{"+1 reduce"}</button>
-        <button onclick={incr_mut}>{"+1 reduce_mut"}</button>
+        <button onclick={fetch_single}>{"meow"}</button>
+        <div>
+            { cats }
+        </div>
         </>
     }
 }

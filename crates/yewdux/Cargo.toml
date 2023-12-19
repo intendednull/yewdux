@@ -19,7 +19,6 @@ doctests = []
 
 [dependencies]
 anymap = "1.0.0-beta.2"
-async-trait = "0.1.58"
 log = "0.4.16"
 serde = { version = "1.0.114", features = ["rc"] }
 serde_json = "1.0.64"
@@ -32,6 +31,4 @@ yewdux-macros = { path = "../yewdux-macros" }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"
 
-[dev-dependencies]
-async-std = { version = "1.11", features = ["attributes"] }
 

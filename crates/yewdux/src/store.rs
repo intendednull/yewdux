@@ -1,7 +1,5 @@
 //! Unique state shared application-wide
-use std::{future::Future, rc::Rc};
-
-use async_trait::async_trait;
+use std::rc::Rc;
 
 pub use yewdux_macros::Store;
 
@@ -69,51 +67,5 @@ where
 {
     fn apply(self, state: Rc<S>) -> Rc<S> {
         self(state)
-    }
-}
-
-/// A type that can change state asynchronously.
-///
-/// # Example
-///
-/// ```
-/// use std::rc::Rc;
-///
-/// use yewdux::prelude::*;
-///
-/// #[derive(Default, Clone, PartialEq, Eq, Store)]
-/// struct State {
-///     count: u32,
-/// }
-///
-/// struct MyReducer;
-///
-/// #[async_reducer]
-/// impl AsyncReducer<State> for MyReducer {
-///     /// Mutate state.
-///     async fn apply(self, state: Rc<State>) -> Rc<State> {
-///         // do async things
-///         state
-///     }
-/// }
-/// ```
-///
-/// **IMPORTANT**: note the extra `?Send` for the async trait definition. This is required for
-/// `AsyncReducer`.
-#[async_trait(?Send)]
-pub trait AsyncReducer<S> {
-    /// Mutate state.
-    async fn apply(self, state: Rc<S>) -> Rc<S>;
-}
-
-#[async_trait(?Send)]
-impl<F, FU, S> AsyncReducer<S> for F
-where
-    S: 'static,
-    F: FnOnce(Rc<S>) -> FU,
-    FU: Future<Output = Rc<S>>,
-{
-    async fn apply(self, state: Rc<S>) -> Rc<S> {
-        self(state).await
     }
 }
