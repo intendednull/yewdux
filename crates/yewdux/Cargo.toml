@@ -1,6 +1,6 @@
 [package]
 name = "yewdux"
-version = "0.9.3"
+version = "0.10.0"
 authors = ["Noah <noah@coronasoftware.net>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
