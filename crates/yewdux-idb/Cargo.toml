@@ -1,0 +1,21 @@
+[package]
+name = "yewdux-idb"
+version = "0.1.0"
+authors = ["Noah <noah@coronasoftware.net>", "Tiemen <t.j.l.schuijbroek@ratio-case.nl>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yewdux/yewdux-idb"
+readme = "../../README.md"
+description = "Ergonomic state management for Yew applications"
+keywords = ["yew", "state", "redux", "shared", "container"]
+categories = ["wasm", "web-programming", "rust-patterns"]
+
+[dependencies]
+futures = "0.3.29"
+gloo-utils = { version = "0.2.0", features = ["serde"] }
+indexed_db_futures = "0.4.1"
+serde = { version = "1.0.193", features = ["serde_derive"] }
+wasm-bindgen = { version = "0.2" }
+yew = "0.21.0"
+yew-agent = "0.3.0"
+yewdux = { path="../yewdux" }
