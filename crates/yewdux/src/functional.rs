@@ -19,8 +19,7 @@ fn use_cx() -> Context {
 
 #[hook]
 pub fn use_dispatch<S: Store>() -> Dispatch<S> {
-    let cx = use_cx();
-    Dispatch::new(&cx)
+    Dispatch::new(&use_cx())
 }
 
 /// This hook allows accessing the state of a store. When the store is modified, a re-render is
@@ -50,8 +49,7 @@ pub fn use_dispatch<S: Store>() -> Dispatch<S> {
 /// ```
 #[hook]
 pub fn use_store<S: Store>() -> (Rc<S>, Dispatch<S>) {
-    let cx = use_cx();
-    let dispatch = Dispatch::<S>::new(&cx);
+    let dispatch = use_dispatch::<S>();
     let state: UseStateHandle<Rc<S>> = use_state(|| dispatch.get());
     let dispatch = {
         let state = state.clone();
@@ -175,10 +173,10 @@ where
     F: Fn(&S, &D) -> R + 'static,
     E: Fn(&R, &R) -> bool + 'static,
 {
-    let cx = use_cx();
+    let dispatch = use_dispatch::<S>();
     // Given to user, this is what we update to force a re-render.
     let selected = {
-        let state = Dispatch::new(&cx).get();
+        let state = dispatch.get();
         let value = selector(&state, &deps);
 
         use_state(|| Rc::new(value))
@@ -193,7 +191,7 @@ where
         let selected = selected.clone();
         use_memo(deps, move |deps| {
             let deps = deps.clone();
-            Dispatch::new(&cx).subscribe(move |val: Rc<S>| {
+            dispatch.subscribe(move |val: Rc<S>| {
                 let value = selector(&val, &deps);
 
                 if !eq(&current.borrow(), &value) {
