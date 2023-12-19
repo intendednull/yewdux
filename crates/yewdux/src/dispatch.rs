@@ -86,8 +86,7 @@ impl<S: Store> Dispatch<S> {
         FU: Future<Output = ()> + 'static,
     {
         let dispatch = self.clone();
-        let f = Rc::new(f);
-        Callback::from(move |_| dispatch.spawn_future(|dispatch| f(dispatch)))
+        Callback::from(move |_| dispatch.spawn_future(&f))
     }
 
     #[cfg(feature = "future")]
@@ -97,7 +96,6 @@ impl<S: Store> Dispatch<S> {
         FU: Future<Output = ()> + 'static,
     {
         let dispatch = self.clone();
-        let f = Rc::new(f);
         Callback::from(move |e| dispatch.spawn_future(|dispatch| f(dispatch, e)))
     }
 

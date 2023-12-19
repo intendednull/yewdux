@@ -1,6 +1,5 @@
 use gloo_net::http::Request;
 use serde::{Deserialize, Serialize};
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yewdux::prelude::*;
 
