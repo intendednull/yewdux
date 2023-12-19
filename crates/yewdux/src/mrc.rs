@@ -30,7 +30,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::store::Store;
+use crate::{store::Store, Context};
 
 fn nonce() -> u32 {
     thread_local! {
@@ -83,8 +83,8 @@ impl<T> Mrc<T> {
 }
 
 impl<T: Store> Store for Mrc<T> {
-    fn new() -> Self {
-        T::new().into()
+    fn new(cx: &Context) -> Self {
+        T::new(cx).into()
     }
 
     fn should_notify(&self, other: &Self) -> bool {
@@ -122,14 +122,14 @@ impl<T> PartialEq for Mrc<T> {
 #[cfg(test)]
 mod tests {
 
-    use crate::{dispatch::Dispatch, store::Store};
+    use crate::{dispatch::Dispatch, store::Store, Context};
 
     use super::*;
 
     #[derive(Clone, PartialEq)]
     struct TestState(Mrc<u32>);
     impl Store for TestState {
-        fn new() -> Self {
+        fn new(_cx: &Context) -> Self {
             Self(Mrc::new(0))
         }
 
@@ -140,7 +140,7 @@ mod tests {
 
     struct CanImplStoreForMrcDirectly;
     impl Store for Mrc<CanImplStoreForMrcDirectly> {
-        fn new() -> Self {
+        fn new(_cx: &Context) -> Self {
             CanImplStoreForMrcDirectly.into()
         }
 
@@ -152,10 +152,12 @@ mod tests {
     #[test]
     fn subscriber_is_notified_on_borrow_mut() {
         let flag = Mrc::new(false);
+        let cx = Context::new();
 
         let dispatch = {
             let flag = flag.clone();
-            Dispatch::<TestState>::subscribe(move |_| flag.clone().with_mut(|flag| *flag = true))
+            Dispatch::<TestState>::new(&cx)
+                .subscribe(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
 
         *flag.borrow_mut() = false;
@@ -170,10 +172,12 @@ mod tests {
     #[test]
     fn subscriber_is_notified_on_with_mut() {
         let flag = Mrc::new(false);
+        let cx = Context::new();
 
         let dispatch = {
             let flag = flag.clone();
-            Dispatch::<TestState>::subscribe(move |_| flag.clone().with_mut(|flag| *flag = true))
+            Dispatch::<TestState>::new(&cx)
+                .subscribe(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
 
         *flag.borrow_mut() = false;
@@ -185,7 +189,8 @@ mod tests {
 
     #[test]
     fn can_wrap_store_with_mrc() {
-        let dispatch = Dispatch::<Mrc<TestState>>::new();
+        let cx = Context::new();
+        let dispatch = Dispatch::<Mrc<TestState>>::new(&cx);
         assert!(*dispatch.get().borrow().0.borrow() == 0)
     }
 }

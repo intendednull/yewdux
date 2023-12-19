@@ -3,6 +3,8 @@
 The best way to define the default value of your store is by manually implementing `Default`.
 
 ```rust
+# extern crate yewdux;
+# use yewdux::prelude::*;
 #[derive(PartialEq, Store)]
 struct MyStore {
     foo: String,
@@ -17,37 +19,66 @@ impl Default for MyStore {
         }
     }
 }
-
 ```
 
-However sometimes you may need additional context to set the initial value of your store. To do
-this, there are a couple options.
+Sometimes you may need additional context to set the initial value of your store. To do this, there
+are a couple options.
 
 You can set the value at the beginning of your application, before your app renders (like in your
-main fn).
+main function).
 
 ```rust
+# extern crate yewdux;
+# use yewdux::prelude::*;
+# #[derive(PartialEq, Store, Default)]
+# struct MyStore {
+#     foo: String,
+#     bar: String,
+# }
 fn main() {
-    // .. other setup logic and whatnot
-    Dispatch::<MyStore>::new().set(MyStore { ... });
-    // ... now you can render your app!
+    // Construct foo and bar however necessary
+    let foo = "foo".to_string();
+    let bar = "bar".to_string();
+    // Run this before starting your app.
+    Dispatch::<MyStore>::global().set(MyStore { foo, bar });
+    // ... continue with your app setup
 }
 ```
 
-Or inside some component using `use_effect_with_deps`, provided deps of `()`. Be sure to keep it in
-a root component!
+You can also set the inital value from a function component. The `use_effect_with` hook can be used
+to run the hook only once (just be sure to use empty deps).
 
 ```rust
-use_effect_with_deps(
-    move || {
-        // .. other setup logic and whatnot
-        Dispatch::<MyStore>::new().set(MyStore { ... });
-        || {}
-    },
-    (),
-);
+# extern crate yew;
+# extern crate yewdux;
+#
+# use yewdux::prelude::*;
+# use yew::prelude::*;
+# #[derive(PartialEq, Store, Default)]
+# struct MyStore {
+#     foo: String,
+#     bar: String,
+# }
+#[function_component]
+fn MyComponent() -> Html {
+    let dispatch = use_dispatch::<MyStore>();
+    // This runs only once, on the first render of the component.
+    use_effect_with(
+        (), // empty deps
+        move |_| {
+            // Construct foo and bar however necessary
+            let foo = "foo".to_string();
+            let bar = "bar".to_string();
+            dispatch.set(MyStore { foo, bar });
+            || {}
+        },
+    );
+
+    html! {
+        // Your component html
+    }
+}
 ```
 
 Keep in mind your store will still be initialized with `Store::new` (usually that's set to
-`Default::default()`), however, because Rust is awesome, no fields are allocated initially, and
-overwriting is very cheap.
+`Default::default()`), however this is typically inexpensive.

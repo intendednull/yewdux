@@ -30,7 +30,8 @@
 //! ```
 #![allow(clippy::needless_doctest_main)]
 
-mod context;
+pub mod context;
+pub mod context_provider;
 pub mod dispatch;
 pub mod functional;
 pub mod listener;
@@ -48,14 +49,19 @@ pub use log;
 #[doc(hidden)]
 pub use async_trait::async_trait;
 
+// Allow shorthand, like `yewdux::Dispatch`
+pub use context::Context;
+pub use prelude::*;
+
 pub mod prelude {
     //! Default exports
 
     pub use crate::{
+        context_provider::YewduxRoot,
         dispatch::Dispatch,
         functional::{
-            use_selector, use_selector_eq, use_selector_eq_with_deps, use_selector_with_deps,
-            use_store, use_store_value,
+            use_dispatch, use_selector, use_selector_eq, use_selector_eq_with_deps,
+            use_selector_with_deps, use_store, use_store_value,
         },
         listener::{init_listener, Listener},
         store::{Reducer, Store},

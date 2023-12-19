@@ -3,10 +3,24 @@ use std::{ops::Deref, rc::Rc};
 
 use yew::functional::*;
 
-use crate::{
-    dispatch::{self, Dispatch},
-    store::Store,
-};
+use crate::{dispatch::Dispatch, store::Store, Context};
+
+#[hook]
+fn use_cx() -> Context {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use_context::<crate::context::Context>().unwrap_or_else(crate::context::Context::global)
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use_context::<crate::context::Context>().expect("YewduxRoot not found")
+    }
+}
+
+#[hook]
+pub fn use_dispatch<S: Store>() -> Dispatch<S> {
+    Dispatch::new(&use_cx())
+}
 
 /// This hook allows accessing the state of a store. When the store is modified, a re-render is
 /// automatically triggered.
@@ -35,11 +49,11 @@ use crate::{
 /// ```
 #[hook]
 pub fn use_store<S: Store>() -> (Rc<S>, Dispatch<S>) {
-    let state = use_state(|| dispatch::get::<S>());
-
+    let dispatch = use_dispatch::<S>();
+    let state: UseStateHandle<Rc<S>> = use_state(|| dispatch.get());
     let dispatch = {
         let state = state.clone();
-        use_state(move || Dispatch::<S>::subscribe_silent(move |val| state.set(val)))
+        use_state(move || dispatch.subscribe_silent(move |val| state.set(val)))
     };
 
     (Rc::clone(&state), dispatch.deref().clone())
@@ -68,8 +82,9 @@ pub fn use_store_value<S: Store>() -> Rc<S> {
 ///
 /// #[function_component]
 /// fn App() -> Html {
+///     let dispatch = use_dispatch::<State>();
 ///     let count = use_selector(|state: &State| state.count);
-///     let onclick = Dispatch::<State>::new().reduce_mut_callback(|state| state.count += 1);
+///     let onclick = dispatch.reduce_mut_callback(|state| state.count += 1);
 ///
 ///     html! {
 ///         <>
@@ -158,9 +173,10 @@ where
     F: Fn(&S, &D) -> R + 'static,
     E: Fn(&R, &R) -> bool + 'static,
 {
+    let dispatch = use_dispatch::<S>();
     // Given to user, this is what we update to force a re-render.
     let selected = {
-        let state = dispatch::get::<S>();
+        let state = dispatch.get();
         let value = selector(&state, &deps);
 
         use_state(|| Rc::new(value))
@@ -173,24 +189,20 @@ where
 
     let _dispatch = {
         let selected = selected.clone();
-        use_memo(
-            deps,
-            move |deps| {
-                let deps = deps.clone();
-                Dispatch::subscribe(move |val: Rc<S>| {
-                    let value = selector(&val, &deps);
+        use_memo(deps, move |deps| {
+            let deps = deps.clone();
+            dispatch.subscribe(move |val: Rc<S>| {
+                let value = selector(&val, &deps);
 
-                    if !eq(&current.borrow(), &value) {
-                        let value = Rc::new(value);
-                        // Update value for user.
-                        selected.set(Rc::clone(&value));
-                        // Make sure to update our tracking value too.
-                        *current.borrow_mut() = Rc::clone(&value);
-                    }
-                })
-            },
-
-        )
+                if !eq(&current.borrow(), &value) {
+                    let value = Rc::new(value);
+                    // Update value for user.
+                    selected.set(Rc::clone(&value));
+                    // Make sure to update our tracking value too.
+                    *current.borrow_mut() = Rc::clone(&value);
+                }
+            })
+        })
     };
 
     Rc::clone(&selected)

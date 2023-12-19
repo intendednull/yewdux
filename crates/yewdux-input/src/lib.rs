@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsCast;
 use web_sys::{HtmlInputElement, HtmlTextAreaElement};
 use yew::prelude::*;
-use yewdux::prelude::*;
+use yewdux::{prelude::*, Context};
 
 pub enum InputElement {
     Input(HtmlInputElement),
@@ -47,13 +47,16 @@ impl FromInputElement for Checkbox {
 }
 
 pub trait InputDispatch<S: Store> {
+    fn context(&self) -> &Context;
+
     fn input<F, E, R>(&self, f: F) -> Callback<E>
     where
         R: FromInputElement,
         F: Fn(Rc<S>, R) -> Rc<S> + 'static,
         E: AsRef<Event> + JsCast + 'static,
     {
-        Dispatch::<S>::new().reduce_callback_with(move |s, e| {
+        let cx = self.context();
+        Dispatch::<S>::new(cx).reduce_callback_with(move |s, e| {
             if let Some(value) = input_value(e) {
                 f(s, value)
             } else {
@@ -69,7 +72,8 @@ pub trait InputDispatch<S: Store> {
         F: Fn(&mut S, R) + 'static,
         E: AsRef<Event> + JsCast + 'static,
     {
-        Dispatch::<S>::new().reduce_mut_callback_with(move |s, e| {
+        let cx = self.context();
+        Dispatch::<S>::new(cx).reduce_mut_callback_with(move |s, e| {
             if let Some(value) = input_value(e) {
                 f(s, value);
             }
@@ -77,7 +81,11 @@ pub trait InputDispatch<S: Store> {
     }
 }
 
-impl<S: Store> InputDispatch<S> for Dispatch<S> {}
+impl<S: Store> InputDispatch<S> for Dispatch<S> {
+    fn context(&self) -> &Context {
+        self.context()
+    }
+}
 
 /// Get any parsable value out of an input event.
 pub fn input_value<E, R>(event: E) -> Option<R>

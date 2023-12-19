@@ -5,10 +5,12 @@ use async_trait::async_trait;
 
 pub use yewdux_macros::Store;
 
-/// Globally shared state.
+use crate::Context;
+
+/// A type that holds application state.
 pub trait Store: 'static {
     /// Create this store.
-    fn new() -> Self;
+    fn new(cx: &Context) -> Self;
 
     /// Indicate whether or not subscribers should be notified about this change. Usually this
     /// should be set to `self != old`.

@@ -22,7 +22,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
         .map(|path| {
             quote! {
                 ::yewdux::listener::init_listener(
-                    #path
+                    #path, cx
                 );
             }
         })
@@ -41,7 +41,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
 
             let sync = if opts.storage_tab_sync {
                 quote! {
-                    if let Err(err) = ::yewdux::storage::init_tab_sync::<Self>(#area) {
+                    if let Err(err) = ::yewdux::storage::init_tab_sync::<Self>(#area, cx) {
                         ::yewdux::log::error!("Unable to init tab sync for storage: {:?}", err);
                     }
                 }
@@ -51,9 +51,10 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
 
             quote! {
                 #[cfg(target_arch = "wasm32")]
-                fn new() -> Self {
+                fn new(cx: &::yewdux::Context) -> Self {
                     ::yewdux::listener::init_listener(
-                        ::yewdux::storage::StorageListener::<Self>::new(#area)
+                        ::yewdux::storage::StorageListener::<Self>::new(#area),
+                        cx
                     );
                     #(#extra_listeners)*
 
@@ -71,14 +72,14 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 }
 
                 #[cfg(not(target_arch = "wasm32"))]
-                fn new() -> Self {
+                fn new(cx: &::yewdux::Context) -> Self {
                     #(#extra_listeners)*
                     Default::default()
                 }
             }
         }
         None => quote! {
-            fn new() -> Self {
+            fn new(cx: &::yewdux::Context) -> Self {
                 #(#extra_listeners)*
                 Default::default()
             }

@@ -8,14 +8,12 @@
 //!     count: usize,
 //!  }
 //!
-//!  # fn main() {
-//!  let dispatch = Dispatch::<State>::new();
+//!  let dispatch = Dispatch::<State>::global();
 //!  dispatch.reduce_mut(|state| state.count = 1);
 //!
 //!  let state = dispatch.get();
 //!
 //!  assert!(state.count == 1);
-//!  # }
 //!  ```
 //!
 
@@ -26,23 +24,52 @@ use std::{future::Future, pin::Pin};
 use yew::Callback;
 
 use crate::{
-    context,
-    mrc::Mrc,
+    context::Context,
     store::{AsyncReducer, Reducer, Store},
-    subscriber::{Callable, SubscriberId, Subscribers},
+    subscriber::{Callable, SubscriberId},
 };
 
 /// The primary interface to a [`Store`].
 pub struct Dispatch<S: Store> {
-    _subscriber_id: Option<Rc<SubscriberId<S>>>,
+    pub(crate) _subscriber_id: Option<Rc<SubscriberId<S>>>,
+    pub(crate) cx: Context,
+}
+
+impl<S: Store> std::fmt::Debug for Dispatch<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Dispatch")
+            .field("_subscriber_id", &self._subscriber_id)
+            .finish()
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl<S: Store> Default for Dispatch<S> {
+    fn default() -> Self {
+        Self::global()
+    }
 }
 
 impl<S: Store> Dispatch<S> {
-    /// Create a new dispatch.
-    pub fn new() -> Self {
+    /// Create a new dispatch with the global context (thread local).
+    ///
+    /// This is only available for wasm. For SSR, see the YewduxRoot pattern.
+    #[cfg(any(doc, feature = "doctests", target_arch = "wasm32"))]
+    pub fn global() -> Self {
+        Self::new(&Context::global())
+    }
+
+    /// Create a new dispatch with access to the given context.
+    pub fn new(cx: &Context) -> Self {
         Self {
             _subscriber_id: Default::default(),
+            cx: cx.clone(),
         }
+    }
+
+    /// Get the context used by this dispatch.
+    pub fn context(&self) -> &Context {
+        &self.cx
     }
 
     /// Create a dispatch that subscribes to changes in state. Latest state is sent immediately,
@@ -72,11 +99,11 @@ impl<S: Store> Dispatch<S> {
     ///
     /// impl Component for App {
     ///     type Message = Msg;
-    /// #    type Properties = ();
+    ///     type Properties = ();
     ///
     ///     fn create(ctx: &Context<Self>) -> Self {
     ///         let on_change = ctx.link().callback(Msg::State);
-    ///         let dispatch = Dispatch::subscribe(on_change);
+    ///         let dispatch = Dispatch::global().subscribe(on_change);
     ///         Self {
     ///             state: dispatch.get(),
     ///             dispatch,
@@ -98,28 +125,30 @@ impl<S: Store> Dispatch<S> {
     /// #    }
     /// }
     /// ```
-    pub fn subscribe<C: Callable<S>>(on_change: C) -> Self {
-        let id = subscribe(on_change);
+    pub fn subscribe<C: Callable<S>>(self, on_change: C) -> Self {
+        let id = self.cx.subscribe(on_change);
 
         Self {
             _subscriber_id: Some(Rc::new(id)),
+            cx: self.cx,
         }
     }
 
     /// Create a dispatch that subscribes to changes in state. Similar to [Self::subscribe],
     /// however state is **not** sent immediately. Automatically unsubscribes when this dispatch is
     /// dropped.
-    pub fn subscribe_silent<C: Callable<S>>(on_change: C) -> Self {
-        let id = subscribe_silent(on_change);
+    pub fn subscribe_silent<C: Callable<S>>(self, on_change: C) -> Self {
+        let id = self.cx.subscribe_silent(on_change);
 
         Self {
             _subscriber_id: Some(Rc::new(id)),
+            cx: self.cx,
         }
     }
 
     /// Get the current state.
     pub fn get(&self) -> Rc<S> {
-        get::<S>()
+        self.cx.get::<S>()
     }
 
     /// Apply a [`Reducer`](crate::store::Reducer) immediately.
@@ -144,13 +173,13 @@ impl<S: Store> Dispatch<S> {
     /// }
     ///
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// dispatch.apply(AddOne);
     /// # ;
     /// # }
     /// ```
     pub fn apply<R: Reducer<S>>(&self, reducer: R) {
-        reduce(reducer);
+        self.cx.reduce(reducer);
     }
 
     /// Apply an [`AsyncReducer`](crate::store::AsyncReducer) immediately.
@@ -181,14 +210,14 @@ impl<S: Store> Dispatch<S> {
     /// }
     ///
     /// # async fn do_thing() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// dispatch.apply_future(AddOne).await;
     /// # ;
     /// # }
     /// ```
     #[cfg(feature = "future")]
     pub async fn apply_future<R: AsyncReducer<S>>(&self, reducer: R) {
-        reduce_future(reducer).await;
+        self.cx.reduce_future(reducer).await;
     }
 
     /// Create a callback that applies a [`Reducer`](crate::store::Reducer).
@@ -213,7 +242,7 @@ impl<S: Store> Dispatch<S> {
     /// }
     ///
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onclick = dispatch.apply_callback(|_| AddOne);
     /// html! {
     ///     <button {onclick}>{"+1"}</button>
@@ -226,9 +255,10 @@ impl<S: Store> Dispatch<S> {
         M: Reducer<S>,
         F: Fn(E) -> M + 'static,
     {
+        let context = self.cx.clone();
         Callback::from(move |e| {
             let msg = f(e);
-            reduce(msg);
+            context.reduce(msg);
         })
     }
 
@@ -260,7 +290,7 @@ impl<S: Store> Dispatch<S> {
     /// }
     ///
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onclick = dispatch.apply_future_callback(|_| AddOne);
     /// html! {
     ///     <button {onclick}>{"+1"}</button>
@@ -274,10 +304,12 @@ impl<S: Store> Dispatch<S> {
         M: AsyncReducer<S> + 'static,
         F: Fn(E) -> M + 'static,
     {
+        let context = self.cx.clone();
         Callback::from(move |e| {
             let msg = f(e);
+            let context = context.clone();
             yew::platform::spawn_local(async move {
-                reduce_future(msg).await;
+                context.reduce_future(msg).await;
             })
         })
     }
@@ -292,12 +324,12 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// dispatch.set(State { count: 0 });
     /// # }
     /// ```
     pub fn set(&self, val: S) {
-        set(val);
+        self.cx.set(val);
     }
 
     /// Set state using value from callback.
@@ -309,8 +341,9 @@ impl<S: Store> Dispatch<S> {
     /// # struct State {
     /// #     count: u32,
     /// # }
-    /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// # #[hook]
+    /// # fn use_foo() {
+    /// let dispatch = use_dispatch::<State>();
     /// let onchange = dispatch.set_callback(|event: Event| {
     ///     let value = event.target_unchecked_into::<web_sys::HtmlInputElement>().value();
     ///     State { count: value.parse().unwrap() }
@@ -325,9 +358,10 @@ impl<S: Store> Dispatch<S> {
     where
         F: Fn(E) -> S + 'static,
     {
+        let context = self.cx.clone();
         Callback::from(move |e| {
             let val = f(e);
-            set(val);
+            context.set(val);
         })
     }
 
@@ -341,7 +375,7 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// dispatch.reduce(|state| State { count: state.count + 1 }.into());
     /// # }
     /// ```
@@ -349,7 +383,7 @@ impl<S: Store> Dispatch<S> {
     where
         F: FnOnce(Rc<S>) -> Rc<S>,
     {
-        reduce(f);
+        self.cx.reduce(f);
     }
 
     /// Change state immediately, in an async context.
@@ -365,7 +399,7 @@ impl<S: Store> Dispatch<S> {
     /// #   1
     /// # }
     /// # async fn do_thing() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// dispatch
     ///     .reduce_future(|state| async move {
     ///         let incr = get_incr().await;
@@ -384,7 +418,7 @@ impl<S: Store> Dispatch<S> {
         FUT: Future<Output = Rc<S>>,
         FUN: FnOnce(Rc<S>) -> FUT,
     {
-        reduce_future(f).await;
+        self.cx.reduce_future(f).await;
     }
 
     /// Create a callback that changes state.
@@ -397,7 +431,7 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onclick = dispatch.reduce_callback(|state| State { count: state.count + 1 }.into());
     /// html! {
     ///     <button {onclick}>{"+1"}</button>
@@ -410,8 +444,9 @@ impl<S: Store> Dispatch<S> {
         F: Fn(Rc<S>) -> Rc<S> + 'static,
         E: 'static,
     {
+        let context = self.cx.clone();
         Callback::from(move |_| {
-            reduce(&f);
+            context.reduce(&f);
         })
     }
 
@@ -428,7 +463,7 @@ impl<S: Store> Dispatch<S> {
     /// #   1
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onclick = dispatch.reduce_future_callback(|state| async move {
     ///     let incr = get_incr().await;
     ///     State {
@@ -450,10 +485,12 @@ impl<S: Store> Dispatch<S> {
         E: 'static,
     {
         let f = Rc::new(f);
+        let context = self.cx.clone();
         Callback::from(move |_| {
             let f = f.clone();
+            let context = context.clone();
             yew::platform::spawn_local(async move {
-                reduce_future(f.as_ref()).await;
+                context.reduce_future(f.as_ref()).await;
             })
         })
     }
@@ -468,7 +505,7 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onchange = dispatch.reduce_callback_with(|state, event: Event| {
     ///     let value = event.target_unchecked_into::<web_sys::HtmlInputElement>().value();
     ///     State {
@@ -487,8 +524,9 @@ impl<S: Store> Dispatch<S> {
         F: Fn(Rc<S>, E) -> Rc<S> + 'static,
         E: 'static,
     {
+        let context = self.cx.clone();
         Callback::from(move |e: E| {
-            reduce(|x| f(x, e));
+            context.reduce(|x| f(x, e));
         })
     }
 
@@ -505,7 +543,7 @@ impl<S: Store> Dispatch<S> {
     /// #     1
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onchange = dispatch.reduce_future_callback_with(|state, event: Event| async move {
     ///     let value = event.target_unchecked_into::<web_sys::HtmlInputElement>().value();
     ///     let incr = get_incr().await;
@@ -529,10 +567,12 @@ impl<S: Store> Dispatch<S> {
         E: 'static,
     {
         let f = Rc::new(f);
+        let context = self.cx.clone();
         Callback::from(move |e: E| {
             let f = f.clone();
+            let context = context.clone();
             yew::platform::spawn_local(async move {
-                reduce_future(move |s| f(s, e)).await;
+                context.reduce_future(move |s| f(s, e)).await;
             })
         })
     }
@@ -547,7 +587,7 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// dispatch.reduce_mut(|state| state.count += 1);
     /// # }
     /// ```
@@ -557,8 +597,8 @@ impl<S: Store> Dispatch<S> {
         F: FnOnce(&mut S) -> R,
     {
         let mut result = None;
-        
-        reduce_mut(|x| {
+
+        self.cx.reduce_mut(|x| {
             result = Some(f(x));
         });
 
@@ -578,7 +618,7 @@ impl<S: Store> Dispatch<S> {
     /// #   1
     /// # }
     /// # async fn do_thing() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// dispatch
     ///     .reduce_mut_future(|state| {
     ///         Box::pin(async move {
@@ -595,7 +635,7 @@ impl<S: Store> Dispatch<S> {
         S: Clone,
         F: FnOnce(&mut S) -> Pin<Box<dyn Future<Output = R> + '_>>,
     {
-        reduce_mut_future(f).await;
+        self.cx.reduce_mut_future(f).await;
     }
 
     /// Like [Self::reduce_mut] but from a callback.
@@ -608,7 +648,7 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onclick = dispatch.reduce_mut_callback(|s| s.count += 1);
     /// html! {
     ///     <button {onclick}>{"+1"}</button>
@@ -622,8 +662,9 @@ impl<S: Store> Dispatch<S> {
         F: Fn(&mut S) -> R + 'static,
         E: 'static,
     {
+        let context = self.cx.clone();
         Callback::from(move |_| {
-            reduce_mut(|x| {
+            context.reduce_mut(|x| {
                 f(x);
             });
         })
@@ -642,7 +683,7 @@ impl<S: Store> Dispatch<S> {
     /// #   1
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onclick = dispatch.reduce_mut_future_callback(|state| Box::pin(async move {
     ///     let incr = get_incr().await;
     ///     state.count += incr;
@@ -662,10 +703,12 @@ impl<S: Store> Dispatch<S> {
         E: 'static,
     {
         let f = Rc::new(f);
+        let context = self.cx.clone();
         Callback::from(move |_| {
             let f = f.clone();
+            let context = context.clone();
             yew::platform::spawn_local(async move {
-                reduce_mut_future(f.as_ref()).await;
+                context.reduce_mut_future(f.as_ref()).await;
             })
         })
     }
@@ -680,7 +723,7 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// let dispatch = Dispatch::<State>::global();
     /// let onchange = dispatch.reduce_mut_callback_with(|state, event: Event| {
     ///     let value = event.target_unchecked_into::<web_sys::HtmlInputElement>().value();
     ///     state.count = value.parse().unwrap();
@@ -697,8 +740,9 @@ impl<S: Store> Dispatch<S> {
         F: Fn(&mut S, E) -> R + 'static,
         E: 'static,
     {
+        let context = self.cx.clone();
         Callback::from(move |e: E| {
-            reduce_mut(|x| {
+            context.reduce_mut(|x| {
                 f(x, e);
             });
         })
@@ -717,8 +761,9 @@ impl<S: Store> Dispatch<S> {
     /// # async fn get_incr() -> u32 {
     /// #     1
     /// # }
-    /// # fn main() {
-    /// # let dispatch = Dispatch::<State>::new();
+    /// # #[hook]
+    /// # fn use_foo() {
+    /// let dispatch = use_dispatch::<State>();
     /// let onchange = dispatch.reduce_mut_future_callback_with(|state, event: Event| {
     ///     Box::pin(async move {
     ///         let value = event
@@ -742,18 +787,14 @@ impl<S: Store> Dispatch<S> {
         E: 'static,
     {
         let f = Rc::new(f);
+        let context = self.cx.clone();
         Callback::from(move |e: E| {
             let f = f.clone();
+            let context = context.clone();
             yew::platform::spawn_local(async move {
-                reduce_mut_future(move |s| f(s, e)).await;
+                context.reduce_mut_future(move |s| f(s, e)).await;
             })
         })
-    }
-}
-
-impl<S: Store> Default for Dispatch<S> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -761,6 +802,7 @@ impl<S: Store> Clone for Dispatch<S> {
     fn clone(&self) -> Self {
         Self {
             _subscriber_id: self._subscriber_id.clone(),
+            cx: self.cx.clone(),
         }
     }
 }
@@ -774,99 +816,17 @@ impl<S: Store> PartialEq for Dispatch<S> {
     }
 }
 
-/// Change state from a function.
-pub fn reduce<S: Store, R: Reducer<S>>(r: R) {
-    let context = context::get_or_init::<S>();
-    let should_notify = context.reduce(r);
-
-    if should_notify {
-        let state = Rc::clone(&context.store.borrow());
-        notify_subscribers(state)
-    }
-}
-
-#[cfg(feature = "future")]
-pub async fn reduce_future<S, R>(r: R)
-where
-    S: Store,
-    R: AsyncReducer<S>,
-{
-    let context = context::get_or_init::<S>();
-    let should_notify = context.reduce_future(r).await;
-
-    if should_notify {
-        let state = Rc::clone(&context.store.borrow());
-        notify_subscribers(state)
-    }
-}
-
-/// Change state using a mutable reference from a function.
-pub fn reduce_mut<S: Store + Clone, F: FnOnce(&mut S)>(f: F) {
-    reduce(|mut state| {
-        f(Rc::make_mut(&mut state));
-        state
-    });
-}
-
-#[cfg(feature = "future")]
-pub async fn reduce_mut_future<S, R, F>(f: F)
-where
-    S: Store + Clone,
-    F: FnOnce(&mut S) -> Pin<Box<dyn Future<Output = R> + '_>>,
-{
-    reduce_future(|mut state| async move {
-        f(Rc::make_mut(&mut state)).await;
-        state
-    })
-    .await;
-}
-
-/// Set state to given value.
-pub fn set<S: Store>(value: S) {
-    reduce(move |_| value.into());
-}
-
-/// Get current state.
-pub fn get<S: Store>() -> Rc<S> {
-    Rc::clone(&context::get_or_init::<S>().store.borrow())
-}
-
-/// Send state to all subscribers.
-pub fn notify_subscribers<S: Store>(state: Rc<S>) {
-    let context = context::get_or_init::<Mrc<Subscribers<S>>>();
-    context.store.borrow().notify(state);
-}
-
-/// Subscribe to a store. `on_change` is called immediately, then every  time state changes.
-pub fn subscribe<S: Store, N: Callable<S>>(on_change: N) -> SubscriberId<S> {
-    // Notify subscriber with inital state.
-    on_change.call(get::<S>());
-
-    context::get_or_init::<Mrc<Subscribers<S>>>()
-        .store
-        .borrow()
-        .subscribe(on_change)
-}
-
-/// Similar to [subscribe], however state is not called immediately.
-pub fn subscribe_silent<S: Store, N: Callable<S>>(on_change: N) -> SubscriberId<S> {
-    context::get_or_init::<Mrc<Subscribers<S>>>()
-        .store
-        .borrow()
-        .subscribe(on_change)
-}
-
 #[cfg(test)]
 mod tests {
 
-    use crate::mrc::Mrc;
+    use crate::{mrc::Mrc, subscriber::Subscribers};
 
     use super::*;
 
     #[derive(Clone, PartialEq, Eq)]
     struct TestState(u32);
     impl Store for TestState {
-        fn new() -> Self {
+        fn new(_cx: &Context) -> Self {
             Self(0)
         }
 
@@ -877,7 +837,7 @@ mod tests {
     #[derive(PartialEq, Eq)]
     struct TestStateNoClone(u32);
     impl Store for TestStateNoClone {
-        fn new() -> Self {
+        fn new(_cx: &Context) -> Self {
             Self(0)
         }
 
@@ -902,16 +862,18 @@ mod tests {
 
     #[test]
     fn apply_no_clone() {
-        reduce(|_| TestStateNoClone(1).into());
+        Dispatch::new(&Context::new()).reduce(|_| TestStateNoClone(1).into());
     }
 
     #[test]
     fn reduce_changes_value() {
-        let old = get::<TestState>();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
 
-        reduce(|_| TestState(1).into());
+        let old = dispatch.get();
 
-        let new = get::<TestState>();
+        dispatch.reduce(|_| TestState(1).into());
+
+        let new = dispatch.get();
 
         assert!(old != new);
     }
@@ -919,11 +881,15 @@ mod tests {
     #[cfg(feature = "future")]
     #[async_std::test]
     async fn reduce_future_changes_value() {
-        let old = get::<TestState>();
+        let cx = Context::new();
+        let dispatch = Dispatch::<TestState>::new(&cx);
+        let old = dispatch.get();
 
-        reduce_future(|state: Rc<TestState>| async move { TestState(state.0 + 1).into() }).await;
+        dispatch
+            .reduce_future(|state| async move { TestState(state.0 + 1).into() })
+            .await;
 
-        let new = get::<TestState>();
+        let new = dispatch.get();
 
         assert!(old != new);
     }
@@ -933,7 +899,8 @@ mod tests {
     async fn reduce_future_does_not_clash() {
         use std::time::Duration;
 
-        let dispatch = Dispatch::<TestState>::new();
+        let cx = Context::new();
+        let dispatch = Dispatch::<TestState>::new(&cx);
 
         dispatch
             .reduce_future(|state| async move {
@@ -947,11 +914,12 @@ mod tests {
 
     #[test]
     fn reduce_mut_changes_value() {
-        let old = get::<TestState>();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
+        let old = dispatch.get();
 
-        reduce_mut(|state| *state = TestState(1));
+        dispatch.reduce_mut(|state| *state = TestState(1));
 
-        let new = get::<TestState>();
+        let new = dispatch.get();
 
         assert!(old != new);
     }
@@ -959,11 +927,14 @@ mod tests {
     #[cfg(feature = "future")]
     #[async_std::test]
     async fn reduce_mut_future_changes_value() {
-        let old = get::<TestState>();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
+        let old = dispatch.get();
 
-        reduce_mut_future(|state| Box::pin(async move { *state = TestState(1) })).await;
+        dispatch
+            .reduce_mut_future(|state| Box::pin(async move { *state = TestState(1) }))
+            .await;
 
-        let new = get::<TestState>();
+        let new = dispatch.get();
 
         assert!(old != new);
     }
@@ -971,45 +942,44 @@ mod tests {
     #[test]
     fn reduce_does_not_require_static() {
         let val = "1".to_string();
-        reduce(|_| TestState(val.parse().unwrap()).into());
+        Dispatch::new(&Context::new()).reduce(|_| TestState(val.parse().unwrap()).into());
     }
 
     #[test]
     fn reduce_mut_does_not_require_static() {
         let val = "1".to_string();
-        reduce_mut(|state: &mut TestState| state.0 = val.parse().unwrap());
+        Dispatch::new(&Context::new())
+            .reduce_mut(|state: &mut TestState| state.0 = val.parse().unwrap());
     }
 
     #[test]
     fn set_changes_value() {
-        let old = get::<TestState>();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
 
-        set(TestState(1));
+        let old = dispatch.get();
 
-        let new = get::<TestState>();
+        dispatch.set(TestState(1));
+
+        let new = dispatch.get();
 
         assert!(old != new);
     }
 
     #[test]
     fn apply_changes_value() {
-        let old = get::<TestState>();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
+        let old = dispatch.get();
 
-        reduce::<TestState, Msg>(Msg);
+        dispatch.apply(Msg);
 
-        let new = get::<TestState>();
+        let new = dispatch.get();
 
         assert!(old != new);
     }
 
     #[test]
-    fn dispatch_new_works() {
-        let _dispatch = Dispatch::<TestState>::new();
-    }
-
-    #[test]
     fn dispatch_set_works() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
         let old = dispatch.get();
 
         dispatch.set(TestState(1));
@@ -1019,7 +989,7 @@ mod tests {
 
     #[test]
     fn dispatch_set_callback_works() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
         let old = dispatch.get();
 
         let cb = dispatch.set_callback(|_| TestState(1));
@@ -1030,7 +1000,7 @@ mod tests {
 
     #[test]
     fn dispatch_reduce_mut_works() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
         let old = dispatch.get();
 
         dispatch.reduce_mut(|state| state.0 += 1);
@@ -1041,7 +1011,7 @@ mod tests {
     #[cfg(feature = "future")]
     #[async_std::test]
     async fn dispatch_reduce_mut_future_works() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
         let old = dispatch.get();
 
         dispatch
@@ -1053,7 +1023,7 @@ mod tests {
 
     #[test]
     fn dispatch_reduce_works() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
         let old = dispatch.get();
 
         dispatch.reduce(|_| TestState(1).into());
@@ -1064,7 +1034,7 @@ mod tests {
     #[cfg(feature = "future")]
     #[async_std::test]
     async fn dispatch_reduce_future_works() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
         let old = dispatch.get();
 
         dispatch
@@ -1076,7 +1046,7 @@ mod tests {
 
     #[test]
     fn dispatch_reduce_callback_works() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
         let old = dispatch.get();
 
         let cb = dispatch.reduce_callback(|_| TestState(1).into());
@@ -1088,7 +1058,7 @@ mod tests {
     #[cfg(feature = "future")]
     #[async_std::test]
     async fn dispatch_reduce_future_callback_compiles() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
 
         let _ = dispatch.reduce_future_callback::<_, _, ()>(|state| async move {
             TestState(state.0 + 1).into()
@@ -1097,7 +1067,7 @@ mod tests {
 
     #[test]
     fn dispatch_reduce_mut_callback_works() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
         let old = dispatch.get();
 
         let cb = dispatch.reduce_mut_callback(|state| state.0 += 1);
@@ -1109,7 +1079,7 @@ mod tests {
     #[cfg(feature = "future")]
     #[async_std::test]
     async fn dispatch_reduce_mut_future_callback_compiles() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
 
         let _ = dispatch.reduce_mut_future_callback::<_, _, ()>(|state| {
             Box::pin(async move {
@@ -1121,7 +1091,7 @@ mod tests {
     #[cfg(feature = "future")]
     #[async_std::test]
     async fn dispatch_reduce_future_callback_with_compiles() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
 
         let _ = dispatch.reduce_future_callback_with(|state, e: u32| async move {
             TestState(state.0 + e).into()
@@ -1130,7 +1100,7 @@ mod tests {
 
     #[test]
     fn dispatch_reduce_callback_with_works() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
         let old = dispatch.get();
 
         let cb = dispatch.reduce_callback_with(|_, _| TestState(1).into());
@@ -1141,7 +1111,7 @@ mod tests {
 
     #[test]
     fn dispatch_reduce_mut_callback_with_works() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
         let old = dispatch.get();
 
         let cb = dispatch.reduce_mut_callback_with(|state, val| state.0 += val);
@@ -1153,7 +1123,7 @@ mod tests {
     #[cfg(feature = "future")]
     #[async_std::test]
     async fn dispatch_reduce_mut_future_callback_with_compiles() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
 
         let _ = dispatch.reduce_mut_future_callback_with::<_, _, u32>(|state, e| {
             Box::pin(async move {
@@ -1164,7 +1134,7 @@ mod tests {
 
     #[test]
     fn dispatch_apply_works() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
         let old = dispatch.get();
 
         dispatch.apply(Msg);
@@ -1175,19 +1145,19 @@ mod tests {
     #[cfg(feature = "future")]
     #[async_std::test]
     async fn apply_future_changes_value() {
-        let old = get::<TestState>();
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
+        let old = dispatch.get();
 
         dispatch.apply_future(Msg).await;
 
-        let new = get::<TestState>();
+        let new = dispatch.get();
 
         assert!(old != new);
     }
 
     #[test]
     fn dispatch_apply_callback_works() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
         let old = dispatch.get();
 
         let cb = dispatch.apply_callback(|_| Msg);
@@ -1199,79 +1169,86 @@ mod tests {
     #[cfg(feature = "future")]
     #[async_std::test]
     async fn apply_future_callback_compiles() {
-        let dispatch = Dispatch::<TestState>::new();
+        let dispatch = Dispatch::<TestState>::new(&Context::new());
 
         dispatch.apply_future_callback(|_: ()| Msg);
     }
 
     #[test]
     fn subscriber_is_notified() {
+        let cx = Context::new();
         let flag = Mrc::new(false);
 
         let _id = {
             let flag = flag.clone();
-            subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
+            Dispatch::<TestState>::new(&cx)
+                .subscribe(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
 
         *flag.borrow_mut() = false;
 
-        reduce_mut::<TestState, _>(|state| state.0 += 1);
+        Dispatch::<TestState>::new(&cx).reduce_mut(|state| state.0 += 1);
 
         assert!(*flag.borrow());
     }
 
     #[test]
     fn subscriber_is_not_notified_when_state_is_same() {
+        let cx = Context::new();
         let flag = Mrc::new(false);
+        let dispatch = Dispatch::<TestState>::new(&cx);
 
         // TestState(1)
-        reduce_mut::<TestState, _>(|_| {});
+        dispatch.reduce_mut(|_| {});
 
         let _id = {
             let flag = flag.clone();
-            subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
+            Dispatch::<TestState>::new(&cx)
+                .subscribe(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
 
         *flag.borrow_mut() = false;
 
         // TestState(1)
-        reduce_mut::<TestState, _>(|state| state.0 = 0);
+        dispatch.reduce_mut(|state| state.0 = 0);
 
         assert!(!*flag.borrow());
     }
 
     #[test]
     fn dispatch_unsubscribes_when_dropped() {
-        let context = context::get_or_init::<Mrc<Subscribers<TestState>>>();
+        let cx = Context::new();
+        let entry = cx.get_or_init::<Mrc<Subscribers<TestState>>>();
 
-        assert!(context.store.borrow().borrow().0.is_empty());
+        assert!(entry.store.borrow().borrow().0.is_empty());
 
-        let dispatch = Dispatch::<TestState>::subscribe(|_| ());
+        let dispatch = Dispatch::<TestState>::new(&cx).subscribe(|_| ());
 
-        assert!(!context.store.borrow().borrow().0.is_empty());
+        assert!(!entry.store.borrow().borrow().0.is_empty());
 
         drop(dispatch);
 
-        assert!(context.store.borrow().borrow().0.is_empty());
+        assert!(entry.store.borrow().borrow().0.is_empty());
     }
 
     #[test]
     fn dispatch_clone_and_original_unsubscribe_when_both_dropped() {
-        let context = context::get_or_init::<Mrc<Subscribers<TestState>>>();
+        let cx = Context::new();
+        let entry = cx.get_or_init::<Mrc<Subscribers<TestState>>>();
 
-        assert!(context.store.borrow().borrow().0.is_empty());
+        assert!(entry.store.borrow().borrow().0.is_empty());
 
-        let dispatch = Dispatch::<TestState>::subscribe(|_| ());
+        let dispatch = Dispatch::<TestState>::new(&cx).subscribe(|_| ());
         let dispatch_clone = dispatch.clone();
 
-        assert!(!context.store.borrow().borrow().0.is_empty());
+        assert!(!entry.store.borrow().borrow().0.is_empty());
 
         drop(dispatch_clone);
 
-        assert!(!context.store.borrow().borrow().0.is_empty());
+        assert!(!entry.store.borrow().borrow().0.is_empty());
 
         drop(dispatch);
 
-        assert!(context.store.borrow().borrow().0.is_empty());
+        assert!(entry.store.borrow().borrow().0.is_empty());
     }
 }

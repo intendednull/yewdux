@@ -1,5 +1,5 @@
 use yew::prelude::*;
-use yewdux::prelude::*;
+use yewdux::{prelude::*, Context};
 use yewdux_utils::*;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -8,8 +8,8 @@ struct State {
 }
 
 impl Store for State {
-    fn new() -> Self {
-        init_listener(HistoryListener::<State>::default());
+    fn new(cx: &Context) -> Self {
+        init_listener(HistoryListener::<State>::default(), cx);
         Self::default()
     }
 
@@ -55,7 +55,7 @@ fn Controls() -> Html {
         .enumerate()
         .map(|(i, x)| {
             let matches = i == state.index();
-            let match_text = matches.then_some("<<<").unwrap_or("");
+            let match_text = if matches { "<<<" } else { "" };
             let text = format!("{x:?}");
 
             let onclick = dispatch.apply_callback(move |_| HistoryMessage::JumpTo(i));

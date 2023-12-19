@@ -3,35 +3,20 @@
 Yewdux provides the `#[store]` macro to easily persist your state in either local or session storage.
 
 ```rust
+# extern crate yewdux;
+# extern crate serde;
 use yewdux::prelude::*;
 use serde::{Serialize, Deserialize};
 
 #[derive(Default, PartialEq, Serialize, Deserialize, Store)]
 #[store(storage = "local")] // can also be "session"
-struct Counter {
+struct State {
     count: u32,
 }
 ```
 
-This can also be done manually.
-
-```rust
-use yewdux::{prelude::*, storage};
-
-impl Store for Counter {
-    fn new() -> Self {
-        init_listener(storage::StorageListener::<Self>::new(storage::Area::Local));
-
-        storage::load(storage::Area::Local)
-            .expect("Unable to load state")
-            .unwrap_or_default()
-    }
-
-    fn should_notify(&self, other: &Self) -> bool {
-        self != other
-    }
-}
-```
+This can also be done
+[manually](https://github.com/intendednull/yewdux/blob/master/examples/listener/src/main.rs).
 
 ## Tab sync
 
@@ -39,6 +24,10 @@ Normally if your application is open in multiple tabs, the store is not updated 
 than the current one. If you want storage to sync in all tabs, add `storage_tab_sync` to the macro.
 
 ```rust
+# extern crate yewdux;
+# extern crate serde;
+# use yewdux::prelude::*;
+# use serde::{Serialize, Deserialize};
 #[derive(Default, Clone, PartialEq, Eq, Deserialize, Serialize, Store)]
 #[store(storage = "local", storage_tab_sync)]
 struct State {
@@ -51,6 +40,11 @@ struct State {
 You can inject additional listeners into the `#[store]` macro.
 
 ```rust
+# extern crate yewdux;
+# extern crate serde;
+# use std::rc::Rc;
+# use yewdux::prelude::*;
+# use serde::{Serialize, Deserialize};
 #[derive(Default, Clone, PartialEq, Eq, Deserialize, Serialize, Store)]
 #[store(storage = "local", listener(LogListener))]
 struct State {
@@ -61,8 +55,8 @@ struct LogListener;
 impl Listener for LogListener {
     type Store = State;
 
-    fn on_change(&mut self, state: Rc<Self::Store>) {
-        log!(Level::Info, "Count changed to {}", state.count);
+    fn on_change(&mut self, _cx: &yewdux::Context, state: Rc<Self::Store>) {
+        yewdux::log::info!("Count changed to {}", state.count);
     }
 }
 ```

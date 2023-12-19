@@ -4,13 +4,12 @@ use std::{any::Any, marker::PhantomData};
 use slab::Slab;
 use yew::Callback;
 
-use crate::mrc::Mrc;
-use crate::store::Store;
+use crate::{mrc::Mrc, store::Store, Context};
 
 pub(crate) struct Subscribers<S>(pub(crate) Slab<Box<dyn Callable<S>>>);
 
 impl<S: 'static> Store for Subscribers<S> {
-    fn new() -> Self {
+    fn new(_cx: &Context) -> Self {
         Self(Default::default())
     }
 
@@ -59,6 +58,14 @@ pub struct SubscriberId<S: Store> {
     pub(crate) _store_type: PhantomData<S>,
 }
 
+impl<S: Store> std::fmt::Debug for SubscriberId<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SubscriberId")
+            .field("key", &self.key)
+            .finish()
+    }
+}
+
 impl<S: Store> SubscriberId<S> {
     /// Leak this subscription, so it is never dropped.
     pub fn leak(self) {
@@ -100,14 +107,14 @@ mod tests {
 
     use super::*;
 
-    use crate::context;
-    use crate::dispatch::{self, Dispatch};
+    use crate::context::Context;
+    use crate::dispatch::Dispatch;
     use crate::mrc::Mrc;
 
     #[derive(Clone, PartialEq, Eq)]
     struct TestState(u32);
     impl Store for TestState {
-        fn new() -> Self {
+        fn new(_cx: &Context) -> Self {
             Self(0)
         }
 
@@ -118,52 +125,57 @@ mod tests {
 
     #[test]
     fn subscribe_adds_to_list() {
-        let context = context::get_or_init::<Mrc<Subscribers<TestState>>>();
+        let cx = Context::new();
+        let entry = cx.get_or_init::<Mrc<Subscribers<TestState>>>();
 
-        assert!(context.store.borrow().borrow().0.is_empty());
+        assert!(entry.store.borrow().borrow().0.is_empty());
 
-        let _id = dispatch::subscribe(|_: Rc<TestState>| ());
+        let _id = Dispatch::new(&cx).subscribe(|_: Rc<TestState>| ());
 
-        assert!(!context.store.borrow().borrow().0.is_empty());
+        assert!(!entry.store.borrow().borrow().0.is_empty());
     }
 
     #[test]
     fn unsubscribe_removes_from_list() {
-        let context = context::get_or_init::<Mrc<Subscribers<TestState>>>();
+        let cx = Context::new();
+        let entry = cx.get_or_init::<Mrc<Subscribers<TestState>>>();
 
-        assert!(context.store.borrow().borrow().0.is_empty());
+        assert!(entry.store.borrow().borrow().0.is_empty());
 
-        let id = dispatch::subscribe(|_: Rc<TestState>| ());
+        let id = Dispatch::new(&cx).subscribe(|_: Rc<TestState>| ());
 
-        assert!(!context.store.borrow().borrow().0.is_empty());
+        assert!(!entry.store.borrow().borrow().0.is_empty());
 
         drop(id);
 
-        assert!(context.store.borrow().borrow().0.is_empty());
+        assert!(entry.store.borrow().borrow().0.is_empty());
     }
 
     #[test]
     fn subscriber_id_unsubscribes_when_dropped() {
-        let context = context::get_or_init::<Mrc<Subscribers<TestState>>>();
+        let cx = Context::new();
+        let entry = cx.get_or_init::<Mrc<Subscribers<TestState>>>();
 
-        assert!(context.store.borrow().borrow().0.is_empty());
+        assert!(entry.store.borrow().borrow().0.is_empty());
 
-        let id = dispatch::subscribe::<TestState, _>(|_| {});
+        let id = Dispatch::<TestState>::new(&cx).subscribe(|_| {});
 
-        assert!(!context.store.borrow().borrow().0.is_empty());
+        assert!(!entry.store.borrow().borrow().0.is_empty());
 
         drop(id);
 
-        assert!(context.store.borrow().borrow().0.is_empty());
+        assert!(entry.store.borrow().borrow().0.is_empty());
     }
 
     #[test]
     fn subscriber_is_notified_on_subscribe() {
         let flag = Mrc::new(false);
+        let cx = Context::new();
 
         let _id = {
             let flag = flag.clone();
-            dispatch::subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
+            Dispatch::<TestState>::new(&cx)
+                .subscribe(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
 
         assert!(*flag.borrow());
@@ -172,26 +184,29 @@ mod tests {
     #[test]
     fn subscriber_is_notified_after_leak() {
         let flag = Mrc::new(false);
+        let cx = Context::new();
 
         let id = {
             let flag = flag.clone();
-            dispatch::subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
+            cx.subscribe::<TestState, _>(move |_| flag.clone().with_mut(|flag| *flag = true))
         };
 
         *flag.borrow_mut() = false;
 
         id.leak();
 
-        dispatch::reduce_mut(|state: &mut TestState| state.0 += 1);
+        cx.reduce_mut(|state: &mut TestState| state.0 += 1);
 
         assert!(*flag.borrow());
     }
 
     #[test]
     fn can_modify_state_inside_on_changed() {
-        let dispatch = Dispatch::<TestState>::subscribe(|state: Rc<TestState>| {
+        let cx = Context::new();
+        let cxo = cx.clone();
+        let dispatch = Dispatch::<TestState>::new(&cx).subscribe(move |state: Rc<TestState>| {
             if state.0 == 0 {
-                dispatch::reduce_mut(|state: &mut TestState| state.0 += 1);
+                Dispatch::new(&cxo).reduce_mut(|state: &mut TestState| state.0 += 1);
             }
         });
 

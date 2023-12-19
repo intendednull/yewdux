@@ -1,137 +1,154 @@
-# Dispatch
+# Creating a dispatch
 
-A [Dispatch](https://docs.rs/yewdux/0.8.1/yewdux/dispatch/struct.Dispatch.html) is the primary
-interface to [Store](https://docs.rs/yewdux/0.8.1/yewdux/store/trait.Store.html). It is used to
-read and write changes to state in various ways.
+A [Dispatch](https://docs.rs/yewdux/latest/yewdux/dispatch/struct.Dispatch.html) is the primary
+interface to access your [Store](https://docs.rs/yewdux/latest/yewdux/store/trait.Store.html). It
+can be used to read and write changes to state in various ways.
 
-# Creating a Dispatch
+## Hooks
 
-To create a dispatch, you need only provide the desired store type. This is available in **any** rust code, not just yew components.
+A dispatch is provided when using the functional hook, which is only available in yew functional
+components.
 
-```rust
-let dispatch = Dispatch::<Counter>::new();
-```
-
-A dispatch is also given when using the functional hook, which is only available in yew components.
+**IMPORTANT**: Like other hooks, all yewdux hooks must be used at the top level of a function
+component.
 
 ```rust
-let (state, dispatch) = use_store::<Counter>();
-```
+# extern crate yewdux;
+# extern crate yew;
+# use yewdux::prelude::*;
+# use yew::prelude::*;
+#[derive(Default, PartialEq, Store)]
+struct State {
+    count: u32,
+}
 
-# Changing global state with Dispatch
-
-`Dispatch` provides many options for changing state.
-
-### `Dispatch::set`
-
-Assign the store to the given value.
-
-```rust
-dispatch.set(Counter { count: 0 });
-```
-
-### `Dispatch::set_callback`
-
-Generate a callback that will set the store to a given value.
-
-```rust
-let onclick = dispatch.set_callback(|_| Counter { count: 0 });
-html! {
-    <button {onclick}>{"Reset counter"}</button>
+#[function_component]
+fn MyComponent() -> Html {
+    let (state, dispatch) = use_store::<State>();
+    html! {
+        // Component stuff here
+    }
 }
 ```
 
-### `Dispatch::reduce`
+See [the docs](https://docs.rs/yewdux/latest/yewdux/functional/index.html) for a full list of
+available hooks.
 
-Assign the state of the store using a reducer function.
+## Manually
+
+To create a dispatch, you need only provide the desired store type. This is available in **any**
+rust code, not just yew components.
 
 ```rust
-dispatch.reduce(|counter| Counter { count: counter.count + 1});
+# extern crate yewdux;
+# use yewdux::prelude::*;
+# #[derive(Default, PartialEq, Store)]
+# struct State {
+#     count: u32,
+# }
+let dispatch = Dispatch::<State>::global();
 ```
 
-### `Dispatch::reduce_callback`
+**NOTE**: Here we create a global dispatch, which is only available for wasm targets. See
+[SSR support](./ssr.md) for alternatives.
 
-Generate a callback that assigns state using a reducer function.
+# Changing state
+
+`Dispatch` provides many options for changing state. Here are a few handy methods. For a full list
+see the [docs](https://docs.rs/yewdux/latest/yewdux/dispatch/struct.Dispatch.html#)
+
 
 ```rust
-let onclick = dispatch.reduce_callback(|counter| Counter { count: counter.count + 1});
+# extern crate yewdux;
+# extern crate yew;
+# use yewdux::prelude::*;
+# use yew::prelude::*;
+#[derive(Default, PartialEq, Store)]
+struct State {
+    count: u32,
+}
+
+// Create a global dispatch
+let dispatch = Dispatch::<State>::global();
+
+// Set the value immediately
+dispatch.set(State { count: 0 });
+
+// Set the value immediately based on the last value
+dispatch.reduce(|state| State { count: state.count + 1}.into());
+
+// Create a callback to set the value when a button is clicked
+let onclick = dispatch.reduce_callback(|state| State { count: state.count + 1}.into());
 html! {
     <button {onclick}>{"Increment (+1)"}</button>
-}
+};
 ```
 
-### `Dispatch::reduce_callback_with`
-
-Similar to `Dispatch::reduce_callback`, but also includes the fired event.
-
-```rust
-let onchange = dispatch.reduce_callback_with(|counter, e: Event| {
-    let input = e.target_unchecked_into::<HtmlInputElement>();
-
-    if let Ok(count) = input.value().parse() {
-        Counter { count }.into()
-    } else {
-        counter
-    }
-});
-
-html! {
-    <input placeholder="Set counter" {onchange} />
-}
-```
-
-# Mutation with less boilerplate (CoW)
+## Mut reducers
 
 There are `_mut` variants to every reducer function. This way has less boilerplate, and requires
-your `Store` to implement `Clone`.
-
-### `Dispatch::reduce_mut`
+your `Store` to implement `Clone`. Your `Store` *may* be cloned once per mutation,
 
 ```rust
-dispatch.reduce_mut(|counter| counter.count += 1);
-```
+# extern crate yewdux;
+# extern crate yew;
+# use yewdux::prelude::*;
+# use yew::prelude::*;
+#[derive(Default, PartialEq, Clone, Store)]
+struct State {
+    count: u32,
+}
 
-### `Dispatch::reduce_mut_callback`
+// Create a global dispatch
+let dispatch = Dispatch::<State>::global();
 
-```rust
+// Mutate the current value
+dispatch.reduce_mut(|state| state.count += 1);
+
+// Create a callback to mutate the value when a button is clicked
 let onclick = dispatch.reduce_mut_callback(|counter| counter.count += 1);
 html! {
     <button {onclick}>{"Increment (+1)"}</button>
-}
+};
 ```
 
-### `Dispatch::reduce_mut_callback_with`
-
-```rust
-let onchange = dispatch.reduce_mut_callback_with(|counter, e: Event| {
-    let input = e.target_unchecked_into::<HtmlInputElement>();
-
-    if let Ok(val) = input.value().parse() {
-        counter.count = val;
-    }
-});
-
-html! {
-    <input placeholder="Set counter" {onchange} />
-}
-```
-
-# Mutate state predictably
+## Predictable mutations
 
 Yewdux supports predictable mutation. Simply define your message and apply it.
 
 ```rust
-struct Msg {
+# extern crate yewdux;
+# extern crate yew;
+use std::rc::Rc;
+
+use yew::prelude::*;
+use yewdux::prelude::*;
+
+#[derive(Default, PartialEq, Clone, Store)]
+struct State {
+    count: u32,
+}
+
+enum Msg {
     AddOne,
 }
 
-impl Reducer<Counter> for Msg {
-    fn apply(self, counter: Rc<Counter>) -> Rc<Counter> {
+impl Reducer<State> for Msg {
+    fn apply(self, state: Rc<State>) -> Rc<State> {
         match self {
-            Msg::AddOne => Counter { count: counter.count + 1 },
+            Msg::AddOne => State { count: state.count + 1 }.into(),
         }
     }
 }
+
+let dispatch = Dispatch::<State>::global();
+
+dispatch.apply(Msg::AddOne);
+
+let onclick = dispatch.apply_callback(|_| Msg::AddOne);
+html! {
+    <button {onclick}>{"Increment (+1)"}</button>
+};
 ```
 
 ### Tip
@@ -139,106 +156,55 @@ impl Reducer<Counter> for Msg {
 `Rc::make_mut` is handy if you prefer CoW:
 
 ```rust
-impl Reducer<Counter> for Msg {
-    fn apply(self, mut counter: Rc<Counter>) -> Rc<Counter> {
-        let state = Rc::make_mut(&mut counter);
+# extern crate yewdux;
+# use std::rc::Rc;
+# use yewdux::prelude::*;
+# #[derive(Default, PartialEq, Clone, Store)]
+# struct State {
+#     count: u32,
+# }
+# enum Msg {
+#     AddOne,
+# }
+impl Reducer<State> for Msg {
+    fn apply(self, mut state: Rc<State>) -> Rc<State> {
+        let state_mut = Rc::make_mut(&mut state);
 
         match self {
-            Msg::AddOne => state.count += 1,
+            Msg::AddOne => state_mut.count += 1,
         };
 
-        counter
+        state
     }
 }
 ```
 
-
-### `Dispatch::apply`
-
-Execute immediately.
-
-```rust
-dispatch.apply(Msg::AddOne);
-```
-
-### `Dispatch::apply_callback`
-
-Generate (you guessed it) a callback.
-
-```rust
-let onclick = dispatch.apply_callback(|_| Msg::AddOne);
-html! {
-    <button {onclick}>{"Increment (+1)"}</button>
-}
-```
-
-# Future support
+## Future support
 
 Because a `Dispatch` may be created and executed from anywhere, Yewdux has innate future support.
 Just use it normally, no additonal setup is needed.
 
 ```rust
-yew::platform::spawn_local(async {
+# extern crate yewdux;
+# extern crate yew;
+# use std::rc::Rc;
+# use yewdux::prelude::*;
+# use yew::prelude::*;
+
+#[derive(Default, PartialEq, Store)]
+struct User {
+    name: Option<Rc<str>>,
+}
+
+async fn get_user() -> User {
+    User { name: Some("bob".into()) }
+}
+
+let dispatch = Dispatch::<User>::global();
+// Use yew::platform::spawn_local to run a future.
+let future = async move {
     let user = get_user().await;
-    Dispatch::<User>::new().set(user);
-})
+    dispatch.set(user);
+};
 ```
 
-## Async associated functions
-For stores that have async methods, dispatch provides some options for your convenience.
-
-### `Dispatch::reduce_future`
-
-Executes immediately.
-
-```rust
-dispatch
-    .reduce_future(|state| async move {
-        let mut state = state.as_ref().clone();
-        state.update_user().await;
-
-        state
-    })
-    .await;
-```
-
-### `Dispatch::reduce_mut_future`
-
-For the `CoW` approach. Note `Box::pin` is required here. This is due to a current limitation of
-Rust, and should be phased out in the future.
-
-```rust
-dispatch
-    .reduce_mut_future(|state| {
-        Box::pin(async move {
-            state.update_user().await;
-        })
-    })
-    .await;
-```
-
-## Async callbacks
-
-You can also create callbacks that execute a future when called. Note these are simple wrappers over
-`yew::platform::spawn_local`.
-
-### `Dispatch::reduce_future_callback`
-
-```rust
-let cb = dispatch.reduce_future_callback(|state| async move {
-    let mut state = state.as_ref().clone();
-    state.update_user().await;
-
-    state
-});
-```
-
-### `Dispatch::reduce_mut_future_callback`
-
-```rust
-let cb = dispatch.reduce_mut_future_callback(|state| {
-    Box::pin(async move {
-        state.update_user().await;
-    })
-});
-```

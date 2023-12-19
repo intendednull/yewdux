@@ -1,5 +1,5 @@
 use std::{marker::PhantomData, rc::Rc};
-use yewdux::prelude::*;
+use yewdux::{prelude::*, Context};
 
 #[derive(Default)]
 pub struct HistoryListener<T: Store + PartialEq>(PhantomData<T>);
@@ -24,15 +24,16 @@ impl<T: Store + PartialEq> Reducer<HistoryStore<T>> for HistoryChangeMessage<T> 
 impl<T: Store + PartialEq> Listener for HistoryListener<T> {
     type Store = T;
 
-    fn on_change(&mut self, state: Rc<Self::Store>) {
-        Dispatch::<HistoryStore<T>>::new().apply(HistoryChangeMessage::<T>(state))
+    fn on_change(&mut self, cx: &Context, state: Rc<Self::Store>) {
+        Dispatch::<HistoryStore<T>>::new(cx).apply(HistoryChangeMessage::<T>(state))
     }
 }
 
-#[derive(Debug, Store, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct HistoryStore<T: Store + PartialEq> {
     vector: Vec<Rc<T>>,
     index: usize,
+    dispatch: Dispatch<T>,
 }
 
 impl<T: Store + PartialEq> Clone for HistoryStore<T> {
@@ -40,6 +41,7 @@ impl<T: Store + PartialEq> Clone for HistoryStore<T> {
         Self {
             vector: self.vector.clone(),
             index: self.index,
+            dispatch: self.dispatch.clone(),
         }
     }
 }
@@ -72,13 +74,19 @@ impl<T: Store + PartialEq> HistoryStore<T> {
     }
 }
 
-impl<T: Store + PartialEq> Default for HistoryStore<T> {
-    fn default() -> Self {
-        let s1 = Dispatch::<T>::new().get();
+impl<T: Store + PartialEq> Store for HistoryStore<T> {
+    fn new(cx: &Context) -> Self {
+        let dispatch = Dispatch::<T>::new(cx);
+        let s1 = dispatch.get();
         Self {
             vector: vec![s1],
             index: 0,
+            dispatch,
         }
+    }
+
+    fn should_notify(&self, other: &Self) -> bool {
+        self != other
     }
 }
 
@@ -131,7 +139,7 @@ impl<T: Store + PartialEq + Clone> Reducer<HistoryStore<T>> for HistoryMessage {
         };
 
         if state_changed {
-            Dispatch::<T>::new().reduce(|_| mut_state.current().clone());
+            mut_state.dispatch.reduce(|_| mut_state.current().clone());
         }
 
         state

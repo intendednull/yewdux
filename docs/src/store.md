@@ -6,8 +6,11 @@ shared application-wide. It is initialized on first access, and lives for applic
 Implement `Store` for your state using the macro.
 
 ```rust
+# extern crate yewdux;
+use yewdux::prelude::*;
+
 #[derive(Default, PartialEq, Store)]
-struct Counter {
+struct State {
     count: u32,
 }
 ```
@@ -16,13 +19,15 @@ It is also simple to define a `Store` manually. This is useful when you need fin
 it is created, or when to notify components.
 
 ```rust
+# extern crate yewdux;
+# use yewdux::prelude::*;
 #[derive(PartialEq)]
-struct Counter {
+struct State {
     count: u32,
 }
 
-impl Store for Counter {
-    fn new() {
+impl Store for State {
+    fn new(_cx: &yewdux::Context) -> Self {
         Self {
             count: Default::default(),
         }
