@@ -9,3 +9,6 @@ edition = "2018"
 wasm-bindgen-futures = "0.4.30"
 yew = { git = "https://github.com/yewstack/yew.git", features = ["csr"] }
 yewdux = { path = "../../crates/yewdux" }
+serde = "1.0"
+gloo-net = "0.4"
+web-sys = "0.3"

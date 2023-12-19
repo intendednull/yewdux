@@ -45,10 +45,6 @@ mod subscriber;
 #[doc(hidden)]
 pub use log;
 
-#[cfg(feature = "future")]
-#[doc(hidden)]
-pub use async_trait::async_trait;
-
 // Allow shorthand, like `yewdux::Dispatch`
 pub use context::Context;
 pub use prelude::*;
@@ -66,9 +62,4 @@ pub mod prelude {
         listener::{init_listener, Listener},
         store::{Reducer, Store},
     };
-
-    #[cfg(feature = "future")]
-    pub use crate::store::AsyncReducer;
-    #[cfg(feature = "future")]
-    pub use yewdux_macros::async_reducer;
 }

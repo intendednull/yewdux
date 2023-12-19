@@ -1,12 +1,10 @@
 use std::rc::Rc;
-#[cfg(feature = "future")]
-use std::{future::Future, pin::Pin};
 
 use anymap::AnyMap;
 
 use crate::{
     mrc::Mrc,
-    store::{AsyncReducer, Reducer, Store},
+    store::{Reducer, Store},
     subscriber::{Callable, SubscriberId, Subscribers},
 };
 
@@ -29,18 +27,6 @@ impl<S: Store> Entry<S> {
         // Apply the reducer.
         let new = reducer.apply(Rc::clone(&old));
         // Update to new state.
-        *self.store.borrow_mut() = new;
-        // Return whether or not subscribers should be notified.
-        self.store.borrow().should_notify(&old)
-    }
-
-    /// Apply a future reduction to state, returning if it should notify subscribers or not.
-    #[cfg(feature = "future")]
-    pub(crate) async fn reduce_future<R: AsyncReducer<S>>(&self, reducer: R) -> bool {
-        let old = Rc::clone(&self.store.borrow());
-        // Apply the reducer.
-        let new = reducer.apply(Rc::clone(&old)).await;
-        // Update the new state.
         *self.store.borrow_mut() = new;
         // Return whether or not subscribers should be notified.
         self.store.borrow().should_notify(&old)
@@ -127,39 +113,11 @@ impl Context {
         }
     }
 
-    #[cfg(feature = "future")]
-    pub async fn reduce_future<S, R>(&self, r: R)
-    where
-        S: Store,
-        R: AsyncReducer<S>,
-    {
-        let entry = self.get_or_init::<S>();
-        let should_notify = entry.reduce_future(r).await;
-
-        if should_notify {
-            let state = Rc::clone(&entry.store.borrow());
-            self.notify_subscribers(state)
-        }
-    }
-
     pub fn reduce_mut<S: Store + Clone, F: FnOnce(&mut S)>(&self, f: F) {
         self.reduce(|mut state| {
             f(Rc::make_mut(&mut state));
             state
         });
-    }
-
-    #[cfg(feature = "future")]
-    pub async fn reduce_mut_future<S, R, F>(&self, f: F)
-    where
-        S: Store + Clone,
-        F: FnOnce(&mut S) -> Pin<Box<dyn Future<Output = R> + '_>>,
-    {
-        self.reduce_future(|mut state| async move {
-            f(Rc::make_mut(&mut state)).await;
-            state
-        })
-        .await;
     }
 
     /// Set state to given value.
