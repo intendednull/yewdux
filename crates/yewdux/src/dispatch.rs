@@ -70,6 +70,7 @@ impl<S: Store> Dispatch<S> {
         &self.cx
     }
 
+    /// Spawn a future with access to this dispatch.
     #[cfg(feature = "future")]
     pub fn spawn_future<F, FU>(&self, f: F)
     where
@@ -79,6 +80,7 @@ impl<S: Store> Dispatch<S> {
         yew::platform::spawn_local(f(self.clone()));
     }
 
+    /// Create a callback that will spawn a future with access to this dispatch.
     #[cfg(feature = "future")]
     pub fn future_callback<E, F, FU>(&self, f: F) -> Callback<E>
     where
@@ -89,6 +91,8 @@ impl<S: Store> Dispatch<S> {
         Callback::from(move |_| dispatch.spawn_future(&f))
     }
 
+    /// Create a callback that will spawn a future with access to this dispatch and the emitted
+    /// event.
     #[cfg(feature = "future")]
     pub fn future_callback_with<E, F, FU>(&self, f: F) -> Callback<E>
     where
@@ -534,13 +538,6 @@ mod tests {
     struct Msg;
     impl Reducer<TestState> for Msg {
         fn apply(self, state: Rc<TestState>) -> Rc<TestState> {
-            TestState(state.0 + 1).into()
-        }
-    }
-
-    #[async_trait::async_trait(?Send)]
-    impl AsyncReducer<TestState> for Msg {
-        async fn apply(self, state: Rc<TestState>) -> Rc<TestState> {
             TestState(state.0 + 1).into()
         }
     }
