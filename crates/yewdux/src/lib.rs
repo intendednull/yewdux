@@ -36,7 +36,7 @@ pub mod dispatch;
 pub mod functional;
 pub mod listener;
 pub mod mrc;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(doc, feature = "doctests", target_arch = "wasm32"))]
 pub mod storage;
 pub mod store;
 mod subscriber;
