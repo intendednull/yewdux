@@ -41,7 +41,7 @@ impl<S: Store> std::fmt::Debug for Dispatch<S> {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(doc, feature = "doctests", target_arch = "wasm32"))]
 impl<S: Store> Default for Dispatch<S> {
     fn default() -> Self {
         Self::global()
