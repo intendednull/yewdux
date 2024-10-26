@@ -15,7 +15,7 @@ struct LogListener;
 impl Listener for LogListener {
     type Store = State;
 
-    fn on_change(&mut self, _cx: &Context, state: Rc<Self::Store>) {
+    fn on_change(&self, _cx: &Context, state: Rc<Self::Store>) {
         log!(Level::Info, "Count changed to {}", state.count);
     }
 }
@@ -24,7 +24,7 @@ struct StorageListener;
 impl Listener for StorageListener {
     type Store = State;
 
-    fn on_change(&mut self, _cx: &yewdux::Context, state: Rc<Self::Store>) {
+    fn on_change(&self, _cx: &yewdux::Context, state: Rc<Self::Store>) {
         #[cfg(target_arch = "wasm32")]
         if let Err(err) = storage::save(state.as_ref(), storage::Area::Local) {
             println!("Error saving state to storage: {:?}", err);
@@ -45,8 +45,8 @@ impl Store for State {
 
     #[cfg(target_arch = "wasm32")]
     fn new(cx: &yewdux::Context) -> Self {
-        init_listener(StorageListener, cx);
-        init_listener(LogListener, cx);
+        init_listener(|| StorageListener, cx);
+        init_listener(|| LogListener, cx);
 
         storage::load(storage::Area::Local)
             .ok()

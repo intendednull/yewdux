@@ -9,7 +9,7 @@ struct State {
 
 impl Store for State {
     fn new(cx: &Context) -> Self {
-        init_listener(HistoryListener::<State>::default(), cx);
+        init_listener(|| HistoryListener::<State>::default(), cx);
         Self::default()
     }
 

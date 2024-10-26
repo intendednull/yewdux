@@ -22,7 +22,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
         .map(|path| {
             quote! {
                 ::yewdux::listener::init_listener(
-                    #path, cx
+                    || #path, cx
                 );
             }
         })
@@ -53,7 +53,7 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 #[cfg(target_arch = "wasm32")]
                 fn new(cx: &::yewdux::Context) -> Self {
                     ::yewdux::listener::init_listener(
-                        ::yewdux::storage::StorageListener::<Self>::new(#area),
+                        || ::yewdux::storage::StorageListener::<Self>::new(#area),
                         cx
                     );
                     #(#extra_listeners)*

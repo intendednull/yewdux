@@ -86,7 +86,7 @@ where
 {
     type Store = T;
 
-    fn on_change(&mut self, _cx: &Context, state: Rc<Self::Store>) {
+    fn on_change(&self, _cx: &Context, state: Rc<Self::Store>) {
         if let Err(err) = save(state.as_ref(), self.area) {
             crate::log::error!("Error saving state to storage: {:?}", err);
         }

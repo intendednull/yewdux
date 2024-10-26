@@ -760,7 +760,7 @@ mod tests {
     #[test]
     fn dispatch_unsubscribes_when_dropped() {
         let cx = Context::new();
-        let entry = cx.get_or_init::<Mrc<Subscribers<TestState>>>();
+        let entry = cx.get_or_init_default::<Mrc<Subscribers<TestState>>>();
 
         assert!(entry.store.borrow().borrow().0.is_empty());
 
@@ -776,7 +776,7 @@ mod tests {
     #[test]
     fn dispatch_clone_and_original_unsubscribe_when_both_dropped() {
         let cx = Context::new();
-        let entry = cx.get_or_init::<Mrc<Subscribers<TestState>>>();
+        let entry = cx.get_or_init_default::<Mrc<Subscribers<TestState>>>();
 
         assert!(entry.store.borrow().borrow().0.is_empty());
 

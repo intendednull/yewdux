@@ -126,7 +126,7 @@ mod tests {
     #[test]
     fn subscribe_adds_to_list() {
         let cx = Context::new();
-        let entry = cx.get_or_init::<Mrc<Subscribers<TestState>>>();
+        let entry = cx.get_or_init_default::<Mrc<Subscribers<TestState>>>();
 
         assert!(entry.store.borrow().borrow().0.is_empty());
 
@@ -138,7 +138,7 @@ mod tests {
     #[test]
     fn unsubscribe_removes_from_list() {
         let cx = Context::new();
-        let entry = cx.get_or_init::<Mrc<Subscribers<TestState>>>();
+        let entry = cx.get_or_init_default::<Mrc<Subscribers<TestState>>>();
 
         assert!(entry.store.borrow().borrow().0.is_empty());
 
@@ -154,7 +154,7 @@ mod tests {
     #[test]
     fn subscriber_id_unsubscribes_when_dropped() {
         let cx = Context::new();
-        let entry = cx.get_or_init::<Mrc<Subscribers<TestState>>>();
+        let entry = cx.get_or_init_default::<Mrc<Subscribers<TestState>>>();
 
         assert!(entry.store.borrow().borrow().0.is_empty());
 

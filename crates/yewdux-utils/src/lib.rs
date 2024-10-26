@@ -24,7 +24,7 @@ impl<T: Store + PartialEq> Reducer<HistoryStore<T>> for HistoryChangeMessage<T> 
 impl<T: Store + PartialEq> Listener for HistoryListener<T> {
     type Store = T;
 
-    fn on_change(&mut self, cx: &Context, state: Rc<Self::Store>) {
+    fn on_change(&self, cx: &Context, state: Rc<Self::Store>) {
         Dispatch::<HistoryStore<T>>::new(cx).apply(HistoryChangeMessage::<T>(state))
     }
 }

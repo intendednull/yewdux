@@ -3,7 +3,8 @@ use std::rc::Rc;
 use yew::prelude::*;
 use yewdux::{
     log::{log, Level},
-    prelude::*, Context,
+    prelude::*,
+    Context,
 };
 
 use serde::{Deserialize, Serialize};
@@ -36,7 +37,7 @@ struct LogListener;
 impl Listener for LogListener {
     type Store = State;
 
-    fn on_change(&mut self, _cx: &Context, state: Rc<Self::Store>) {
+    fn on_change(&self, _cx: &Context, state: Rc<Self::Store>) {
         log!(Level::Info, "Count changed to {}", state.count);
     }
 }
