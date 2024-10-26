@@ -1,8 +1,7 @@
 use std::rc::Rc;
 
-use anymap::AnyMap;
-
 use crate::{
+    anymap::AnyMap,
     mrc::Mrc,
     store::{Reducer, Store},
     subscriber::{Callable, SubscriberId, Subscribers},

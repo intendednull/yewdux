@@ -30,6 +30,7 @@
 //! ```
 #![allow(clippy::needless_doctest_main)]
 
+mod anymap;
 pub mod context;
 pub mod context_provider;
 pub mod dispatch;
