@@ -66,7 +66,15 @@ impl Context {
             .expect("CONTEXTS thread local key init failed")
     }
 
-    pub(crate) fn get_or_init<S: Store>(&self) -> Entry<S> {
+    /// Initialize a store using a custom constructor. `Store::new` will not be called in this
+    /// case. If already initialized, the custom constructor will not be called.
+    pub fn init<S: Store, F: FnOnce(&Self) -> S>(&self, new_store: F) {
+        self.get_or_init(new_store);
+    }
+
+    /// Get or initialize a store using a custom constructor. `Store::new` will not be called in
+    /// this case. If already initialized, the custom constructor will not be called.
+    pub(crate) fn get_or_init<S: Store, F: FnOnce(&Self) -> S>(&self, new_store: F) -> Entry<S> {
         // Get context, or None if it doesn't exist.
         //
         // We use an option here because a new Store should not be created during this borrow. We
@@ -87,7 +95,7 @@ impl Context {
             // Init store outside of borrow. This allows the store to access other stores when it
             // is being created.
             let entry = Entry {
-                store: Mrc::new(Rc::new(S::new(self))),
+                store: Mrc::new(Rc::new(new_store(self))),
             };
 
             *maybe_entry.borrow_mut() = Some(entry);
@@ -102,8 +110,13 @@ impl Context {
         entry
     }
 
+    /// Get or initialize a store with a default Store::new implementation.
+    pub(crate) fn get_or_init_default<S: Store>(&self) -> Entry<S> {
+        self.get_or_init(S::new)
+    }
+
     pub fn reduce<S: Store, R: Reducer<S>>(&self, r: R) {
-        let entry = self.get_or_init::<S>();
+        let entry = self.get_or_init_default::<S>();
         let should_notify = entry.reduce(r);
 
         if should_notify {
@@ -126,12 +139,12 @@ impl Context {
 
     /// Get current state.
     pub fn get<S: Store>(&self) -> Rc<S> {
-        Rc::clone(&self.get_or_init::<S>().store.borrow())
+        Rc::clone(&self.get_or_init_default::<S>().store.borrow())
     }
 
     /// Send state to all subscribers.
     pub fn notify_subscribers<S: Store>(&self, state: Rc<S>) {
-        let entry = self.get_or_init::<Mrc<Subscribers<S>>>();
+        let entry = self.get_or_init_default::<Mrc<Subscribers<S>>>();
         entry.store.borrow().notify(state);
     }
 
@@ -140,7 +153,7 @@ impl Context {
         // Notify subscriber with inital state.
         on_change.call(self.get::<S>());
 
-        self.get_or_init::<Mrc<Subscribers<S>>>()
+        self.get_or_init_default::<Mrc<Subscribers<S>>>()
             .store
             .borrow()
             .subscribe(on_change)
@@ -148,7 +161,7 @@ impl Context {
 
     /// Similar to [Self::subscribe], however state is not called immediately.
     pub fn subscribe_silent<S: Store, N: Callable<S>>(&self, on_change: N) -> SubscriberId<S> {
-        self.get_or_init::<Mrc<Subscribers<S>>>()
+        self.get_or_init_default::<Mrc<Subscribers<S>>>()
             .store
             .borrow()
             .subscribe(on_change)
@@ -177,7 +190,7 @@ mod tests {
     struct TestState2(u32);
     impl Store for TestState2 {
         fn new(cx: &Context) -> Self {
-            cx.get_or_init::<TestState>();
+            cx.get_or_init_default::<TestState>();
             Self(0)
         }
 
@@ -188,7 +201,7 @@ mod tests {
 
     #[test]
     fn can_access_other_store_for_new_of_current_store() {
-        let _context = Context::new().get_or_init::<TestState2>();
+        let _context = Context::new().get_or_init_default::<TestState2>();
     }
 
     #[derive(Clone, PartialEq, Eq)]
@@ -215,9 +228,21 @@ mod tests {
     #[test]
     fn store_new_is_only_called_once() {
         let cx = Context::new();
-        cx.get_or_init::<StoreNewIsOnlyCalledOnce>();
-        let entry = cx.get_or_init::<StoreNewIsOnlyCalledOnce>();
+        cx.get_or_init_default::<StoreNewIsOnlyCalledOnce>();
+        let entry = cx.get_or_init_default::<StoreNewIsOnlyCalledOnce>();
 
         assert!(entry.store.borrow().0.get() == 1)
+    }
+
+    #[test]
+    fn recursive_reduce() {
+        let cx = Context::new();
+        let cx2 = cx.clone();
+        cx.reduce::<TestState, _>(|_s: Rc<TestState>| {
+            cx2.reduce::<TestState, _>(|s: Rc<TestState>| TestState(s.0 + 1).into());
+            TestState(cx2.get::<TestState>().0 + 1).into()
+        });
+
+        assert_eq!(cx.get::<TestState>().0, 2);
     }
 }
