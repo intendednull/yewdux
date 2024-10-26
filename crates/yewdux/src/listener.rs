@@ -21,7 +21,7 @@ impl<L: Listener> Store for ListenerStore<L> {
     }
 }
 
-/// Initiate a [Listener]. If this listener has already been initiated, it will not be replaced.
+/// Initiate a [Listener]. Does nothing if listener is already initiated.
 pub fn init_listener<L: Listener, F: FnOnce() -> L>(new_listener: F, cx: &Context) {
     cx.get_or_init(|cx| {
         let dispatch = {
