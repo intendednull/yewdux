@@ -166,6 +166,27 @@ impl Context {
             .borrow()
             .subscribe(on_change)
     }
+
+    /// Initialize a listener
+    pub fn init_listener<L: crate::Listener, F: FnOnce() -> L>(&self, new_listener: F) {
+        crate::init_listener(new_listener, self);
+    }
+
+    pub fn derived_from<Store, Derived>(&self)
+    where
+        Store: crate::Store,
+        Derived: crate::derived_from::DerivedFrom<Store>,
+    {
+        crate::derived_from::derive_from::<Store, Derived>(self);
+    }
+
+    pub fn derived_from_mut<Store, Derived>(&self)
+    where
+        Store: crate::Store,
+        Derived: crate::derived_from::DerivedFromMut<Store>,
+    {
+        crate::derived_from::derive_from_mut::<Store, Derived>(self);
+    }
 }
 
 #[cfg(test)]
