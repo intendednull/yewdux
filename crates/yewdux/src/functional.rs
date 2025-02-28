@@ -18,7 +18,10 @@ fn use_cx() -> Context {
 }
 
 #[hook]
-pub fn use_dispatch<S: Store>() -> Dispatch<S> {
+pub fn use_dispatch<S>() -> Dispatch<S> 
+where
+    S: Store,
+{
     Dispatch::new(&use_cx())
 }
 
@@ -48,7 +51,10 @@ pub fn use_dispatch<S: Store>() -> Dispatch<S> {
 /// }
 /// ```
 #[hook]
-pub fn use_store<S: Store>() -> (Rc<S>, Dispatch<S>) {
+pub fn use_store<S>() -> (Rc<S>, Dispatch<S>) 
+where
+    S: Store,
+{
     let dispatch = use_dispatch::<S>();
     let state: UseStateHandle<Rc<S>> = use_state(|| dispatch.get());
     let dispatch = {
@@ -61,7 +67,10 @@ pub fn use_store<S: Store>() -> (Rc<S>, Dispatch<S>) {
 
 /// Simliar to ['use_store'], but only provides the state.
 #[hook]
-pub fn use_store_value<S: Store>() -> Rc<S> {
+pub fn use_store_value<S>() -> Rc<S> 
+where
+    S: Store,
+{
     let (state, _dispatch) = use_store();
 
     state

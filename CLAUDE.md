@@ -3,8 +3,9 @@
 ## Build Commands
 - Build all crates: `cargo build`
 - Build specific crate: `cargo build -p yewdux`
-- Run tests: `cargo test`
-- Run specific test: `cargo test test_name`
+- Run tests (for non-WASM target): `cargo test --target x86_64-unknown-linux-gnu`
+- Run tests without doctests: `cargo test --lib --no-default-features --target x86_64-unknown-linux-gnu`
+- Run specific test: `cargo test test_name --target x86_64-unknown-linux-gnu`
 - Run example: `cd examples/[example_name] && trunk serve`
 - Build documentation: `cd docs && mdbook build`
 
