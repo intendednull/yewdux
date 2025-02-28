@@ -8,7 +8,9 @@ struct Count {
     count: u32,
 }
 
-#[derive(Default, Clone, PartialEq, Eq)]
+// Example using DerivedFromMut - mutable version
+#[derive(Default, Clone, PartialEq, Eq, Store)]
+#[store(derived_from_mut(Count))]
 struct CountIsEven {
     status: bool,
 }
@@ -19,18 +21,18 @@ impl DerivedFromMut<Count> for CountIsEven {
     }
 }
 
-impl Store for CountIsEven {
-    fn new(cx: &yewdux::Context) -> Self {
-        // Don't forget to register this state as derived from `Count`.
-        cx.derived_from_mut::<Count, Self>();
+// Example using DerivedFrom - immutable version
+#[derive(Default, Clone, PartialEq, Eq, Store)]
+#[store(derived_from(Count))]
+struct CountMultiplied {
+    value: u32,
+}
 
-        let status = cx.get::<Count>().count % 2 == 0;
-
-        Self { status }
-    }
-
-    fn should_notify(&self, old: &Self) -> bool {
-        self != old
+impl DerivedFrom<Count> for CountMultiplied {
+    fn on_change(&self, state: Rc<Count>) -> Self {
+        Self {
+            value: state.count * 10,
+        }
     }
 }
 
@@ -38,12 +40,14 @@ impl Store for CountIsEven {
 fn App() -> Html {
     let (state, dispatch) = use_store::<Count>();
     let is_even = use_store_value::<CountIsEven>();
+    let multiplied = use_store_value::<CountMultiplied>();
     let onclick = dispatch.reduce_mut_callback(|state| state.count += 1);
 
     html! {
         <>
-        <p>{ state.count }</p>
-        <p>{ is_even.status }</p>
+        <p>{"Count: "}{ state.count }</p>
+        <p>{"Is Even: "}{ is_even.status.to_string() }</p>
+        <p>{"Multiplied by 10: "}{ multiplied.value }</p>
         <button {onclick}>{"+1"}</button>
         </>
     }
