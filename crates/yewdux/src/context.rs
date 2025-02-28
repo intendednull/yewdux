@@ -42,6 +42,7 @@ impl<S: Store> Entry<S> {
 /// #[derive(Clone, PartialEq, Default, Store)]
 /// struct Counter(usize);
 ///
+/// // In a real application, you'd typically get the context from a parent component
 /// let cx = yewdux::Context::new();
 /// let dispatch = Dispatch::<Counter>::new(&cx);
 /// ```
