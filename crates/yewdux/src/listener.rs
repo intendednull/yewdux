@@ -13,7 +13,9 @@ pub trait Listener: 'static {
 struct ListenerStore<L: Listener>(Dispatch<L::Store>);
 impl<L: Listener> Store for ListenerStore<L> {
     fn new(_cx: &Context) -> Self {
-        unimplemented!()
+        // This is a private type, and only ever constructed by `init_listener` with a manual
+        // constructor, so this should never run.
+        unreachable!()
     }
 
     fn should_notify(&self, _other: &Self) -> bool {

@@ -8,13 +8,60 @@
 //!     count: usize,
 //!  }
 //!
-//!  let dispatch = Dispatch::<State>::global();
+//!  // Create a context - in a real application, you'd typically get this from a parent component
+//!  let cx = yewdux::Context::new();
+//!  let dispatch = Dispatch::<State>::new(&cx);
+//!  
+//!  // Update the state
 //!  dispatch.reduce_mut(|state| state.count = 1);
 //!
+//!  // Get the current state
 //!  let state = dispatch.get();
 //!
 //!  assert!(state.count == 1);
 //!  ```
+//!
+//! ## Usage with YewduxRoot
+//!
+//! For applications with server-side rendering (SSR) support, the recommended
+//! approach is to use `YewduxRoot` to provide context:
+//!
+//! ```
+//! use std::rc::Rc;
+//! use yew::prelude::*;
+//! use yewdux::prelude::*;
+//!
+//! // Define your store
+//! #[derive(Default, Clone, PartialEq, Store)]
+//! struct State {
+//!     count: u32,
+//! }
+//!
+//! // Function component using hooks to access state
+//! #[function_component]
+//! fn Counter() -> Html {
+//!     // Get both state and dispatch from the context
+//!     let (state, dispatch) = use_store::<State>();
+//!     let onclick = dispatch.reduce_mut_callback(|state| state.count += 1);
+//!     
+//!     html! {
+//!         <>
+//!             <p>{ state.count }</p>
+//!             <button {onclick}>{"+1"}</button>
+//!         </>
+//!     }
+//! }
+//!
+//! // Root component that sets up the YewduxRoot context
+//! #[function_component]
+//! fn App() -> Html {
+//!     html! {
+//!         <YewduxRoot>
+//!             <Counter />
+//!         </YewduxRoot>
+//!     }
+//! }
+//! ```
 //!
 
 use std::{future::Future, rc::Rc};
@@ -105,6 +152,9 @@ impl<S: Store> Dispatch<S> {
 
     /// Create a dispatch that subscribes to changes in state. Latest state is sent immediately,
     /// and on every subsequent change. Automatically unsubscribes when this dispatch is dropped.
+    /// 
+    /// ## Higher-Order Component Pattern with YewduxRoot
+    /// 
     /// ```
     /// use std::rc::Rc;
     ///
@@ -116,25 +166,32 @@ impl<S: Store> Dispatch<S> {
     ///     count: u32,
     /// }
     ///
-    /// struct App {
-    ///     /// Our local version of state.
-    ///     state: Rc<State>,
-    ///     /// Our dispatch. Make sure to keep this, or the subscription will be dropped.
+    /// // Props for our struct component
+    /// #[derive(Properties, PartialEq, Clone)]
+    /// struct CounterProps {
     ///     dispatch: Dispatch<State>,
     /// }
     ///
+    /// // Message type for state updates
     /// enum Msg {
-    ///     /// Message to receive new state.
-    ///     State(Rc<State>),
+    ///     StateChanged(Rc<State>),
     /// }
     ///
-    /// impl Component for App {
+    /// // Our struct component that uses the state
+    /// struct Counter {
+    ///     state: Rc<State>,
+    ///     dispatch: Dispatch<State>,
+    /// }
+    ///
+    /// impl Component for Counter {
     ///     type Message = Msg;
-    ///     type Properties = ();
+    ///     type Properties = CounterProps;
     ///
     ///     fn create(ctx: &Context<Self>) -> Self {
-    ///         let on_change = ctx.link().callback(Msg::State);
-    ///         let dispatch = Dispatch::global().subscribe(on_change);
+    ///         // Subscribe to state changes
+    ///         let callback = ctx.link().callback(Msg::StateChanged);
+    ///         let dispatch = ctx.props().dispatch.clone().subscribe_silent(callback);
+    ///         
     ///         Self {
     ///             state: dispatch.get(),
     ///             dispatch,
@@ -143,17 +200,45 @@ impl<S: Store> Dispatch<S> {
     ///
     ///     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
     ///         match msg {
-    ///             Msg::State(state) => {
+    ///             Msg::StateChanged(state) => {
     ///                 self.state = state;
     ///                 true
     ///             }
     ///         }
     ///     }
     ///
-    ///     /// ...
-    /// #    fn view(&self, _ctx: &Context<Self>) -> Html {
-    /// #        html! {}
-    /// #    }
+    ///     fn view(&self, _ctx: &Context<Self>) -> Html {
+    ///         let count = self.state.count;
+    ///         let onclick = self.dispatch.reduce_mut_callback(|s| s.count += 1);
+    ///         
+    ///         html! {
+    ///             <>
+    ///                 <h1>{ count }</h1>
+    ///                 <button {onclick}>{"+1"}</button>
+    ///             </>
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// // Higher-Order Component (HOC) that accesses the context
+    /// #[function_component]
+    /// fn CounterHoc() -> Html {
+    ///     // Use the hook to get the dispatch from context
+    ///     let dispatch = use_dispatch::<State>();
+    ///     
+    ///     html! {
+    ///         <Counter {dispatch} />
+    ///     }
+    /// }
+    ///
+    /// // App component with YewduxRoot for SSR support
+    /// #[function_component]
+    /// fn App() -> Html {
+    ///     html! {
+    ///         <YewduxRoot>
+    ///             <CounterHoc />
+    ///         </YewduxRoot>
+    ///     }
     /// }
     /// ```
     pub fn subscribe<C: Callable<S>>(self, on_change: C) -> Self {
@@ -204,7 +289,10 @@ impl<S: Store> Dispatch<S> {
     /// }
     ///
     /// # fn main() {
-    /// let dispatch = Dispatch::<State>::global();
+    /// # // Context handling code is omitted for clarity
+    /// # let cx = yewdux::Context::new();
+    /// # let dispatch = Dispatch::<State>::new(&cx);
+    /// // Apply a reducer to update the state
     /// dispatch.apply(AddOne);
     /// # ;
     /// # }
@@ -235,7 +323,10 @@ impl<S: Store> Dispatch<S> {
     /// }
     ///
     /// # fn main() {
-    /// let dispatch = Dispatch::<State>::global();
+    /// # // Context handling code is omitted for clarity
+    /// # let cx = yewdux::Context::new();
+    /// # let dispatch = Dispatch::<State>::new(&cx);
+    /// // Create a callback that will update the state when triggered
     /// let onclick = dispatch.apply_callback(|_| AddOne);
     /// html! {
     ///     <button {onclick}>{"+1"}</button>
@@ -265,7 +356,10 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// let dispatch = Dispatch::<State>::global();
+    /// # // Context handling code is omitted for clarity
+    /// # let cx = yewdux::Context::new();
+    /// # let dispatch = Dispatch::<State>::new(&cx);
+    /// // Set the state to a new value
     /// dispatch.set(State { count: 0 });
     /// # }
     /// ```
@@ -316,7 +410,10 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// let dispatch = Dispatch::<State>::global();
+    /// # // Context handling code is omitted for clarity
+    /// # let cx = yewdux::Context::new();
+    /// # let dispatch = Dispatch::<State>::new(&cx);
+    /// // Transform the current state into a new state
     /// dispatch.reduce(|state| State { count: state.count + 1 }.into());
     /// # }
     /// ```
@@ -337,7 +434,10 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// let dispatch = Dispatch::<State>::global();
+    /// # // Context handling code is omitted for clarity
+    /// # let cx = yewdux::Context::new();
+    /// # let dispatch = Dispatch::<State>::new(&cx);
+    /// // Create a callback that will transform the state when triggered
     /// let onclick = dispatch.reduce_callback(|state| State { count: state.count + 1 }.into());
     /// html! {
     ///     <button {onclick}>{"+1"}</button>
@@ -366,7 +466,10 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// let dispatch = Dispatch::<State>::global();
+    /// # // Context handling code is omitted for clarity
+    /// # let cx = yewdux::Context::new();
+    /// # let dispatch = Dispatch::<State>::new(&cx);
+    /// // Create a callback that will transform the state using the event data
     /// let onchange = dispatch.reduce_callback_with(|state, event: Event| {
     ///     let value = event.target_unchecked_into::<web_sys::HtmlInputElement>().value();
     ///     State {
@@ -401,7 +504,10 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// let dispatch = Dispatch::<State>::global();
+    /// # // Context handling code is omitted for clarity
+    /// # let cx = yewdux::Context::new();
+    /// # let dispatch = Dispatch::<State>::new(&cx);
+    /// // Mutate the state in-place
     /// dispatch.reduce_mut(|state| state.count += 1);
     /// # }
     /// ```
@@ -429,7 +535,10 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// let dispatch = Dispatch::<State>::global();
+    /// # // Context handling code is omitted for clarity
+    /// # let cx = yewdux::Context::new();
+    /// # let dispatch = Dispatch::<State>::new(&cx);
+    /// // Create a callback that will mutate the state in-place when triggered
     /// let onclick = dispatch.reduce_mut_callback(|s| s.count += 1);
     /// html! {
     ///     <button {onclick}>{"+1"}</button>
@@ -461,7 +570,10 @@ impl<S: Store> Dispatch<S> {
     /// #     count: u32,
     /// # }
     /// # fn main() {
-    /// let dispatch = Dispatch::<State>::global();
+    /// # // Context handling code is omitted for clarity
+    /// # let cx = yewdux::Context::new();
+    /// # let dispatch = Dispatch::<State>::new(&cx);
+    /// // Create a callback that will mutate the state using event data
     /// let onchange = dispatch.reduce_mut_callback_with(|state, event: Event| {
     ///     let value = event.target_unchecked_into::<web_sys::HtmlInputElement>().value();
     ///     state.count = value.parse().unwrap();

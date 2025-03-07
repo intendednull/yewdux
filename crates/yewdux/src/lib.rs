@@ -33,11 +33,12 @@
 mod anymap;
 pub mod context;
 pub mod context_provider;
+pub mod derived_from;
 pub mod dispatch;
 pub mod functional;
 pub mod listener;
 pub mod mrc;
-#[cfg(any(doc, feature = "doctests", target_arch = "wasm32"))]
+#[cfg(any(feature = "doctests", target_arch = "wasm32"))]
 pub mod storage;
 pub mod store;
 mod subscriber;
@@ -55,6 +56,7 @@ pub mod prelude {
 
     pub use crate::{
         context_provider::YewduxRoot,
+        derived_from::{DerivedFrom, DerivedFromMut},
         dispatch::Dispatch,
         functional::{
             use_dispatch, use_selector, use_selector_eq, use_selector_eq_with_deps,

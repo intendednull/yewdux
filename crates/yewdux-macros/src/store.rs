@@ -9,6 +9,8 @@ struct Opts {
     storage: Option<String>,
     storage_tab_sync: bool,
     listener: PathList,
+    derived_from: PathList,
+    derived_from_mut: PathList,
 }
 
 pub(crate) fn derive(input: DeriveInput) -> TokenStream {
@@ -24,6 +26,26 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 ::yewdux::listener::init_listener(
                     || #path, cx
                 );
+            }
+        })
+        .collect();
+        
+    let derived_from_init: Vec<_> = opts
+        .derived_from
+        .iter()
+        .map(|source_type| {
+            quote! {
+                cx.derived_from::<#source_type, Self>();
+            }
+        })
+        .collect();
+        
+    let derived_from_mut_init: Vec<_> = opts
+        .derived_from_mut
+        .iter()
+        .map(|source_type| {
+            quote! {
+                cx.derived_from_mut::<#source_type, Self>();
             }
         })
         .collect();
@@ -57,6 +79,8 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                         cx
                     );
                     #(#extra_listeners)*
+                    #(#derived_from_init)*
+                    #(#derived_from_mut_init)*
 
                     #sync
 
@@ -74,6 +98,8 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
                 #[cfg(not(target_arch = "wasm32"))]
                 fn new(cx: &::yewdux::Context) -> Self {
                     #(#extra_listeners)*
+                    #(#derived_from_init)*
+                    #(#derived_from_mut_init)*
                     Default::default()
                 }
             }
@@ -81,6 +107,8 @@ pub(crate) fn derive(input: DeriveInput) -> TokenStream {
         None => quote! {
             fn new(cx: &::yewdux::Context) -> Self {
                 #(#extra_listeners)*
+                #(#derived_from_init)*
+                #(#derived_from_mut_init)*
                 Default::default()
             }
         },

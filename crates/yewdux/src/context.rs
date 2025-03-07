@@ -42,6 +42,7 @@ impl<S: Store> Entry<S> {
 /// #[derive(Clone, PartialEq, Default, Store)]
 /// struct Counter(usize);
 ///
+/// // In a real application, you'd typically get the context from a parent component
 /// let cx = yewdux::Context::new();
 /// let dispatch = Dispatch::<Counter>::new(&cx);
 /// ```
@@ -165,6 +166,27 @@ impl Context {
             .store
             .borrow()
             .subscribe(on_change)
+    }
+
+    /// Initialize a listener
+    pub fn init_listener<L: crate::Listener, F: FnOnce() -> L>(&self, new_listener: F) {
+        crate::init_listener(new_listener, self);
+    }
+
+    pub fn derived_from<Store, Derived>(&self)
+    where
+        Store: crate::Store,
+        Derived: crate::derived_from::DerivedFrom<Store>,
+    {
+        crate::derived_from::derive_from::<Store, Derived>(self);
+    }
+
+    pub fn derived_from_mut<Store, Derived>(&self)
+    where
+        Store: crate::Store,
+        Derived: crate::derived_from::DerivedFromMut<Store>,
+    {
+        crate::derived_from::derive_from_mut::<Store, Derived>(self);
     }
 }
 

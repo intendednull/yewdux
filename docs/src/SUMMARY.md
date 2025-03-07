@@ -12,6 +12,7 @@
 - [Store](./store.md)
     - [Default value](./default_store.md)
     - [Persistence](./persistence.md)
+    - [Derived State](./derived_state.md)
 - [Writing state](./dispatch.md)
 - [Reading state](./reading.md)
 - [Listeners](./listeners.md)
