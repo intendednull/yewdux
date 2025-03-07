@@ -1,6 +1,6 @@
 [package]
 name = "yewdux-utils"
-version = "0.10.0"
+version = "0.11.0"
 authors = ["Noah <noah@coronasoftware.net>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -12,5 +12,7 @@ categories = ["wasm", "web-programming", "rust-patterns"]
 
 
 [dependencies]
-yewdux = { path = "../yewdux" }
+yewdux = "0.11.0"
+# yewdux = { path = "../yewdux" }
+
 

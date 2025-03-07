@@ -1,6 +1,6 @@
 [package]
 name = "yewdux"
-version = "0.10.0"
+version = "0.11.0"
 authors = ["Noah <noah@coronasoftware.net>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -24,8 +24,10 @@ serde_json = "1.0.64"
 slab = "0.4"
 thiserror = "1.0"
 web-sys = "0.3"
-yew = { git = "https://github.com/yewstack/yew.git" }
-yewdux-macros = { path = "../yewdux-macros" }
+yew = "0.21"
+# yew = { git = "https://github.com/yewstack/yew.git" }
+yewdux-macros = "0.11.0"
+# yewdux-macros = { path = "../yewdux-macros" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"
