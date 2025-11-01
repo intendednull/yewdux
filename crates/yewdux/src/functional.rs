@@ -18,7 +18,7 @@ fn use_cx() -> Context {
 }
 
 #[hook]
-pub fn use_dispatch<S>() -> Dispatch<S> 
+pub fn use_dispatch<S>() -> Dispatch<S>
 where
     S: Store,
 {
@@ -51,7 +51,7 @@ where
 /// }
 /// ```
 #[hook]
-pub fn use_store<S>() -> (Rc<S>, Dispatch<S>) 
+pub fn use_store<S>() -> (Rc<S>, Dispatch<S>)
 where
     S: Store,
 {
@@ -67,7 +67,7 @@ where
 
 /// Simliar to ['use_store'], but only provides the state.
 #[hook]
-pub fn use_store_value<S>() -> Rc<S> 
+pub fn use_store_value<S>() -> Rc<S>
 where
     S: Store,
 {
@@ -174,7 +174,7 @@ where
 /// Similar to [`use_selector_with_deps`], but also allows an equality function, similar to
 /// [`use_selector_eq`]
 #[hook]
-pub fn use_selector_eq_with_deps<S, F, R, D, E>(selector: F, eq: E, deps: D) -> Rc<R>
+pub fn use_selector_eq_with_deps<S, F, R, D, E>(selector: F, is_eq: E, deps: D) -> Rc<R>
 where
     S: Store,
     R: 'static,
@@ -183,36 +183,37 @@ where
     E: Fn(&R, &R) -> bool + 'static,
 {
     let dispatch = use_dispatch::<S>();
-    // Given to user, this is what we update to force a re-render.
-    let selected = {
-        let state = dispatch.get();
-        let value = selector(&state, &deps);
+    let store = dispatch.get();
 
-        use_state(|| Rc::new(value))
-    };
-    // Local tracking value, because `selected` isn't updated in our subscriber scope.
-    let current = {
-        let value = Rc::clone(&selected);
-        use_mut_ref(|| value)
-    };
-
-    let _dispatch = {
-        let selected = selected.clone();
-        use_memo(deps, move |deps| {
-            let deps = deps.clone();
-            dispatch.subscribe(move |val: Rc<S>| {
-                let value = selector(&val, &deps);
-
-                if !eq(&current.borrow(), &value) {
-                    let value = Rc::new(value);
-                    // Update value for user.
-                    selected.set(Rc::clone(&value));
-                    // Make sure to update our tracking value too.
-                    *current.borrow_mut() = Rc::clone(&value);
-                }
-            })
+    // Re-run this hook when the store changes.
+    let _trigger = use_state(|| ());
+    let _sub = use_memo((), move |_| {
+        dispatch.subscribe_silent(move |_| {
+            // Trigger a re-render when the store changes.
+            _trigger.set(());
         })
-    };
+    });
+
+    // Track if the store has changed.
+    let store_version = use_state(|| 0u32);
+    let last_store = use_state(|| Rc::clone(&store));
+    if store.should_notify(&last_store) {
+        last_store.set(Rc::clone(&store));
+        store_version.set(1u32.wrapping_add(*store_version));
+    }
+
+    // Track if the selected value has changed
+    let last_selected = use_state(|| None::<Rc<R>>);
+    let selected = use_memo((store_version, deps), move |(_version, deps)| {
+        let value = Rc::new(selector(&store, &deps));
+        match &*last_selected {
+            Some(last) if is_eq(&value, last) => Rc::clone(last),
+            _ => {
+                last_selected.set(Some(Rc::clone(&value)));
+                value
+            }
+        }
+    });
 
     Rc::clone(&selected)
 }
