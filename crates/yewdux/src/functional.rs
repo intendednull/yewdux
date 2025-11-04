@@ -165,7 +165,7 @@ pub fn use_selector_with_deps<S, F, R, D>(selector: F, deps: D) -> Rc<R>
 where
     S: Store,
     R: PartialEq + 'static,
-    D: Clone + PartialEq + 'static,
+    D: PartialEq + 'static,
     F: Fn(&S, &D) -> R + 'static,
 {
     use_selector_eq_with_deps(selector, |a, b| a == b, deps)
@@ -178,7 +178,7 @@ pub fn use_selector_eq_with_deps<S, F, R, D, E>(selector: F, is_eq: E, deps: D) 
 where
     S: Store,
     R: 'static,
-    D: Clone + PartialEq + 'static,
+    D: PartialEq + 'static,
     F: Fn(&S, &D) -> R + 'static,
     E: Fn(&R, &R) -> bool + 'static,
 {
