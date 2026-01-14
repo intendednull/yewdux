@@ -14,5 +14,3 @@ categories = ["wasm", "web-programming", "rust-patterns"]
 [dependencies]
 # yewdux = "0.11.0"
 yewdux = { path = "../yewdux" }
-
-

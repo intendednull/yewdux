@@ -7,6 +7,6 @@ edition = "2018"
 
 [dependencies]
 chrono = "0.4.22"
-yew = { git = "https://github.com/yewstack/yew.git", features = ["csr"] }
+yew = { version = "0.22", features = ["csr"] }
 yewdux = { path = "../../crates/yewdux" }
 yewdux-input = { path = "../../crates/yewdux-input" }

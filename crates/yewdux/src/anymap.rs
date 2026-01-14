@@ -9,7 +9,7 @@ pub(crate) struct AnyMap {
 }
 
 impl AnyMap {
-    pub(crate) fn entry<T: 'static>(&mut self) -> Entry<T> {
+    pub(crate) fn entry<T: 'static>(&mut self) -> Entry<'_, T> {
         Entry {
             map: &mut self.map,
             _marker: std::marker::PhantomData,

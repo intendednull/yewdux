@@ -90,8 +90,7 @@ fn InputTextArea() -> Html {
     html! {
         <>
         <p>{ &state.textarea }</p>
-        <textarea {oninput}>
-        </textarea>
+        <textarea {oninput} />
         </>
     }
 }

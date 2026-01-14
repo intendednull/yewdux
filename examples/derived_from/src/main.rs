@@ -17,7 +17,7 @@ struct CountIsEven {
 
 impl DerivedFromMut<Count> for CountIsEven {
     fn on_change(&mut self, state: Rc<Count>) {
-        self.status = state.count % 2 == 0;
+        self.status = state.count.is_multiple_of(2);
     }
 }
 

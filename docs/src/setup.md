@@ -14,8 +14,6 @@ yewdux = "0.10"
 
 ```toml
 [dependencies]
-yew = { git = "https://github.com/yewstack/yew.git", features = ["csr"] }
+yew = { version = "0.22", features = ["csr"] }
 yewdux = { git = "https://github.com/intendednull/yewdux.git" }
 ```
-
-

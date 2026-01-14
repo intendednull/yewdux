@@ -18,18 +18,16 @@ future = []
 doctests = []
 
 [dependencies]
-log = "0.4.16"
-serde = { version = "1.0.114", features = ["rc"] }
-serde_json = "1.0.64"
+log = "0.4"
+serde = { version = "1", features = ["rc"] }
+serde_json = "1"
 slab = "0.4"
 thiserror = "1.0"
 web-sys = "0.3"
-# yew = "0.21"
-yew = { git = "https://github.com/yewstack/yew.git" }
+yew = "0.22"
+# yew = { version = "0.22" }
 # yewdux-macros = "0.11.0"
 yewdux-macros = { path = "../yewdux-macros" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"
-
-
