@@ -1,3 +1,5 @@
 **/*target
 **/*dist
 .idea
+*.nix
+flake.lock
