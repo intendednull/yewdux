@@ -7,7 +7,7 @@ Add Yewdux to your project's `Cargo.toml`. Make sure Yew has the "csr" feature (
 ```toml
 [dependencies]
 yew = { version = "0.21", features = ["csr"] }
-yewdux = "0.10"
+yewdux = "0.12"
 ```
 
 ### Development branch:
