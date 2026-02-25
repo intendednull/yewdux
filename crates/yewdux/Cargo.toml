@@ -25,9 +25,8 @@ slab = "0.4"
 thiserror = "1.0"
 web-sys = "0.3"
 yew = "0.22"
-# yew = { version = "0.22" }
-# yewdux-macros = "0.11.0"
-yewdux-macros = { path = "../yewdux-macros" }
+yewdux-macros = "0.12.0"
+# yewdux-macros = { path = "../yewdux-macros" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"
