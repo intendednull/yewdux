@@ -7,5 +7,5 @@ edition = "2018"
 
 [dependencies]
 serde = { version = "1.0.114" }
-yew = { version = "0.22", features = ["csr"] }
+yew = { version = "0.23", features = ["csr"] }
 yewdux = { path = "../../crates/yewdux" }
