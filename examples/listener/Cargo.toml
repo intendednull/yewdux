@@ -8,5 +8,5 @@ edition = "2018"
 [dependencies]
 serde = { version = "1.0.114" }
 wasm-logger = "0.2.0"
-yew = { version = "0.23", features = ["csr"] }
+yew.workspace = true
 yewdux = { path = "../../crates/yewdux" }

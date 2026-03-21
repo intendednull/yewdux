@@ -7,6 +7,6 @@ edition = "2018"
 
 [dependencies]
 chrono = "0.4.22"
-yew = { version = "0.23", features = ["csr"] }
+yew.workspace = true
 yewdux = { path = "../../crates/yewdux" }
 yewdux-input = { path = "../../crates/yewdux-input" }

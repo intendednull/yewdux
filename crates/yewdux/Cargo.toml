@@ -24,7 +24,7 @@ serde_json = "1.0"
 slab = "0.4"
 thiserror = "1.0"
 web-sys = "0.3"
-yew = "0.23"
+yew.workspace = true
 # yew = { version = "0.22" }
 # yewdux-macros = "0.11.0"
 yewdux-macros = { path = "../yewdux-macros" }
