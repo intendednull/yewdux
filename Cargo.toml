@@ -1,3 +1,6 @@
 [workspace]
 resolver = "2"
 members = ["crates/*", "examples/*"]
+
+[workspace.dependencies]
+yew = { version = "0.23", features = ["csr"] }

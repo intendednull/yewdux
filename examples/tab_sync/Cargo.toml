@@ -6,6 +6,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = { version = "1.0.114" }
-yew = { version = "0.22", features = ["csr"] }
+serde = { version = "1.0.228" }
+yew.workspace = true
 yewdux = { path = "../../crates/yewdux" }
